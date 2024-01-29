@@ -9,11 +9,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class ElderService {
-
-
     private final ElderRepository elderRepository;
 
-    public void addOrder(AddElderRequest addElderRequest) {
+    public void addElder(AddElderRequest addElderRequest) {
         Elder elder = new Elder(addElderRequest);
         elderRepository.save(elder);
     }

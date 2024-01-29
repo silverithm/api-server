@@ -17,7 +17,7 @@ public class ElderController {
 
     @PostMapping("/api/v1/elder")
     public void elderAdd(@RequestBody AddElderRequest addElderRequest) {
-        elderService.addOrder(addElderRequest);
+        elderService.addElder(addElderRequest);
     }
 
 }
