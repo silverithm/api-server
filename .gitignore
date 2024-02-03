@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+silverithm.trace.db
+silverithm.mv.db
+
+

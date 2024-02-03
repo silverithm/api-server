@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -16,8 +17,9 @@ public class ElderController {
     private final ElderService elderService;
 
     @PostMapping("/api/v1/elder")
-    public void elderAdd(@RequestBody AddElderRequest addElderRequest) {
+    public String elderAdd(@RequestBody AddElderRequest addElderRequest) {
         elderService.addElder(addElderRequest);
+        return "Success";
     }
 
 }
