@@ -1,7 +1,8 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
-import com.silverithm.vehicleplacementsystem.dto.userDataDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -25,30 +26,30 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public String signup(@RequestBody userDataDTO user) {
-        return userService.signup(user);
+    public TokenInfo signup(@RequestBody UserDataDTO userDataDTO) {
+        return userService.signup(userDataDTO);
     }
 
-    @DeleteMapping(value = "/{username}")
-    public String delete(@PathVariable String username) {
-        userService.delete(username);
-        return username;
-    }
-
-    @GetMapping(value = "/{username}")
-    public UserResponseDTO search(@PathVariable String username) {
-        return new UserResponseDTO(userName);
-    }
-
-    @GetMapping(value = "/me")
-    public UserResponseDTO whoami(HttpServletRequest req) {
-        return new UserResponseDTO(req.getRemoteUser());
-    }
-
-    @GetMapping("/refresh")
-    public String refresh(HttpServletRequest req) {
-        return userService.refresh(req.getRemoteUser());
-    }
+//    @DeleteMapping(value = "/{username}")
+//    public String delete(@PathVariable String username) {
+//        userService.delete(username);
+//        return username;
+//    }
+//
+//    @GetMapping(value = "/{username}")
+//    public UserResponseDTO search(@PathVariable String username) {
+//        return new UserResponseDTO(username);
+//    }
+//
+//    @GetMapping(value = "/me")
+//    public UserResponseDTO whoami(HttpServletRequest req) {
+//        return new UserResponseDTO(req.getRemoteUser());
+//    }
+//
+//    @GetMapping("/refresh")
+//    public String refresh(HttpServletRequest req) {
+//        return userService.refresh(req.getRemoteUser());
+//    }
 
 
 }
