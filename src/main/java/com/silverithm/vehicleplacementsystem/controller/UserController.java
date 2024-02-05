@@ -1,14 +1,10 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
-import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
+import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,8 +17,8 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/signin")
-    public String login(@RequestParam String username, @RequestParam String password) {
-        return userService.signin(username, password);
+    public TokenInfo login(@RequestBody UserSigninDTO userSigninDTO) {
+        return userService.signin(userSigninDTO);
     }
 
     @PostMapping("/signup")
