@@ -22,3 +22,8 @@ spring:
       enabled: true
       path: /h2-console
 
+#
+#logging:
+#  level:
+#    root: debug
+

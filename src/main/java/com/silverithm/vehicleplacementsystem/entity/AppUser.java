@@ -30,4 +30,13 @@ public class AppUser {
     private String password;
 
     private UserRole userRole;
+
+    private String accessToken;
+    private String refreshToken;
+
+    public void update(String accessToken, String refreshToken){
+        this.accessToken=accessToken;
+        this.refreshToken=refreshToken;
+    }
+
 }

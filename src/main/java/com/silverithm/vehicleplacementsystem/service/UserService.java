@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,12 +33,22 @@ public class UserService {
     public void delete(String username) {
     }
 
+    @Transactional
     public TokenInfo signin(UserSigninDTO userSigninDTO) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getName(), userSigninDTO.getPassword()));
-            return jwtTokenProvider.generateToken(userSigninDTO.getName(),
-                    Collections.singleton(userRepository.findByUsername(userSigninDTO.getName()).getUserRole()));
+
+            AppUser findUser = userRepository.findByUsername(userSigninDTO.getName());
+
+            TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getName(),
+                    Collections.singleton(findUser.getUserRole()));
+
+            findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
+
+            return tokenInfo;
+
+
         } catch (AuthenticationException e) {
             throw new CustomException("Invalid username/password supplied", HttpStatus.UNPROCESSABLE_ENTITY);
         }
