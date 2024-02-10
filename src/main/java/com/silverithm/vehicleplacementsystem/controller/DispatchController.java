@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 
+import com.silverithm.vehicleplacementsystem.dto.DispatchLocationsDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
 import java.util.List;
@@ -18,11 +19,8 @@ public class DispatchController {
 
     // RESTful API endpoint
     @PostMapping("/dispatch")
-    public List<Location> dispatch(@RequestBody Location[] elderlyLocations,
-                                   @RequestParam("destinationX") int destinationX,
-                                   @RequestParam("destinationY") int destinationY) {
-        Location destination = new Location(destinationX, destinationY);
-        return dispatchService.findClosestLocations(elderlyLocations, destination);
+    public List<Location> dispatch(@RequestBody DispatchLocationsDTO dispatchLocationsDTO) {
+        return dispatchService.findClosestLocations(dispatchLocationsDTO);
     }
 
 }
