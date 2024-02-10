@@ -129,13 +129,9 @@ public class DispatchService {
         for (int i = 0; i < employeeLocation.size(); i++) {
 
             for (int j = 0; j < elderlyLocations.size(); j++) {
-                if (visited[j] == 0) {
-                    visited[j] = 1;
+                callNaverMApAPI(employeeLocation.get(i).getX(), employeeLocation.get(i).getY(),
+                        elderlyLocations.get(j).getX(), elderlyLocations.get(j).getY());
 
-                    callNaverMApAPI(employeeLocation.get(i).getX(), employeeLocation.get(i).getY(),
-                            elderlyLocations.get(j).getX(), elderlyLocations.get(j).getY());
-
-                }
             }
 
 
