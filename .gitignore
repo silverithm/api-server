@@ -39,4 +39,5 @@ out/
 silverithm.trace.db
 silverithm.mv.db
 
+application-local.yaml
 

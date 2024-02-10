@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
+import com.silverithm.vehicleplacementsystem.dto.Location;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;

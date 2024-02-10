@@ -2,16 +2,69 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.DispatchLocationsDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class DispatchService {
-
     public static int INF = 987654321;
     public List<List<Location>> combinations = new ArrayList<>();
     int visited[] = new int[INF];
+
+    private String apiId;
+    private String apiSecret;
+
+    public DispatchService(@Value("${naver.id}") String id, @Value("${naver.secret}") String secret) {
+        apiId = id;
+        apiSecret = secret;
+    }
+
+    public void callNaverMApAPI(double originLng, double originLat,
+                                double destLng,
+                                double destLat) {
+
+        String start = originLng + "," + originLat;
+        String goal = destLat + "," + destLng;
+        String option = "trafast";
+
+        // API 요청에 필요한 헤더 및 파라미터 값을 설정합니다.
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-NCP-APIGW-API-KEY-ID", apiId);
+        headers.set("X-NCP-APIGW-API-KEY", apiSecret);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        // 출발지, 목적지, 탐색 옵션을 맵에 추가합니다.
+        Map<String, String> uriVariables = new HashMap<>();
+        uriVariables.put("start", start);
+        uriVariables.put("goal", goal);
+        uriVariables.put("option", option);
+
+        // RestTemplate을 생성합니다.
+        RestTemplate restTemplate = new RestTemplate();
+
+        // API를 호출하고 응답을 받습니다.
+        ResponseEntity<String> response = restTemplate.exchange(
+                "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start={start}&goal={goal}&option={option}",
+                HttpMethod.GET,
+                entity,
+                String.class,
+                uriVariables
+        );
+
+        // 응답을 출력합니다.
+        System.out.println("Response status code: " + response.getStatusCode());
+        System.out.println("Response body: " + response.getBody());
+
+    }
 
     public List<Location> findClosestLocations(DispatchLocationsDTO dispatchLocationsDTO) {
 
@@ -68,40 +121,27 @@ public class DispatchService {
         employeeLocation.add(new Location(20, 10));
         employeeLocation.add(new Location(30, 10));
 
-        dfs(elderlyLocations, new ArrayList<Location>());
+        //employeeLocation 각각 가장 가까운 노인분 배치
+        //employee와 elderly 차례대로 거리 비교
+        //가장 짧고 employee의 앞자리가 false일 때 앞자리가 true인 노인이 있으면 넣어줌
+        //가장 짧고 employee의 앞자리가 true이면 true인 노인이 있으면 패스함
 
-        for (int i = 0; i < combinations.size(); i++) {
-            for (int j = 0; j < combinations.get(i).size(); j++) {
-                System.out.print(combinations.get(i).get(j).getX() + " " + combinations.get(i).get(j).getY() + " / ");
+        for (int i = 0; i < employeeLocation.size(); i++) {
+
+            for (int j = 0; j < elderlyLocations.size(); j++) {
+                if (visited[j] == 0) {
+                    visited[j] = 1;
+
+                    callNaverMApAPI(employeeLocation.get(i).getX(), employeeLocation.get(i).getY(),
+                            elderlyLocations.get(j).getX(), elderlyLocations.get(j).getY());
+
+                }
             }
-            System.out.println();
+
+
         }
 
         return null;
-    }
-
-
-    private void dfs(List<Location> elderlyLocations, List<Location> currentCombination) {
-        // 조합이 완성되었을 때
-        if (currentCombination.size() >= 4) {
-            combinations.add(new ArrayList<>(currentCombination));
-            return;
-        }
-
-        for (int i = 0; i < elderlyLocations.size(); i++) {
-            System.out.println(i);
-
-            if (visited[i] == 0) {
-                visited[i] = 1;
-                currentCombination.add(elderlyLocations.get(i));
-                dfs(elderlyLocations, currentCombination);
-                currentCombination.remove(elderlyLocations.get(i));
-                visited[i] = 0;
-            }
-
-        }
-
-
     }
 
 
