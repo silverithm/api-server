@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 public class Location {
 
-    private int x;
-    private int y;
+    private double x;
+    private double y;
 
 }

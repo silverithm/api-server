@@ -20,49 +20,45 @@ public class DispatchService {
     public List<List<Location>> combinations = new ArrayList<>();
     int visited[] = new int[INF];
 
-    private String apiId;
-    private String apiSecret;
+    private String key;
 
-    public DispatchService(@Value("${naver.id}") String id, @Value("${naver.secret}") String secret) {
-        apiId = id;
-        apiSecret = secret;
+    public DispatchService(@Value("${tmap.key}") String key) {
+        this.key = key;
     }
 
-    public void callNaverMApAPI(double originLng, double originLat,
-                                double destLng,
-                                double destLat) {
+    public void callTMapAPI(double originLng, double originLat,
+                            double destLng,
+                            double destLat) {
 
-        String start = originLng + "," + originLat;
-        String goal = destLat + "," + destLng;
-        String option = "trafast";
+        String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
 
-        // API 요청에 필요한 헤더 및 파라미터 값을 설정합니다.
+        // 요청 헤더 설정
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-NCP-APIGW-API-KEY-ID", apiId);
-        headers.set("X-NCP-APIGW-API-KEY", apiSecret);
-        HttpEntity<String> entity = new HttpEntity<>(headers);
+        headers.set("Accept", "application/json");
+        headers.set("Content-Type", "application/json");
+        headers.set("appKey", key);
 
-        // 출발지, 목적지, 탐색 옵션을 맵에 추가합니다.
-        Map<String, String> uriVariables = new HashMap<>();
-        uriVariables.put("start", start);
-        uriVariables.put("goal", goal);
-        uriVariables.put("option", option);
+        // 요청 데이터 설정
+        String requestBody = String.format("{\"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
+                originLng, originLat, destLng, destLat);
 
-        // RestTemplate을 생성합니다.
+        // HTTP 요청 엔티티 생성
+        HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        // RestTemplate 생성
         RestTemplate restTemplate = new RestTemplate();
 
-        // API를 호출하고 응답을 받습니다.
-        ResponseEntity<String> response = restTemplate.exchange(
-                "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving?start={start}&goal={goal}&option={option}",
-                HttpMethod.GET,
-                entity,
-                String.class,
-                uriVariables
+        // API 호출
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
         );
 
-        // 응답을 출력합니다.
-        System.out.println("Response status code: " + response.getStatusCode());
-        System.out.println("Response body: " + response.getBody());
+        // API 응답 출력
+        System.out.println("Response status code: " + responseEntity.getStatusCode());
+        System.out.println("Response body: " + responseEntity.getBody());
 
     }
 
@@ -108,18 +104,15 @@ public class DispatchService {
         List<Location> elderlyLocations = dispatchLocationsDTO.getElderlyLocations();
         List<Location> employeeLocation = dispatchLocationsDTO.getEmployeeLocations();
 
-        elderlyLocations.add(new Location(10, 20));
-        elderlyLocations.add(new Location(15, 20));
-        elderlyLocations.add(new Location(30, 20));
-        elderlyLocations.add(new Location(40, 20));
-        elderlyLocations.add(new Location(50, 20));
-        elderlyLocations.add(new Location(60, 20));
-        elderlyLocations.add(new Location(70, 20));
-        elderlyLocations.add(new Location(80, 20));
+        elderlyLocations.add(new Location(128.1176559038332, 35.150735954515866));
+        elderlyLocations.add(new Location(128.11898796967847, 35.15324955862964));
+        elderlyLocations.add(new Location(128.1135242147227, 35.15576496372367));
+        elderlyLocations.add(new Location(128.1075246301955, 35.15278031585356));
+        elderlyLocations.add(new Location(128.11521211264545, 35.17489982781904));
 
-        employeeLocation.add(new Location(10, 10));
-        employeeLocation.add(new Location(20, 10));
-        employeeLocation.add(new Location(30, 10));
+        employeeLocation.add(new Location(128.0858662223393, 35.180357981662894));
+        employeeLocation.add(new Location(128.05186706278897, 35.16580451988244));
+        employeeLocation.add(new Location(128.14817083106618, 35.214320873081014));
 
         //employeeLocation 각각 가장 가까운 노인분 배치
         //employee와 elderly 차례대로 거리 비교
@@ -129,9 +122,8 @@ public class DispatchService {
         for (int i = 0; i < employeeLocation.size(); i++) {
 
             for (int j = 0; j < elderlyLocations.size(); j++) {
-                callNaverMApAPI(employeeLocation.get(i).getX(), employeeLocation.get(i).getY(),
+                callTMapAPI(employeeLocation.get(i).getX(), employeeLocation.get(i).getY(),
                         elderlyLocations.get(j).getX(), elderlyLocations.get(j).getY());
-
             }
 
 
