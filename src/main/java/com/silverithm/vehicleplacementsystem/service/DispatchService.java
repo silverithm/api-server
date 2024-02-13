@@ -119,15 +119,22 @@ public class DispatchService {
         //가장 짧고 employee의 앞자리가 false일 때 앞자리가 true인 노인이 있으면 넣어줌
         //가장 짧고 employee의 앞자리가 true이면 true인 노인이 있으면 패스함
 
-        for (int i = 0; i < employeeLocation.size(); i++) {
+        // 플로이드 워셜을 위한 조건
+        // 출발지에서 모든 노인들까지의 거리를 구해야함
+        // 노인들과 노인들 사이의 모든 거리를 구해야함
+        // 노인들과 직원들 사이의 모든 거리를 구해야함
 
+        for (int i = 0; i < employeeLocation.size(); i++) {
             for (int j = 0; j < elderlyLocations.size(); j++) {
                 callTMapAPI(employeeLocation.get(i).getX(), employeeLocation.get(i).getY(),
                         elderlyLocations.get(j).getX(), elderlyLocations.get(j).getY());
             }
-
-
         }
+
+
+
+
+
 
         return null;
     }
