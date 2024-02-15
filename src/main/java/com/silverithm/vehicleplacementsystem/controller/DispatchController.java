@@ -20,7 +20,9 @@ public class DispatchController {
     // RESTful API endpoint
     @PostMapping("/dispatch")
     public List<Location> dispatch(@RequestBody DispatchLocationsDTO dispatchLocationsDTO) {
-        return dispatchService.findClosestLocations(dispatchLocationsDTO);
+        dispatchService.getOptimizedAssignments();
+        return null;
+
     }
 
 }

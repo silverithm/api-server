@@ -1,4 +1,5 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
-public class AddEmployeeRequest {
+public record AddEmployeeRequest(Location workPlace, Location homeAddress, int maxCapacity) {
 }
+
