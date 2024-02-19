@@ -21,7 +21,6 @@ import org.springframework.web.client.RestTemplate;
 public class DispatchService {
 
     private static int MAX_ITERATIONS = 500;
-
     //50~100
     private static int POPULATION_SIZE = 50;
     private static double MUTATION_RATE = 0.005;
@@ -78,8 +77,27 @@ public class DispatchService {
         List<Elderly> elderly = new ArrayList<>();
         int requiredFrontSeat = 1;
 
+        employees.add(new Employee(new Location(30.0, 130.0), new Location(31.0, 130.0), 5));
+        employees.add(new Employee(new Location(30.0, 130.0), new Location(32.0, 130.0), 5));
+        employees.add(new Employee(new Location(30.0, 130.0), new Location(33.0, 130.0), 5));
+        employees.add(new Employee(new Location(30.0, 130.0), new Location(34.0, 130.0), 5));
         employees.add(new Employee(new Location(30.0, 130.0), new Location(35.0, 130.0), 5));
-        elderly.add(new Elderly(new Location(31.0, 130.0), true));
+
+        elderly.add(new Elderly(new Location(31.0, 131.0), true));
+        elderly.add(new Elderly(new Location(32.0, 132.0), true));
+        elderly.add(new Elderly(new Location(33.0, 133.0), true));
+        elderly.add(new Elderly(new Location(34.0, 134.0), true));
+        elderly.add(new Elderly(new Location(35.0, 135.0), true));
+        elderly.add(new Elderly(new Location(36.0, 136.0), true));
+        elderly.add(new Elderly(new Location(37.0, 137.0), true));
+        elderly.add(new Elderly(new Location(38.0, 138.0), true));
+        elderly.add(new Elderly(new Location(39.0, 139.0), true));
+        elderly.add(new Elderly(new Location(40.0, 140.0), true));
+        elderly.add(new Elderly(new Location(41.0, 141.0), true));
+        elderly.add(new Elderly(new Location(42.0, 142.0), true));
+        elderly.add(new Elderly(new Location(43.0, 143.0), true));
+        elderly.add(new Elderly(new Location(44.0, 144.0), true));
+        elderly.add(new Elderly(new Location(45.0, 145.0), true));
 
         // 거리 행렬 계산
         Map<Elderly, Map<Elderly, Double>> distanceMatrix = calculateDistanceMatrix(elderly);
@@ -131,13 +149,17 @@ public class DispatchService {
 
     private Map<Elderly, Map<Elderly, Double>> calculateDistanceMatrix(List<Elderly> elderly) {
         Map<Elderly, Map<Elderly, Double>> distanceMatrix = new HashMap<>();
+
+        for (Elderly elderlySettingValue : elderly) {
+            distanceMatrix.put(elderlySettingValue, new HashMap<>());
+        }
+
         for (Elderly elderly1 : elderly) {
-            distanceMatrix.put(elderly1, new HashMap<>());
             for (Elderly elderly2 : elderly) {
                 if (elderly1.equals(elderly2)) {
                     distanceMatrix.get(elderly1).put(elderly2, 0.0);
                 } else {
-//                    double distance = callTMapAPI(elderly1.getHomeAddress(), elderly2.getHomeAddress());
+//                  double distance = callTMapAPI(elderly1.getHomeAddress(), elderly2.getHomeAddress());
                     double distance = Math.random();
                     distanceMatrix.get(elderly1).put(elderly2, distance);
                     distanceMatrix.get(elderly2).put(elderly1, distance);
@@ -193,7 +215,9 @@ public class DispatchService {
         private List<Chromosome> generateInitialPopulation() {
             List<Chromosome> chromosomes = new ArrayList<>();
             for (int i = 0; i < POPULATION_SIZE; i++) {
+
                 chromosomes.add(new Chromosome(employees, elderly, requiredFrontSeat));
+
             }
             return chromosomes;
         }
