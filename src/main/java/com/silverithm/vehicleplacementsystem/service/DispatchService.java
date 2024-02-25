@@ -20,9 +20,9 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class DispatchService {
 
-    private static int MAX_ITERATIONS = 500;
+    private static int MAX_ITERATIONS = 1000;
     //50~100
-    private static int POPULATION_SIZE = 50;
+    private static int POPULATION_SIZE = 100;
     private static double MUTATION_RATE = 0.005;
 
 
@@ -198,7 +198,7 @@ public class DispatchService {
             // 반복
             for (int i = 0; i < MAX_ITERATIONS; i++) {
                 // 평가
-                evaluatePopulation(chromosomes);
+                evaluatePopulation(chromosomes, employees);
 
                 // 선택
                 List<Chromosome> selectedChromosomes = selectParents(chromosomes);
@@ -227,13 +227,13 @@ public class DispatchService {
             return chromosomes;
         }
 
-        private void evaluatePopulation(List<Chromosome> chromosomes) {
+        private void evaluatePopulation(List<Chromosome> chromosomes, List<Employee> employees) {
             for (Chromosome chromosome : chromosomes) {
-                chromosome.setFitness(calculateFitness(chromosome));
+                chromosome.setFitness(calculateFitness(chromosome, employees));
             }
         }
 
-        private double calculateFitness(Chromosome chromosome) {
+        private double calculateFitness(Chromosome chromosome, List<Employee> employees) {
             double fitness = 0.0;
 
             // 퇴근 시간 계산
@@ -247,16 +247,36 @@ public class DispatchService {
             fitness = 1.0 / (maxDepartureTime + 1.0);
 
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
-            int frontSeatCount = 0;
-            for (int i = 0; i < chromosome.getGeneLength(); i++) {
-                if (elderly.get(chromosome.getGene(i)).isRequiredFrontSeat()) {
-                    frontSeatCount++;
+
+            int geneIndex = 0;
+            for (int i = 0; i < employees.size(); i++) {
+                int frontSeatCount = 0;
+                for (int j = 0; j < employees.get(i).getMaximumCapacity(); j++) {
+                    if (elderly.get(chromosome.getGene(geneIndex)).isRequiredFrontSeat()) {
+                        frontSeatCount++;
+                    }
+                    geneIndex++;
                 }
+
+                if (frontSeatCount > 1) {
+                    fitness = 0.0;
+                }
+
+                if(geneIndex >= chromosome.getGeneLength()){
+                    break;
+                }
+
             }
 
-            if (frontSeatCount < requiredFrontSeat) {
-                fitness = 0.0;
-            }
+//            for (int i = 0; i < chromosome.getGeneLength(); i++) {
+//                if (elderly.get(chromosome.getGene(i)).isRequiredFrontSeat()) {
+//                    frontSeatCount++;
+//                }
+//            }
+//
+//            if (frontSeatCount < requiredFrontSeat) {
+//                fitness = 0.0;
+//            }
 
             return fitness;
         }
