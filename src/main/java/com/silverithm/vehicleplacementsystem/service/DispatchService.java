@@ -268,7 +268,7 @@ public class DispatchService {
 
             int maximumCapacity = employees.get(0).getMaximumCapacity();
             int maximumCapacityIndex = 0;
-            int capacityIndex = 0;
+            int capacityIndex = 1;
 
             for (int i = 0; i < chromosome.getGeneLength() - 1; i++) {
 
@@ -286,9 +286,11 @@ public class DispatchService {
                     departureTimes.add(departureTime);
                     departureTime = 0;
                 }
-
                 capacityIndex++;
+            }
 
+            if (departureTime > 0) {
+                departureTimes.add(departureTime);
             }
 
             return departureTimes;
