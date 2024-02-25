@@ -13,10 +13,8 @@ public class Chromosome implements Comparable<Chromosome> {
     public Chromosome(List<Employee> employees, List<Elderly> elderly, int requiredFrontSeat) {
         // 유전자 생성
         genes = new ArrayList<>();
-        for (int i = 0; i < employees.size(); i++) {
-            for (int j = 0; j < elderly.size(); j++) {
-                genes.add(j);
-            }
+        for (int i = 0; i < elderly.size(); i++) {
+            genes.add(i);
         }
 
         // 앞자리에 필수로 타야 하는 노인 배정
@@ -34,8 +32,8 @@ public class Chromosome implements Comparable<Chromosome> {
 
         // 셔플
         Collections.shuffle(genes);
-        for(int i = 0 ; i < genes.size(); i++){
-            System.out.print(genes.get(i)+" ");
+        for (int i = 0; i < genes.size(); i++) {
+            System.out.print(genes.get(i) + " ");
         }
         System.out.println();
     }
