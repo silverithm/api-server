@@ -109,40 +109,44 @@ public class DispatchService {
         // 최적의 솔루션 추출
         Chromosome bestChromosome = chromosomes.get(0);
 
-        // 퇴근 시간 및 배치 정보 계산
-        for (int i = 0; i < employees.size(); i++) {
-            int employeeIndex = i * 5;
-            employees.get(i).setDepartureTime(
-                    bestChromosome.getGene(employeeIndex) + "," +
-                            bestChromosome.getGene(employeeIndex + 1) + "," +
-                            bestChromosome.getGene(employeeIndex + 2) + "," +
-                            bestChromosome.getGene(employeeIndex + 3) + "," +
-                            bestChromosome.getGene(employeeIndex + 4)
-            );
-        }
+        System.out.println(bestChromosome.getDepartureTimes());
+        System.out.println(bestChromosome.getGenes());
 
-        // 퇴근 시간 및 방문 순서 계산
-        for (Employee employee : employees) {
-            List<Integer> elderlyIndices = new ArrayList<>();
-            for (int i = 0; i < employee.getDepartureTime().length(); i++) {
-                elderlyIndices.add(Integer.parseInt(employee.getDepartureTime().split(",")[i]));
-            }
+//        // 퇴근 시간 및 배치 정보 계산
+//        for (int i = 0; i < employees.size(); i++) {
+//            int employeeIndex = i * 5;
+//
+//            employees.get(i).setDepartureTime(
+//                    bestChromosome.getGene(employeeIndex) + "," +
+//                            bestChromosome.getGene(employeeIndex + 1) + "," +
+//                            bestChromosome.getGene(employeeIndex + 2) + "," +
+//                            bestChromosome.getGene(employeeIndex + 3) + "," +
+//                            bestChromosome.getGene(employeeIndex + 4)
+//            );
+//        }
 
-            // 퇴근 시간 계산
-            double departureTime = 0.0;
-            for (int i = 0; i < elderlyIndices.size() - 1; i++) {
-                departureTime += distanceMatrix.get(elderly.get(elderlyIndices.get(i)))
-                        .get(elderly.get(elderlyIndices.get(i + 1)));
-            }
-            employee.setDepartureTime(String.valueOf(departureTime));
-
-            // 방문 순서 계산
-            String visitOrder = "";
-            for (int i = 0; i < elderlyIndices.size(); i++) {
-                visitOrder += elderlyIndices.get(i) + ", ";
-            }
-            employee.setVisitOrder(visitOrder.substring(0, visitOrder.length() - 2));
-        }
+//        // 퇴근 시간 및 방문 순서 계산
+//        for (Employee employee : employees) {
+//            List<Integer> elderlyIndices = new ArrayList<>();
+//            for (int i = 0; i < employee.getDepartureTime().length(); i++) {
+//                elderlyIndices.add(Integer.parseInt(employee.getDepartureTime().split(",")[i]));
+//            }
+//
+//            // 퇴근 시간 계산
+//            double departureTime = 0.0;
+//            for (int i = 0; i < elderlyIndices.size() - 1; i++) {
+//                departureTime += distanceMatrix.get(elderly.get(elderlyIndices.get(i)))
+//                        .get(elderly.get(elderlyIndices.get(i + 1)));
+//            }
+//            employee.setDepartureTime(String.valueOf(departureTime));
+//
+//            // 방문 순서 계산
+//            String visitOrder = "";
+//            for (int i = 0; i < elderlyIndices.size(); i++) {
+//                visitOrder += elderlyIndices.get(i) + ", ";
+//            }
+//            employee.setVisitOrder(visitOrder.substring(0, visitOrder.length() - 2));
+//        }
 
         return employees;
     }
@@ -158,6 +162,7 @@ public class DispatchService {
             for (Elderly elderly2 : elderly) {
                 if (elderly1.equals(elderly2)) {
                     distanceMatrix.get(elderly1).put(elderly2, 0.0);
+                    distanceMatrix.get(elderly2).put(elderly1, 0.0);
                 } else {
 //                  double distance = callTMapAPI(elderly1.getHomeAddress(), elderly2.getHomeAddress());
                     double distance = Math.random();
@@ -233,6 +238,7 @@ public class DispatchService {
 
             // 퇴근 시간 계산
             List<Double> departureTimes = calculateDepartureTimes(chromosome);
+            chromosome.setDepartureTimes(departureTimes);
 
             // 최대 퇴근 시간 계산
             double maxDepartureTime = departureTimes.stream().max(Double::compareTo).get();
@@ -257,18 +263,34 @@ public class DispatchService {
 
         private List<Double> calculateDepartureTimes(Chromosome chromosome) {
             List<Double> departureTimes = new ArrayList<>();
-            for (int i = 0; i < employees.size(); i++) {
-                int employeeIndex = i * 5;
 
-                // 직원의 퇴근 시간 계산
-                double departureTime = 0.0;
-                for (int j = 0; j < chromosome.getGeneLength(); j++) {
-                    if (chromosome.getGene(j) == i) {
-                        departureTime += distanceMatrix.get(elderly.get(j)).get(elderly.get(j - 1));
-                    }
+            double departureTime = 0.0;
+
+            int maximumCapacity = employees.get(0).getMaximumCapacity();
+            int maximumCapacityIndex = 0;
+            int capacityIndex = 0;
+
+            for (int i = 0; i < chromosome.getGeneLength() - 1; i++) {
+
+                if (capacityIndex < maximumCapacity) {
+                    departureTime += distanceMatrix.get(elderly.get(chromosome.getGene(i)))
+                            .get(elderly.get(chromosome.getGene(i + 1)));
                 }
-                departureTimes.add(departureTime);
+
+                if (capacityIndex >= maximumCapacity) {
+                    if (maximumCapacityIndex < employees.size()) {
+                        maximumCapacityIndex++;
+                        maximumCapacity = employees.get(maximumCapacityIndex).getMaximumCapacity();
+                    }
+                    capacityIndex = 0;
+                    departureTimes.add(departureTime);
+                    departureTime = 0;
+                }
+
+                capacityIndex++;
+
             }
+
             return departureTimes;
         }
 

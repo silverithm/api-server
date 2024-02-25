@@ -28,15 +28,15 @@ public class Employee {
 
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name="latitude", column=@Column(name="workplace_latitude")),
-            @AttributeOverride(name="longitude", column=@Column(name="workplace_longitude"))
+            @AttributeOverride(name = "latitude", column = @Column(name = "workplace_latitude")),
+            @AttributeOverride(name = "longitude", column = @Column(name = "workplace_longitude"))
     })
     private Location workplace;
 
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name="latitude", column=@Column(name="home_latitude")),
-            @AttributeOverride(name="longitude", column=@Column(name="home_longitude"))
+            @AttributeOverride(name = "latitude", column = @Column(name = "home_latitude")),
+            @AttributeOverride(name = "longitude", column = @Column(name = "home_longitude"))
     })
     private Location homeAddress;
     private int maximumCapacity;
@@ -49,38 +49,6 @@ public class Employee {
         this.maximumCapacity = maximumCapacity;
     }
 
-
-    public int getId() {
-        return id;
-    }
-
-    public Location getWorkplace() {
-        return workplace;
-    }
-
-    public Location getHomeAddress() {
-        return homeAddress;
-    }
-
-    public int getMaximumCapacity() {
-        return maximumCapacity;
-    }
-
-    public String getDepartureTime() {
-        return departureTime;
-    }
-
-    public void setDepartureTime(String departureTime) {
-        this.departureTime = departureTime;
-    }
-
-    public String getVisitOrder() {
-        return visitOrder;
-    }
-
-    public void setVisitOrder(String visitOrder) {
-        this.visitOrder = visitOrder;
-    }
 
 }
 
