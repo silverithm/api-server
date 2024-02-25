@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.entity.Employee;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import java.util.ArrayList;
@@ -26,19 +27,14 @@ public class DispatchService {
     private static double MUTATION_RATE = 0.005;
 
 
-    public static int INF = 987654321;
-    public List<List<Location>> combinations = new ArrayList<>();
-    int visited[] = new int[INF];
-
     private String key;
 
-    public DispatchService() {
+    public DispatchService(@Value("${tmap.key}") String key) {
         this.key = key;
     }
 
-    public void callTMapAPI(double originLng, double originLat,
-                            double destLng,
-                            double destLat) {
+    public int callTMapAPI(Location startAddress,
+                           Location destAddress) {
 
         String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
 
@@ -49,8 +45,10 @@ public class DispatchService {
         headers.set("appKey", key);
 
         // 요청 데이터 설정
-        String requestBody = String.format("{\"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
-                originLng, originLat, destLng, destLat);
+        String requestBody = String.format(
+                "{\"roadType\":32, \"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
+                startAddress.getLongitude(), startAddress.getLatitude(), destAddress.getLongitude(),
+                destAddress.getLatitude());
 
         // HTTP 요청 엔티티 생성
         HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
@@ -66,9 +64,14 @@ public class DispatchService {
                 String.class
         );
 
+        int totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalTime\":")[1].split(",")[0].trim());
         // API 응답 출력
         System.out.println("Response status code: " + responseEntity.getStatusCode());
         System.out.println("Response body: " + responseEntity.getBody());
+        System.out.println("totalTime " + totalTime);
+
+        return totalTime;
+
 
     }
 
@@ -77,27 +80,32 @@ public class DispatchService {
         List<Elderly> elderly = new ArrayList<>();
         int requiredFrontSeat = 1;
 
-        employees.add(new Employee(new Location(30.0, 130.0), new Location(31.0, 130.0), 5));
-        employees.add(new Employee(new Location(30.0, 130.0), new Location(32.0, 130.0), 5));
-        employees.add(new Employee(new Location(30.0, 130.0), new Location(33.0, 130.0), 5));
-        employees.add(new Employee(new Location(30.0, 130.0), new Location(34.0, 130.0), 5));
-        employees.add(new Employee(new Location(30.0, 130.0), new Location(35.0, 130.0), 5));
+        employees.add(new Employee(new Location(37.36519974258491, 127.10323758),
+                new Location(37.36519974258491, 127.10323758), 5));
+        employees.add(new Employee(new Location(37.36519974258491, 127.10323751),
+                new Location(37.36519974258491, 127.10323755), 5));
+        employees.add(new Employee(new Location(37.36519974258491, 127.10323752),
+                new Location(37.36519974258491, 127.10323754), 5));
+        employees.add(new Employee(new Location(37.36519974258491, 127.10323753),
+                new Location(37.36519974258491, 127.10323753), 5));
+        employees.add(new Employee(new Location(37.36519974258491, 127.10323754),
+                new Location(37.36519974258491, 127.10323752), 5));
 
-        elderly.add(new Elderly(new Location(31.0, 131.0), true));
-        elderly.add(new Elderly(new Location(32.0, 132.0), true));
-        elderly.add(new Elderly(new Location(33.0, 133.0), true));
-        elderly.add(new Elderly(new Location(34.0, 134.0), true));
-        elderly.add(new Elderly(new Location(35.0, 135.0), true));
-        elderly.add(new Elderly(new Location(36.0, 136.0), true));
-        elderly.add(new Elderly(new Location(37.0, 137.0), true));
-        elderly.add(new Elderly(new Location(38.0, 138.0), true));
-        elderly.add(new Elderly(new Location(39.0, 139.0), true));
-        elderly.add(new Elderly(new Location(40.0, 140.0), true));
-        elderly.add(new Elderly(new Location(41.0, 141.0), true));
-        elderly.add(new Elderly(new Location(42.0, 142.0), true));
-        elderly.add(new Elderly(new Location(43.0, 143.0), true));
-        elderly.add(new Elderly(new Location(44.0, 144.0), true));
-        elderly.add(new Elderly(new Location(45.0, 145.0), true));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
 
         // 거리 행렬 계산
         Map<Elderly, Map<Elderly, Double>> distanceMatrix = calculateDistanceMatrix(elderly);
@@ -262,7 +270,7 @@ public class DispatchService {
                     fitness = 0.0;
                 }
 
-                if(geneIndex >= chromosome.getGeneLength()){
+                if (geneIndex >= chromosome.getGeneLength()) {
                     break;
                 }
 
@@ -298,6 +306,12 @@ public class DispatchService {
                 }
 
                 if (capacityIndex >= maximumCapacity) {
+//                    departureTime += callTMapAPI(employees.get(maximumCapacityIndex).getWorkplace(),
+//                            elderly.get(chromosome.getGene(capacityIndex - maximumCapacity)).getHomeAddress());
+//
+//                    departureTime += callTMapAPI(elderly.get(capacityIndex).getHomeAddress(),
+//                            employees.get(maximumCapacityIndex).getHomeAddress());
+
                     if (maximumCapacityIndex < employees.size()) {
                         maximumCapacityIndex++;
                         maximumCapacity = employees.get(maximumCapacityIndex).getMaximumCapacity();
@@ -306,10 +320,16 @@ public class DispatchService {
                     departureTimes.add(departureTime);
                     departureTime = 0;
                 }
+
                 capacityIndex++;
             }
 
             if (departureTime > 0) {
+//                departureTime += callTMapAPI(employees.get(maximumCapacityIndex).getWorkplace(),
+//                        elderly.get(chromosome.getGene(capacityIndex - maximumCapacity)).getHomeAddress());
+//
+//                departureTime += callTMapAPI(elderly.get(capacityIndex).getHomeAddress(),
+//                        employees.get(maximumCapacityIndex).getHomeAddress());
                 departureTimes.add(departureTime);
             }
 
