@@ -296,7 +296,7 @@ public class DispatchService {
             double departureTime = 0.0;
 
             int maximumCapacity = employees.get(0).getMaximumCapacity();
-            int maximumCapacityIndex = 0;
+            int employeeIndex = 0;
             int capacityIndex = 1;
 
             for (int i = 0; i < chromosome.getGeneLength() - 1; i++) {
@@ -313,9 +313,9 @@ public class DispatchService {
 //                    departureTime += callTMapAPI(elderly.get(capacityIndex).getHomeAddress(),
 //                            employees.get(maximumCapacityIndex).getHomeAddress());
 
-                    if (maximumCapacityIndex < employees.size()) {
-                        maximumCapacityIndex++;
-                        maximumCapacity = employees.get(maximumCapacityIndex).getMaximumCapacity();
+                    if (employeeIndex < employees.size()) {
+                        employeeIndex++;
+                        maximumCapacity = employees.get(employeeIndex).getMaximumCapacity();
                     }
                     capacityIndex = 0;
                     departureTimes.add(departureTime);
