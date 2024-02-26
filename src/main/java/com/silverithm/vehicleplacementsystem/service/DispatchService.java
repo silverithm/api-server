@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
+import com.silverithm.vehicleplacementsystem.entity.Person;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -108,7 +109,7 @@ public class DispatchService {
         elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
 
         // 거리 행렬 계산
-        Map<Elderly, Map<Elderly, Double>> distanceMatrix = calculateDistanceMatrix(elderly);
+        Map<Person, Map<Person, Double>> distanceMatrix = calculateDistanceMatrix(elderly);
 
         // 유전 알고리즘 실행
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderly, distanceMatrix, requiredFrontSeat);
@@ -159,8 +160,8 @@ public class DispatchService {
         return employees;
     }
 
-    private Map<Elderly, Map<Elderly, Double>> calculateDistanceMatrix(List<Elderly> elderly) {
-        Map<Elderly, Map<Elderly, Double>> distanceMatrix = new HashMap<>();
+    private Map<Person, Map<Person, Double>> calculateDistanceMatrix(List<Elderly> elderly) {
+        Map<Person, Map<Person, Double>> distanceMatrix = new HashMap<>();
 
         for (Elderly elderlySettingValue : elderly) {
             distanceMatrix.put(elderlySettingValue, new HashMap<>());
@@ -187,12 +188,12 @@ public class DispatchService {
 
         private final List<Employee> employees;
         private final List<Elderly> elderly;
-        private final Map<Elderly, Map<Elderly, Double>> distanceMatrix;
+        private final Map<Person, Map<Person, Double>> distanceMatrix;
         private final int requiredFrontSeat;
 
 
         public GeneticAlgorithm(List<Employee> employees, List<Elderly> elderly,
-                                Map<Elderly, Map<Elderly, Double>> distanceMatrix, int requiredFrontSeat) {
+                                Map<Person, Map<Person, Double>> distanceMatrix, int requiredFrontSeat) {
             this.employees = employees;
             this.elderly = elderly;
             this.distanceMatrix = distanceMatrix;
