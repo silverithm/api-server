@@ -20,7 +20,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Employee extends Person {
+public class Employee extends Node {
 
 
     @Embedded

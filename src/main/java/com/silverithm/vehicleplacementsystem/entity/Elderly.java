@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @NoArgsConstructor
-public class Elderly extends Person {
+public class Elderly extends Node {
 
     @Embedded
     private Location homeAddress;

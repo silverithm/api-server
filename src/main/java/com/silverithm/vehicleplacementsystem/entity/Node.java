@@ -13,14 +13,11 @@ import lombok.Setter;
 @Getter
 @Setter
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
-public abstract class Person {
+public abstract class Node {
     @Id
     @GeneratedValue
     @Column(name = "person_id")
     private Long id;
 
-    private String name;
-    private int price;
-    private int stockQuantity;
 
 }
