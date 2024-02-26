@@ -9,10 +9,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @NoArgsConstructor
-public class Elderly {
-    @Id
-    @GeneratedValue
-    long id;
+public class Elderly extends Person {
+
     @Embedded
     private Location homeAddress;
     private boolean requiredFrontSeat;
@@ -22,9 +20,6 @@ public class Elderly {
         this.requiredFrontSeat = requiredFrontSeat;
     }
 
-    public long getId() {
-        return id;
-    }
 
     public Location getHomeAddress() {
         return homeAddress;

@@ -20,11 +20,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Employee {
+public class Employee extends Person {
 
-    @Id
-    @GeneratedValue
-    int id;
 
     @Embedded
     @AttributeOverrides({
