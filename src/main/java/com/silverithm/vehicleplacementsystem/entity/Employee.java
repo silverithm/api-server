@@ -23,6 +23,7 @@ import lombok.Setter;
 public class Employee extends Node {
 
 
+    private String name;
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "latitude", column = @Column(name = "workplace_latitude")),
@@ -38,7 +39,8 @@ public class Employee extends Node {
     private Location homeAddress;
     private int maximumCapacity;
 
-    public Employee(Location workplace, Location homeAddress, int maximumCapacity) {
+    public Employee(String name, Location workplace, Location homeAddress, int maximumCapacity) {
+        this.name = name;
         this.workplace = workplace;
         this.homeAddress = homeAddress;
         this.maximumCapacity = maximumCapacity;

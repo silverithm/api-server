@@ -19,7 +19,7 @@ public class LinkDistanceRepositoryCustomImpl implements LinkDistanceRepositoryC
     private final JPAQueryFactory jpaQueryFactory;
 
     @Override
-    public Optional<Integer> findByStartNodeIdAndDestinationNodeId(Long startNodeId, Long destinationNodeId) {
+    public Optional<Integer> findByStartNodeIdAndDestinationNodeId(String startNodeId, String destinationNodeId) {
 
         QLinkDistance linkDistance = QLinkDistance.linkDistance;
 
@@ -31,11 +31,11 @@ public class LinkDistanceRepositoryCustomImpl implements LinkDistanceRepositoryC
 
     }
 
-    private BooleanBuilder startNodeIdEq(Long startNodeId) {
+    private BooleanBuilder startNodeIdEq(String startNodeId) {
         return nullSafeBuilder(() -> linkDistance.startNodeId.eq(startNodeId));
     }
 
-    private BooleanBuilder destinationNodeIdEq(Long destinationNodeId) {
+    private BooleanBuilder destinationNodeIdEq(String destinationNodeId) {
         return nullSafeBuilder(() -> linkDistance.destinationNodeId.eq(destinationNodeId));
     }
 

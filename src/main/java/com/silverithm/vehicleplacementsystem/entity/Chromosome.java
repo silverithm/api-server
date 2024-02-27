@@ -1,6 +1,8 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 
+import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
+import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,7 +17,7 @@ public class Chromosome implements Comparable<Chromosome> {
     private double fitness;
     private List<Double> departureTimes;
 
-    public Chromosome(List<Employee> employees, List<Elderly> elderly, int requiredFrontSeat) {
+    public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly, int requiredFrontSeat) {
         // 유전자 생성
         genes = new ArrayList<>();
         for (int i = 0; i < elderly.size(); i++) {

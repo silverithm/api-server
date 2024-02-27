@@ -1,4 +1,4 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
-public record AddElderRequest(Location homeAddress, boolean requireFrontSeat) {
+public record AddElderRequest(String name, int age, Location homeAddress, boolean requireFrontSeat) {
 }

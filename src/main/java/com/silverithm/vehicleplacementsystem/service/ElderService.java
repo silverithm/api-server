@@ -12,7 +12,8 @@ public class ElderService {
     private final ElderRepository elderRepository;
 
     public void addElder(AddElderRequest addElderRequest) {
-        Elderly elderly = new Elderly(addElderRequest.homeAddress(), addElderRequest.requireFrontSeat());
+        Elderly elderly = new Elderly(addElderRequest.name(), addElderRequest.age(), addElderRequest.homeAddress(),
+                addElderRequest.requireFrontSeat());
         elderRepository.save(elderly);
     }
 }

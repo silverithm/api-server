@@ -1,13 +1,12 @@
 package com.silverithm.vehicleplacementsystem.service;
 
-import com.silverithm.vehicleplacementsystem.dto.DispatchLocationsDTO;
+import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
+import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
+import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
-import com.silverithm.vehicleplacementsystem.entity.Company;
-import com.silverithm.vehicleplacementsystem.entity.Elderly;
-import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
-import com.silverithm.vehicleplacementsystem.entity.Node;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.HashMap;
 import java.util.Map;
@@ -83,45 +82,52 @@ public class DispatchService {
 
     }
 
-    public List<Employee> getOptimizedAssignments() {
-        List<Employee> employees = new ArrayList<>();
-        List<Elderly> elderly = new ArrayList<>();
+    public List<EmployeeDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) {
+
+        List<EmployeeDTO> employees = requestDispatchDTO.employees();
+        List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
+        CompanyDTO company = requestDispatchDTO.company();
+
+//        List<Employee> employees = new ArrayList<>();
+//        List<Elderly> elderly = new ArrayList<>();
+
         int requiredFrontSeat = 1;
 
-        Company company = new Company(new Location(37.365199444, 127.10323));
+//        Company company = new Company(new Location(37.365199444, 127.10323));
 
-        employees.add(new Employee(new Location(37.36519974258491, 127.10323758),
-                new Location(37.36519974258491, 127.10323758), 5));
-        employees.add(new Employee(new Location(37.36519974258491, 127.10323751),
-                new Location(37.36519974258491, 127.10323755), 5));
-        employees.add(new Employee(new Location(37.36519974258491, 127.10323752),
-                new Location(37.36519974258491, 127.10323754), 5));
-        employees.add(new Employee(new Location(37.36519974258491, 127.10323753),
-                new Location(37.36519974258491, 127.10323753), 5));
-        employees.add(new Employee(new Location(37.36519974258491, 127.10323754),
-                new Location(37.36519974258491, 127.10323752), 5));
-
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        employees.add(new Employee(new Location(37.36519974258491, 127.10323758),
+//                new Location(37.36519974258491, 127.10323758), 5));
+//        employees.add(new Employee(new Location(37.36519974258491, 127.10323751),
+//                new Location(37.36519974258491, 127.10323755), 5));
+//        employees.add(new Employee(new Location(37.36519974258491, 127.10323752),
+//                new Location(37.36519974258491, 127.10323754), 5));
+//        employees.add(new Employee(new Location(37.36519974258491, 127.10323753),
+//                new Location(37.36519974258491, 127.10323753), 5));
+//        employees.add(new Employee(new Location(37.36519974258491, 127.10323754),
+//                new Location(37.36519974258491, 127.10323752), 5));
+//
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
+//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
 
         // 거리 행렬 계산
-        Map<Node, Map<Node, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderly, company);
+        Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
 
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderly, distanceMatrix, requiredFrontSeat);
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix,
+                requiredFrontSeat);
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
         // 최적의 솔루션 추출
@@ -169,9 +175,10 @@ public class DispatchService {
         return employees;
     }
 
-    private Map<Node, Map<Node, Integer>> calculateDistanceMatrix(List<Employee> employees, List<Elderly> elderlys,
-                                                                  Company company) {
-        Map<Node, Map<Node, Integer>> distanceMatrix = new HashMap<>();
+    private Map<String, Map<String, Integer>> calculateDistanceMatrix(List<EmployeeDTO> employees,
+                                                                      List<ElderlyDTO> elderlys,
+                                                                      CompanyDTO company) {
+        Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>();
 
         //사용전
         //처음에 디비에서 모든 정보를 가져와서 1차로 매트릭스를 만듬
@@ -181,33 +188,33 @@ public class DispatchService {
         //geneticAlgorithm에 company, employee, elderly가 있다.
         //만들어져있는 calltmapapi를 그냥 위 값들을 이용하여 map에서 꺼내쓰면 된다.
 
-        distanceMatrix.put(company, new HashMap<>());
+        distanceMatrix.put("Company", new HashMap<>());
 
-        for (Employee employeeSettingValue : employees) {
-            distanceMatrix.put(employeeSettingValue, new HashMap<>());
+        for (EmployeeDTO employee : employees) {
+            distanceMatrix.put("Employee_" + employee.id(), new HashMap<>());
         }
 
-        for (Elderly elderlySettingValue : elderlys) {
-            distanceMatrix.put(elderlySettingValue, new HashMap<>());
+        for (ElderlyDTO elderly : elderlys) {
+            distanceMatrix.put("Elderly_" + elderly.id(), new HashMap<>());
         }
 
         for (int i = 0; i < elderlys.size(); i++) {
 
-            Long startNodeId = 0L;
-            Long destinationNodeId = elderlys.get(i).getId();
+            String startNodeId = "Company";
+            String destinationNodeId = "Elderly_" + elderlys.get(i).id();
 
             Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
                     destinationNodeId);
             Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
 
             if (totalTime.isPresent()) {
-                distanceMatrix.get(company).put(elderlys.get(i), totalTimeValue);
+                distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
             }
 
             if (totalTime.isEmpty()) {
-                int callTotalTime = callTMapAPI(company.getCompanyAddress(), elderlys.get(i).getHomeAddress());
-                distanceMatrix.get(company).put(elderlys.get(i), callTotalTime);
-                distanceMatrix.get(elderlys.get(i)).put(company, callTotalTime);
+                int callTotalTime = callTMapAPI(company.companyAddress(), elderlys.get(i).homeAddress());
+                distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
+                distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
                 linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
                 linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
             }
@@ -215,24 +222,23 @@ public class DispatchService {
         }
 
         for (int i = 0; i < elderlys.size(); i++) {
-
             for (int j = 0; j < elderlys.size(); j++) {
-                Long startNodeId = elderlys.get(i).getId();
-                Long destinationNodeId = elderlys.get(j).getId();
+                String startNodeId = "Elderly_" + elderlys.get(i).id();
+                String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
                 Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
                         destinationNodeId);
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
 
                 if (totalTime.isPresent()) {
-                    distanceMatrix.get(elderlys.get(i)).put(elderlys.get(j), totalTimeValue);
-                    distanceMatrix.get(elderlys.get(j)).put(elderlys.get(i), totalTimeValue);
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
                 }
 
                 if (totalTime.isEmpty()) {
-                    int callTotalTime = callTMapAPI(elderlys.get(i).getHomeAddress(), elderlys.get(j).getHomeAddress());
-                    distanceMatrix.get(elderlys.get(i)).put(elderlys.get(j), callTotalTime);
-                    distanceMatrix.get(elderlys.get(i)).put(elderlys.get(j), callTotalTime);
+                    int callTotalTime = callTMapAPI(elderlys.get(i).homeAddress(), elderlys.get(j).homeAddress());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
                     linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
                     linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
                 }
@@ -243,23 +249,23 @@ public class DispatchService {
         for (int i = 0; i < employees.size(); i++) {
 
             for (int j = 0; j < elderlys.size(); j++) {
-                Long startNodeId = employees.get(i).getId();
-                Long destinationNodeId = elderlys.get(j).getId();
+                String startNodeId = "Employee_" + employees.get(i).id();
+                String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
                 Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
                         destinationNodeId);
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
 
                 if (totalTime.isPresent()) {
-                    distanceMatrix.get(employees.get(i)).put(elderlys.get(j), totalTimeValue);
-                    distanceMatrix.get(elderlys.get(j)).put(employees.get(i), totalTimeValue);
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
                 }
 
                 if (totalTime.isEmpty()) {
-                    int callTotalTime = callTMapAPI(employees.get(i).getHomeAddress(),
-                            elderlys.get(j).getHomeAddress());
-                    distanceMatrix.get(employees.get(i)).put(elderlys.get(j), callTotalTime);
-                    distanceMatrix.get(elderlys.get(i)).put(employees.get(j), callTotalTime);
+                    int callTotalTime = callTMapAPI(employees.get(i).homeAddress(),
+                            elderlys.get(j).homeAddress());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
                     linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
                     linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
                 }
@@ -272,14 +278,14 @@ public class DispatchService {
 
     public class GeneticAlgorithm {
 
-        private final List<Employee> employees;
-        private final List<Elderly> elderly;
-        private final Map<Node, Map<Node, Integer>> distanceMatrix;
+        private final List<EmployeeDTO> employees;
+        private final List<ElderlyDTO> elderly;
+        private final Map<String, Map<String, Integer>> distanceMatrix;
         private final int requiredFrontSeat;
 
 
-        public GeneticAlgorithm(List<Employee> employees, List<Elderly> elderly,
-                                Map<Node, Map<Node, Integer>> distanceMatrix, int requiredFrontSeat) {
+        public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+                                Map<String, Map<String, Integer>> distanceMatrix, int requiredFrontSeat) {
             this.employees = employees;
             this.elderly = elderly;
             this.distanceMatrix = distanceMatrix;
@@ -322,13 +328,13 @@ public class DispatchService {
             return chromosomes;
         }
 
-        private void evaluatePopulation(List<Chromosome> chromosomes, List<Employee> employees) {
+        private void evaluatePopulation(List<Chromosome> chromosomes, List<EmployeeDTO> employees) {
             for (Chromosome chromosome : chromosomes) {
                 chromosome.setFitness(calculateFitness(chromosome, employees));
             }
         }
 
-        private double calculateFitness(Chromosome chromosome, List<Employee> employees) {
+        private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees) {
             double fitness = 0.0;
 
             // 퇴근 시간 계산
@@ -346,8 +352,8 @@ public class DispatchService {
             int geneIndex = 0;
             for (int i = 0; i < employees.size(); i++) {
                 int frontSeatCount = 0;
-                for (int j = 0; j < employees.get(i).getMaximumCapacity(); j++) {
-                    if (elderly.get(chromosome.getGene(geneIndex)).isRequiredFrontSeat()) {
+                for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
+                    if (elderly.get(chromosome.getGene(geneIndex)).requiredFrontSeat()) {
                         frontSeatCount++;
                     }
                     geneIndex++;
@@ -381,7 +387,7 @@ public class DispatchService {
 
             double departureTime = 0.0;
 
-            int maximumCapacity = employees.get(0).getMaximumCapacity();
+            int maximumCapacity = employees.get(0).maximumCapacity();
             int employeeIndex = 0;
             int capacityIndex = 1;
 
@@ -401,7 +407,7 @@ public class DispatchService {
 
                     if (employeeIndex < employees.size()) {
                         employeeIndex++;
-                        maximumCapacity = employees.get(employeeIndex).getMaximumCapacity();
+                        maximumCapacity = employees.get(employeeIndex).maximumCapacity();
                     }
                     capacityIndex = 0;
                     departureTimes.add(departureTime);
@@ -513,7 +519,7 @@ public class DispatchService {
 
     }
 
-    public List<Location> findClosestLocations(DispatchLocationsDTO dispatchLocationsDTO) {
+    public List<Location> findClosestLocations(RequestDispatchDTO requestDispatchDTO) {
 
         //elderlyLocations, EmployeeDestinations
 

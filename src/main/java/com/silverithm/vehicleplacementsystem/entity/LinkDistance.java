@@ -21,12 +21,12 @@ public class LinkDistance {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long startNodeId;
-    private Long destinationNodeId;
+    private String startNodeId;
+    private String destinationNodeId;
 
     private int totalTime;
 
-    public LinkDistance(Long startNodeId, Long destinationNodeId, int totalTime) {
+    public LinkDistance(String startNodeId, String destinationNodeId, int totalTime) {
         this.startNodeId = startNodeId;
         this.destinationNodeId = destinationNodeId;
         this.totalTime = totalTime;
