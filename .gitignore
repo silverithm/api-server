@@ -41,3 +41,6 @@ silverithm.mv.db
 
 application-local.yaml
 
+src/main/generated
+
+build/generated
