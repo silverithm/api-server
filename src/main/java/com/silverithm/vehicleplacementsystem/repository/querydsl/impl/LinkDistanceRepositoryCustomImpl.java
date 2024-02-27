@@ -12,7 +12,6 @@ public class LinkDistanceRepositoryCustomImpl implements LinkDistanceRepositoryC
 
     private final JPAQueryFactory jpaQueryFactory;
 
-
     @Override
     public Optional<Integer> findByStartNodeIdAndDestinationNodeId(Long startNodeId, Long destinationNodeId) {
 
