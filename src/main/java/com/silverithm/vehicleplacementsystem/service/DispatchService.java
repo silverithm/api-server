@@ -7,9 +7,11 @@ import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.entity.Node;
+import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +29,8 @@ public class DispatchService {
     //50~100
     private static int POPULATION_SIZE = 100;
     private static double MUTATION_RATE = 0.005;
+    @Autowired
+    private LinkDistanceRepository linkDistanceRepository;
 
 
     private String key;
