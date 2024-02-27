@@ -37,8 +37,6 @@ public class Employee extends Node {
     })
     private Location homeAddress;
     private int maximumCapacity;
-    private String departureTime;
-    private String visitOrder;
 
     public Employee(Location workplace, Location homeAddress, int maximumCapacity) {
         this.workplace = workplace;

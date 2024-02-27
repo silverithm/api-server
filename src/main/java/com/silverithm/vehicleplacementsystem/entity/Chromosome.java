@@ -37,10 +37,10 @@ public class Chromosome implements Comparable<Chromosome> {
 
         // 셔플
         Collections.shuffle(genes);
-        for (int i = 0; i < genes.size(); i++) {
-            System.out.print(genes.get(i) + " ");
-        }
-        System.out.println();
+//        for (int i = 0; i < genes.size(); i++) {
+//            System.out.print(genes.get(i) + " ");
+//        }
+//        System.out.println();
     }
 
     public int getGeneLength() {

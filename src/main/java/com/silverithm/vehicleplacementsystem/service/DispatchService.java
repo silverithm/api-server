@@ -6,10 +6,12 @@ import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
+import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.entity.Node;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -116,7 +118,7 @@ public class DispatchService {
         elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
 
         // 거리 행렬 계산
-        Map<Node, Map<Node, Double>> distanceMatrix = calculateDistanceMatrix(employees, elderly, company);
+        Map<Node, Map<Node, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderly, company);
 
         // 유전 알고리즘 실행
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderly, distanceMatrix, requiredFrontSeat);
@@ -167,9 +169,9 @@ public class DispatchService {
         return employees;
     }
 
-    private Map<Node, Map<Node, Double>> calculateDistanceMatrix(List<Employee> employees, List<Elderly> elderlys,
-                                                                 Company company) {
-        Map<Node, Map<Node, Double>> distanceMatrix = new HashMap<>();
+    private Map<Node, Map<Node, Integer>> calculateDistanceMatrix(List<Employee> employees, List<Elderly> elderlys,
+                                                                  Company company) {
+        Map<Node, Map<Node, Integer>> distanceMatrix = new HashMap<>();
 
         //사용전
         //처음에 디비에서 모든 정보를 가져와서 1차로 매트릭스를 만듬
@@ -191,6 +193,78 @@ public class DispatchService {
 
         for (int i = 0; i < elderlys.size(); i++) {
 
+            Long startNodeId = 0L;
+            Long destinationNodeId = elderlys.get(i).getId();
+
+            Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                    destinationNodeId);
+            Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
+
+            if (totalTime.isPresent()) {
+                distanceMatrix.get(company).put(elderlys.get(i), totalTimeValue);
+            }
+
+            if (totalTime.isEmpty()) {
+                int callTotalTime = callTMapAPI(company.getCompanyAddress(), elderlys.get(i).getHomeAddress());
+                distanceMatrix.get(company).put(elderlys.get(i), callTotalTime);
+                distanceMatrix.get(elderlys.get(i)).put(company, callTotalTime);
+                linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
+                linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
+            }
+
+        }
+
+        for (int i = 0; i < elderlys.size(); i++) {
+
+            for (int j = 0; j < elderlys.size(); j++) {
+                Long startNodeId = elderlys.get(i).getId();
+                Long destinationNodeId = elderlys.get(j).getId();
+
+                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                        destinationNodeId);
+                Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
+
+                if (totalTime.isPresent()) {
+                    distanceMatrix.get(elderlys.get(i)).put(elderlys.get(j), totalTimeValue);
+                    distanceMatrix.get(elderlys.get(j)).put(elderlys.get(i), totalTimeValue);
+                }
+
+                if (totalTime.isEmpty()) {
+                    int callTotalTime = callTMapAPI(elderlys.get(i).getHomeAddress(), elderlys.get(j).getHomeAddress());
+                    distanceMatrix.get(elderlys.get(i)).put(elderlys.get(j), callTotalTime);
+                    distanceMatrix.get(elderlys.get(i)).put(elderlys.get(j), callTotalTime);
+                    linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
+                    linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
+                }
+            }
+
+        }
+
+        for (int i = 0; i < employees.size(); i++) {
+
+            for (int j = 0; j < elderlys.size(); j++) {
+                Long startNodeId = employees.get(i).getId();
+                Long destinationNodeId = elderlys.get(j).getId();
+
+                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                        destinationNodeId);
+                Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
+
+                if (totalTime.isPresent()) {
+                    distanceMatrix.get(employees.get(i)).put(elderlys.get(j), totalTimeValue);
+                    distanceMatrix.get(elderlys.get(j)).put(employees.get(i), totalTimeValue);
+                }
+
+                if (totalTime.isEmpty()) {
+                    int callTotalTime = callTMapAPI(employees.get(i).getHomeAddress(),
+                            elderlys.get(j).getHomeAddress());
+                    distanceMatrix.get(employees.get(i)).put(elderlys.get(j), callTotalTime);
+                    distanceMatrix.get(elderlys.get(i)).put(employees.get(j), callTotalTime);
+                    linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
+                    linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
+                }
+            }
+
         }
 
         return distanceMatrix;
@@ -200,12 +274,12 @@ public class DispatchService {
 
         private final List<Employee> employees;
         private final List<Elderly> elderly;
-        private final Map<Node, Map<Node, Double>> distanceMatrix;
+        private final Map<Node, Map<Node, Integer>> distanceMatrix;
         private final int requiredFrontSeat;
 
 
         public GeneticAlgorithm(List<Employee> employees, List<Elderly> elderly,
-                                Map<Node, Map<Node, Double>> distanceMatrix, int requiredFrontSeat) {
+                                Map<Node, Map<Node, Integer>> distanceMatrix, int requiredFrontSeat) {
             this.employees = employees;
             this.elderly = elderly;
             this.distanceMatrix = distanceMatrix;
