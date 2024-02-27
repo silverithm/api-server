@@ -112,7 +112,7 @@ public class DispatchService {
         elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
 
         // 거리 행렬 계산
-        Map<Node, Map<Node, Double>> distanceMatrix = calculateDistanceMatrix(elderly);
+        Map<Node, Map<Node, Double>> distanceMatrix = calculateDistanceMatrix(employees, elderly, company);
 
         // 유전 알고리즘 실행
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderly, distanceMatrix, requiredFrontSeat);
@@ -163,29 +163,34 @@ public class DispatchService {
         return employees;
     }
 
-    private Map<Node, Map<Node, Double>> calculateDistanceMatrix(List<Elderly> elderly) {
+    private Map<Node, Map<Node, Double>> calculateDistanceMatrix(List<Employee> employees, List<Elderly> elderlys,
+                                                                 Company company) {
         Map<Node, Map<Node, Double>> distanceMatrix = new HashMap<>();
 
-        for (Elderly elderlySettingValue : elderly) {
+        //사용전
+        //처음에 디비에서 모든 정보를 가져와서 1차로 매트릭스를 만듬
+        //모든 노드들을 돌면서 비어있는 정보가 있으면 calltmapapi를 호출해서 매트릭스를 채워주고 디비에 값을 저장함
+
+        //사용시
+        //geneticAlgorithm에 company, employee, elderly가 있다.
+        //만들어져있는 calltmapapi를 그냥 위 값들을 이용하여 map에서 꺼내쓰면 된다.
+
+        distanceMatrix.put(company, new HashMap<>());
+
+        for (Employee employeeSettingValue : employees) {
+            distanceMatrix.put(employeeSettingValue, new HashMap<>());
+        }
+
+        for (Elderly elderlySettingValue : elderlys) {
             distanceMatrix.put(elderlySettingValue, new HashMap<>());
         }
 
-        for (Elderly elderly1 : elderly) {
-            for (Elderly elderly2 : elderly) {
-                if (elderly1.equals(elderly2)) {
-                    distanceMatrix.get(elderly1).put(elderly2, 0.0);
-                    distanceMatrix.get(elderly2).put(elderly1, 0.0);
-                } else {
-//                  double distance = callTMapAPI(elderly1.getHomeAddress(), elderly2.getHomeAddress());
-                    double distance = Math.random();
-                    distanceMatrix.get(elderly1).put(elderly2, distance);
-                    distanceMatrix.get(elderly2).put(elderly1, distance);
-                }
-            }
+        for (int i = 0; i < elderlys.size(); i++) {
+
         }
+
         return distanceMatrix;
     }
-
 
     public class GeneticAlgorithm {
 
@@ -429,7 +434,6 @@ public class DispatchService {
 
 
     }
-
 
     public List<Location> findClosestLocations(DispatchLocationsDTO dispatchLocationsDTO) {
 

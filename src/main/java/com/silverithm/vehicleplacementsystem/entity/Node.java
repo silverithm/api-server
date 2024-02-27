@@ -16,7 +16,7 @@ import lombok.Setter;
 public abstract class Node {
     @Id
     @GeneratedValue
-    @Column(name = "person_id")
+    @Column(name = "node_id")
     private Long id;
 
 

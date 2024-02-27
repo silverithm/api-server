@@ -22,7 +22,6 @@ public class DispatchController {
     public List<Location> dispatch(@RequestBody DispatchLocationsDTO dispatchLocationsDTO) {
         dispatchService.getOptimizedAssignments();
         return null;
-
     }
 
 }
