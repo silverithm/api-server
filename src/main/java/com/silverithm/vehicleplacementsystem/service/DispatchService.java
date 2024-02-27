@@ -279,7 +279,7 @@ public class DispatchService {
     public class GeneticAlgorithm {
 
         private final List<EmployeeDTO> employees;
-        private final List<ElderlyDTO> elderly;
+        private final List<ElderlyDTO> elderlys;
         private final Map<String, Map<String, Integer>> distanceMatrix;
         private final int requiredFrontSeat;
 
@@ -287,7 +287,7 @@ public class DispatchService {
         public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                                 Map<String, Map<String, Integer>> distanceMatrix, int requiredFrontSeat) {
             this.employees = employees;
-            this.elderly = elderly;
+            this.elderlys = elderly;
             this.distanceMatrix = distanceMatrix;
             this.requiredFrontSeat = requiredFrontSeat;
         }
@@ -322,7 +322,7 @@ public class DispatchService {
             List<Chromosome> chromosomes = new ArrayList<>();
             for (int i = 0; i < POPULATION_SIZE; i++) {
 
-                chromosomes.add(new Chromosome(employees, elderly, requiredFrontSeat));
+                chromosomes.add(new Chromosome(employees, elderlys, requiredFrontSeat));
 
             }
             return chromosomes;
@@ -353,7 +353,7 @@ public class DispatchService {
             for (int i = 0; i < employees.size(); i++) {
                 int frontSeatCount = 0;
                 for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
-                    if (elderly.get(chromosome.getGene(geneIndex)).requiredFrontSeat()) {
+                    if (elderlys.get(chromosome.getGene(geneIndex)).requiredFrontSeat()) {
                         frontSeatCount++;
                     }
                     geneIndex++;
@@ -394,11 +394,15 @@ public class DispatchService {
             for (int i = 0; i < chromosome.getGeneLength() - 1; i++) {
 
                 if (capacityIndex < maximumCapacity) {
-                    departureTime += distanceMatrix.get(elderly.get(chromosome.getGene(i)))
-                            .get(elderly.get(chromosome.getGene(i + 1)));
+                    departureTime += distanceMatrix.get("Elderly_" + elderlys.get(chromosome.getGene(i)).id())
+                            .get("Elderly_" + elderlys.get(chromosome.getGene(i + 1)).id());
                 }
 
                 if (capacityIndex >= maximumCapacity) {
+                    departureTime += distanceMatrix.get("Employee_" + employees.get(employeeIndex).id())
+                            .get("Elderly_" + elderlys.get(chromosome.getGene(capacityIndex - maximumCapacity)).id());
+                    departureTime += distanceMatrix.get("Elderly_" + elderlys.get(capacityIndex).id())
+                            .get("Employee_" + employees.get(employeeIndex).id());
 //                    departureTime += callTMapAPI(employees.get(maximumCapacityIndex).getWorkplace(),
 //                            elderly.get(chromosome.getGene(capacityIndex - maximumCapacity)).getHomeAddress());
 //
@@ -478,7 +482,7 @@ public class DispatchService {
             int crossoverPoint = (int) (Math.random() * parent1.getGeneLength());
 
             // 자식 생성
-            Chromosome offspring = new Chromosome(employees, elderly, requiredFrontSeat);
+            Chromosome offspring = new Chromosome(employees, elderlys, requiredFrontSeat);
             for (int i = 0; i < crossoverPoint; i++) {
                 offspring.setGene(i, parent1.getGene(i));
             }
