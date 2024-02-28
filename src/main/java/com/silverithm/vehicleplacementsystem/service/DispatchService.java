@@ -9,8 +9,11 @@ import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,13 +29,14 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class DispatchService {
 
+    //가까운 거리일수록 가중치가 더 들어가야함 - 가까운 거리를 붙여주어야함
+    //고정 시키는 인원이 주어지면 해당 직원에게 고정 인원이 없으면 점수를 0으로 해주어야함
+
     private static int MAX_ITERATIONS = 100;
-    //50~100
-    private static int POPULATION_SIZE = 50;
-    private static double MUTATION_RATE = 0.007;
+    private static int POPULATION_SIZE = 1000;
+    private static double MUTATION_RATE = 0.005;
     @Autowired
     private LinkDistanceRepository linkDistanceRepository;
-
 
     private String key;
 
@@ -88,46 +92,11 @@ public class DispatchService {
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
         CompanyDTO company = requestDispatchDTO.company();
 
-//        List<Employee> employees = new ArrayList<>();
-//        List<Elderly> elderly = new ArrayList<>();
-
-        int requiredFrontSeat = 1;
-
-//        Company company = new Company(new Location(37.365199444, 127.10323));
-
-//        employees.add(new Employee(new Location(37.36519974258491, 127.10323758),
-//                new Location(37.36519974258491, 127.10323758), 5));
-//        employees.add(new Employee(new Location(37.36519974258491, 127.10323751),
-//                new Location(37.36519974258491, 127.10323755), 5));
-//        employees.add(new Employee(new Location(37.36519974258491, 127.10323752),
-//                new Location(37.36519974258491, 127.10323754), 5));
-//        employees.add(new Employee(new Location(37.36519974258491, 127.10323753),
-//                new Location(37.36519974258491, 127.10323753), 5));
-//        employees.add(new Employee(new Location(37.36519974258491, 127.10323754),
-//                new Location(37.36519974258491, 127.10323752), 5));
-//
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), true));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-//        elderly.add(new Elderly(new Location(37.36519974258491, 127.10323758), false));
-
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
 
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix,
-                requiredFrontSeat);
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix);
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
         // 최적의 솔루션 추출
@@ -135,9 +104,16 @@ public class DispatchService {
 
         System.out.println(bestChromosome.getDepartureTimes());
 
+//        for (int i = 0; i < bestChromosome.getGenes().size(); i++) {
+//            System.out.print(bestChromosome.getGenes().get(i) + 1 + " ");
+//        }
+
         for (int i = 0; i < bestChromosome.getGenes().size(); i++) {
-            System.out.print(bestChromosome.getGenes().get(i) + 1 + " ");
+            for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
+                System.out.print(bestChromosome.getGenes().get(i).get(j) + 1 + " ");
+            }
         }
+
         System.out.println();
         System.out.println();
         System.out.println("- - - - - - - - - - - - - - - - - - - - ");
@@ -146,56 +122,28 @@ public class DispatchService {
         System.out.println("배차 정보");
         System.out.println();
 
-        int chromosomeIndex = 0;
+//        int chromosomeIndex = 0;
+//        for (int i = 0; i < employees.size(); i++) {
+//
+//            System.out.print(employees.get(i).name() + " : ");
+//            for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
+//                System.out.print(elderlys.get(bestChromosome.getGene(chromosomeIndex)).name() + " , ");
+//
+//                chromosomeIndex++;
+//                if (chromosomeIndex >= bestChromosome.getGeneLength()) {
+//                    return employees;
+//                }
+//            }
+//            System.out.println();
+//        }
+
         for (int i = 0; i < employees.size(); i++) {
-
             System.out.print(employees.get(i).name() + " : ");
-            for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
-                System.out.print(elderlys.get(bestChromosome.getGene(chromosomeIndex)).name() + " , ");
-
-                chromosomeIndex++;
-                if (chromosomeIndex >= bestChromosome.getGeneLength()) {
-                    return employees;
-                }
+            for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
+                System.out.print(elderlys.get(bestChromosome.getGenes().get(i).get(j)).name() + " , ");
             }
             System.out.println();
         }
-
-//        // 퇴근 시간 및 배치 정보 계산
-//        for (int i = 0; i < employees.size(); i++) {
-//            int employeeIndex = i * 5;
-//
-//            employees.get(i).setDepartureTime(
-//                    bestChromosome.getGene(employeeIndex) + "," +
-//                            bestChromosome.getGene(employeeIndex + 1) + "," +
-//                            bestChromosome.getGene(employeeIndex + 2) + "," +
-//                            bestChromosome.getGene(employeeIndex + 3) + "," +
-//                            bestChromosome.getGene(employeeIndex + 4)
-//            );
-//        }
-
-//        // 퇴근 시간 및 방문 순서 계산
-//        for (Employee employee : employees) {
-//            List<Integer> elderlyIndices = new ArrayList<>();
-//            for (int i = 0; i < employee.getDepartureTime().length(); i++) {
-//                elderlyIndices.add(Integer.parseInt(employee.getDepartureTime().split(",")[i]));
-//            }
-//
-//            // 퇴근 시간 계산
-//            double departureTime = 0.0;
-//            for (int i = 0; i < elderlyIndices.size() - 1; i++) {
-//                departureTime += distanceMatrix.get(elderly.get(elderlyIndices.get(i)))
-//                        .get(elderly.get(elderlyIndices.get(i + 1)));
-//            }
-//            employee.setDepartureTime(String.valueOf(departureTime));
-//
-//            // 방문 순서 계산
-//            String visitOrder = "";
-//            for (int i = 0; i < elderlyIndices.size(); i++) {
-//                visitOrder += elderlyIndices.get(i) + ", ";
-//            }
-//            employee.setVisitOrder(visitOrder.substring(0, visitOrder.length() - 2));
-//        }
 
         return employees;
     }
@@ -305,16 +253,15 @@ public class DispatchService {
         private final List<EmployeeDTO> employees;
         private final List<ElderlyDTO> elderlys;
         private final Map<String, Map<String, Integer>> distanceMatrix;
-        private final int requiredFrontSeat;
 
 
         public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
-                                Map<String, Map<String, Integer>> distanceMatrix, int requiredFrontSeat) {
+                                Map<String, Map<String, Integer>> distanceMatrix) {
             this.employees = employees;
             this.elderlys = elderly;
             this.distanceMatrix = distanceMatrix;
-            this.requiredFrontSeat = requiredFrontSeat;
         }
+
 
         public List<Chromosome> run() {
             // 초기 솔루션 생성
@@ -323,16 +270,16 @@ public class DispatchService {
             // 반복
             for (int i = 0; i < MAX_ITERATIONS; i++) {
                 // 평가
-                evaluatePopulation(chromosomes, employees);
+                evaluatePopulation(chromosomes, employees, distanceMatrix);
 
                 // 선택
                 List<Chromosome> selectedChromosomes = selectParents(chromosomes);
 
                 // 교차
-                List<Chromosome> offspringChromosomes = crossover(selectedChromosomes);
+                List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
 
                 // 돌연변이
-                mutate(offspringChromosomes);
+                mutate(offspringChromosomes, elderlys.size());
 
                 // 다음 세대 생성
                 chromosomes = combinePopulations(chromosomes, offspringChromosomes);
@@ -346,44 +293,55 @@ public class DispatchService {
             List<Chromosome> chromosomes = new ArrayList<>();
             for (int i = 0; i < POPULATION_SIZE; i++) {
 
-                chromosomes.add(new Chromosome(employees, elderlys, requiredFrontSeat));
+                chromosomes.add(new Chromosome(employees, elderlys));
 
             }
             return chromosomes;
         }
 
-        private void evaluatePopulation(List<Chromosome> chromosomes, List<EmployeeDTO> employees) {
+        private void evaluatePopulation(List<Chromosome> chromosomes, List<EmployeeDTO> employee,
+                                        Map<String, Map<String, Integer>> distanceMatrix) {
             for (Chromosome chromosome : chromosomes) {
-                chromosome.setFitness(calculateFitness(chromosome, employees));
+                chromosome.setFitness(calculateFitness(chromosome, employees, distanceMatrix));
             }
         }
 
-        private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees) {
+        private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees,
+                                        Map<String, Map<String, Integer>> distanceMatrix) {
             double fitness = 0.0;
 
             // 퇴근 시간 계산
             List<Double> departureTimes = calculateDepartureTimes(chromosome);
             chromosome.setDepartureTimes(departureTimes);
 
-            // 최대 퇴근 시간 계산
-            double maxDepartureTime = departureTimes.stream().max(Double::compareTo).get();
+            // 모든 퇴근 시간의 합 계산
+            double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
+
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                    int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
+                    int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
+
+                    if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                            .get("Elderly_" + elderlys.get(elderlyIndex2).id()) == 0) {
+                        fitness += 1;
+                    }
+
+                }
+            }
 
             // 적합도 계산
-            fitness = 1.0 / (maxDepartureTime + 1.0);
+            fitness = 1.0 / (totalDepartureTime + 1.0);
 
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
-            int geneIndex = 0;
-            for (EmployeeDTO employee : employees) {
+            for (int i = 0; i < employees.size(); i++) {
                 boolean frontSeatAssigned = false;
-                List<ElderlyDTO> assignedElderlies = new ArrayList<>();
-                for (int j = 0; j < employee.maximumCapacity() && geneIndex < chromosome.getGeneLength();
-                     j++, geneIndex++) {
-                    ElderlyDTO elderly = elderlys.get(chromosome.getGene(geneIndex));
-                    assignedElderlies.add(elderly);
-                    if (elderly.requiredFrontSeat()) {
+                for (int j = 0; j < chromosome.getGenes().get(i).size(); j++) {
+                    if (elderlys.get(j).requiredFrontSeat()) {
                         if (frontSeatAssigned) {
-                            fitness = 0.0; // 앞자리가 필요한 노인이 둘 이상 배정된 경우
+                            fitness = 0.0;
                             break;
                         }
                         frontSeatAssigned = true;
@@ -397,52 +355,24 @@ public class DispatchService {
         private List<Double> calculateDepartureTimes(Chromosome chromosome) {
             List<Double> departureTimes = new ArrayList<>();
 
-            double departureTime = 0.0;
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                double departureTime = 0.0;
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                    String company = "Company";
+                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                    String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
-            int maximumCapacity = employees.get(0).maximumCapacity();
-            int employeeIndex = 0;
-            int capacityIndex = 1;
-
-            for (int i = 0; i < chromosome.getGeneLength() - 1; i++) {
-
-                if (capacityIndex < maximumCapacity) {
-                    departureTime += distanceMatrix.get("Elderly_" + elderlys.get(chromosome.getGene(i)).id())
-                            .get("Elderly_" + elderlys.get(chromosome.getGene(i + 1)).id());
-                }
-
-                if (capacityIndex >= maximumCapacity) {
-                    departureTime += distanceMatrix.get("Employee_" + employees.get(employeeIndex).id())
-                            .get("Elderly_" + elderlys.get(chromosome.getGene(capacityIndex - maximumCapacity)).id());
-                    departureTime += distanceMatrix.get("Elderly_" + elderlys.get(capacityIndex).id())
-                            .get("Employee_" + employees.get(employeeIndex).id());
-//                    departureTime += callTMapAPI(employees.get(maximumCapacityIndex).getWorkplace(),
-//                            elderly.get(chromosome.getGene(capacityIndex - maximumCapacity)).getHomeAddress());
-//
-//                    departureTime += callTMapAPI(elderly.get(capacityIndex).getHomeAddress(),
-//                            employees.get(maximumCapacityIndex).getHomeAddress());
-
-                    if (employeeIndex < employees.size()) {
-                        maximumCapacity = employees.get(employeeIndex).maximumCapacity();
-
-                        if (employeeIndex != employees.size() - 1) {
-                            employeeIndex++;
-                        }
-
+                    if (j == 0) {
+                        departureTime += distanceMatrix.get(company).get("Elderly_" + elderlys.get(j).id());
                     }
-                    capacityIndex = 0;
-                    departureTimes.add(departureTime);
-                    departureTime = 0;
+
+                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                capacityIndex++;
-            }
+                departureTime += distanceMatrix.get(
+                                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).size() - 1).id())
+                        .get("Employee_" + employees.get(i).id());
 
-            if (departureTime > 0) {
-//                departureTime += callTMapAPI(employees.get(maximumCapacityIndex).getWorkplace(),
-//                        elderly.get(chromosome.getGene(capacityIndex - maximumCapacity)).getHomeAddress());
-//
-//                departureTime += callTMapAPI(elderly.get(capacityIndex).getHomeAddress(),
-//                        employees.get(maximumCapacityIndex).getHomeAddress());
                 departureTimes.add(departureTime);
             }
 
@@ -483,44 +413,116 @@ public class DispatchService {
             return selectedIndex;
         }
 
-        private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
-            List<Chromosome> offspringChromosomes = new ArrayList<>();
+        //        private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
+//            double crossoverRate = 0.85;
+//
+//            Random rand = new Random();
+//            List<Chromosome> offspring = new ArrayList<>();
+//
+//            for (int i = 0; i < selectedChromosomes.size(); i += 2) {
+//                Chromosome parent1 = selectedChromosomes.get(i);
+//                Chromosome parent2 = selectedChromosomes.get(i + 1);
+//
+//                if (rand.nextDouble() < crossoverRate) {
+//                    int crossoverPoint = rand.nextInt(parent1.getGenes().size());
+//                    for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
+//                        List<Integer> temp = parent1.getGenes().get(j);
+//                        parent1.getGenes().set(j, parent2.getGenes().get(j));
+//                        parent2.getGenes().set(j, temp);
+//                    }
+//                }
+//
+//                offspring.add(parent1);
+//                offspring.add(parent2);
+//            }
+//
+//            selectedChromosomes.clear();
+//            selectedChromosomes.addAll(offspring);
+//
+//            return selectedChromosomes;
+//
+//        }
+        private List<Chromosome> crossover(List<Chromosome> selectedChromosomes, List<ElderlyDTO> elderlys) {
+            double crossoverRate = 0.85;
+            Random rand = new Random();
+            List<Chromosome> offspring = new ArrayList<>();
+
             for (int i = 0; i < selectedChromosomes.size(); i += 2) {
-                // 일점 교차
-                offspringChromosomes.add(
-                        singlePointCrossover(selectedChromosomes.get(i), selectedChromosomes.get(i + 1)));
-            }
-            return offspringChromosomes;
-        }
+                Chromosome parent1 = selectedChromosomes.get(i);
+                Chromosome parent2 = selectedChromosomes.get(i + 1);
 
-        private Chromosome singlePointCrossover(Chromosome parent1, Chromosome parent2) {
-            // 교차 지점 랜덤하게 선택
-            int crossoverPoint = (int) (Math.random() * parent1.getGeneLength());
+                if (i + 1 < selectedChromosomes.size() && rand.nextDouble() < crossoverRate) {
+                    // Perform crossover only if there is a pair to crossover with
+                    Chromosome child1 = parent1;
+                    Chromosome child2 = parent2;
 
-            // 자식 생성
-            Chromosome offspring = new Chromosome(employees, elderlys, requiredFrontSeat);
-            for (int i = 0; i < crossoverPoint; i++) {
-                offspring.setGene(i, parent1.getGene(i));
-            }
-            for (int i = crossoverPoint; i < parent1.getGeneLength(); i++) {
-                offspring.setGene(i, parent2.getGene(i));
+                    int crossoverPoint = rand.nextInt(parent1.getGenes().size());
+                    for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
+                        // Swap the gene segments at the crossover point
+                        child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+                        child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+                    }
+
+                    // Validate and fix any duplicates within the children
+                    fixDuplicateAssignments(child1, elderlys);
+                    fixDuplicateAssignments(child2, elderlys);
+
+                    offspring.add(child1);
+                    offspring.add(child2);
+                } else {
+                    // If no crossover, add clones of the parents to the offspring
+                    offspring.add(parent1);
+                    offspring.add(parent2);
+                }
             }
 
             return offspring;
         }
 
-        private void mutate(List<Chromosome> offspringChromosomes) {
-            for (Chromosome offspring : offspringChromosomes) {
-                // 돌연변이 확률만큼 돌연변이 발생
-                if (Math.random() < MUTATION_RATE) {
-                    // 돌연변이 지점 랜덤하게 선택
-                    int mutationPoint = (int) (Math.random() * offspring.getGeneLength());
-
-                    // 돌연변이 발생
-                    int newValue = (int) (Math.random() * employees.size());
-                    offspring.setGene(mutationPoint, newValue);
+        private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
+            Set<Integer> assignedElderly = new HashSet<>();
+            for (List<Integer> gene : child.getGenes()) {
+                for (int i = 0; i < gene.size(); i++) {
+                    int elderlyId = gene.get(i);
+                    if (!assignedElderly.add(elderlyId)) {
+                        // Found a duplicate within this child, find a replacement
+                        for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
+                            if (!assignedElderly.contains(newElderlyId)) {
+                                gene.set(i, newElderlyId);
+                                assignedElderly.add(newElderlyId);
+                                break;
+                            }
+                        }
+                    }
                 }
             }
+        }
+
+
+        private void mutate(List<Chromosome> offspringChromosomes, int numElderly) {
+
+            Random rand = new Random();
+
+            for (Chromosome chromosome : offspringChromosomes) {
+                if (rand.nextDouble() < MUTATION_RATE) {
+                    int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
+                    int mutationPoint2 = rand.nextInt(chromosome.getGenes().get(mutationPoint1).size());
+                    int newElderly = rand.nextInt(numElderly);
+                    chromosome.getGenes().get(mutationPoint1).set(mutationPoint2, newElderly);
+                }
+            }
+
+//            for (Chromosome offspring : offspringChromosomes) {
+//                // 돌연변이 확률만큼 돌연변이 발생
+//                if (Math.random() < MUTATION_RATE) {
+//                    // 돌연변이 지점 랜덤하게 선택
+//                    int mutationPoint = (int) (Math.random() * offspring.getGeneLength());
+//
+//                    // 돌연변이 발생
+//                    int newValue = (int) (Math.random() * employees.size());
+//                    offspring.setGene(mutationPoint, newValue);
+//                }
+//            }
         }
 
         private List<Chromosome> combinePopulations(List<Chromosome> chromosomes,
@@ -540,32 +542,6 @@ public class DispatchService {
     }
 
     public List<Location> findClosestLocations(RequestDispatchDTO requestDispatchDTO) {
-
-        //elderlyLocations, EmployeeDestinations
-
-        //35.150735954515866, 경도는 128.1176559038332
-        //클릭 위치의 위도는 35.15324955862964, 경도는 128.11898796967847 입니다
-        //클릭 위치의 위도는 35.15576496372367, 경도는 128.1135242147227 입니다
-        //클릭 위치의 위도는 35.15278031585356, 경도는 128.1075246301955 입니다
-        //클릭 위치의 위도는 35.17489982781904, 경도는 128.11521211264545 입니다
-        //클릭 위치의 위도는 35.180357981662894, 경도는 128.0858662223393 입니다
-        //클릭 위치의 위도는 35.16580451988244, 경도는 128.05186706278897 입니다
-        //클릭 위치의 위도는 35.214320873081014, 경도는 128.14817083106618 입니다
-
-        //{
-        //  "elderlyLocations": [
-        //    {"x": 10, "y": 20},
-        //    {"x": 15, "y": 25},
-        //    {"x": 30, "y": 40},
-        //    {"x": 45, "y": 50}
-        //  ],
-        //  "employeeLocations": [
-        //    {"x": 10, "y": 20},
-        //    {"x": 15, "y": 25},
-        //    {"x": 30, "y": 40},
-        //    {"x": 45, "y": 50}
-        //  ],
-        //}
 
         return null;
     }
