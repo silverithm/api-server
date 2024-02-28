@@ -24,18 +24,6 @@ public class Chromosome implements Comparable<Chromosome> {
             genes.add(i);
         }
 
-//        // 앞자리에 필수로 타야 하는 노인 배정
-//        int frontSeatCount = 0;
-//        for (int i = 0; i < genes.size(); i++) {
-//            if (elderly.get(genes.get(i)).isRequiredFrontSeat()) {
-//                if (frontSeatCount < requiredFrontSeat) {
-//
-//                    frontSeatCount++;
-//                } else {
-//                    break;
-//                }
-//            }
-//        }
 
         // 셔플
         Collections.shuffle(genes);

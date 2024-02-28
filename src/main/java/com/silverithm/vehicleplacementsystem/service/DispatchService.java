@@ -26,10 +26,10 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class DispatchService {
 
-    private static int MAX_ITERATIONS = 1000;
+    private static int MAX_ITERATIONS = 100;
     //50~100
-    private static int POPULATION_SIZE = 100;
-    private static double MUTATION_RATE = 0.005;
+    private static int POPULATION_SIZE = 50;
+    private static double MUTATION_RATE = 0.007;
     @Autowired
     private LinkDistanceRepository linkDistanceRepository;
 
@@ -134,7 +134,32 @@ public class DispatchService {
         Chromosome bestChromosome = chromosomes.get(0);
 
         System.out.println(bestChromosome.getDepartureTimes());
-        System.out.println(bestChromosome.getGenes());
+
+        for (int i = 0; i < bestChromosome.getGenes().size(); i++) {
+            System.out.print(bestChromosome.getGenes().get(i) + 1 + " ");
+        }
+        System.out.println();
+        System.out.println();
+        System.out.println("- - - - - - - - - - - - - - - - - - - - ");
+        System.out.println();
+        System.out.println();
+        System.out.println("배차 정보");
+        System.out.println();
+
+        int chromosomeIndex = 0;
+        for (int i = 0; i < employees.size(); i++) {
+
+            System.out.print(employees.get(i).name() + " : ");
+            for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
+                System.out.print(elderlys.get(bestChromosome.getGene(chromosomeIndex)).name() + " , ");
+
+                chromosomeIndex++;
+                if (chromosomeIndex >= bestChromosome.getGeneLength()) {
+                    return employees;
+                }
+            }
+            System.out.println();
+        }
 
 //        // 퇴근 시간 및 배치 정보 계산
 //        for (int i = 0; i < employees.size(); i++) {
@@ -247,7 +272,6 @@ public class DispatchService {
         }
 
         for (int i = 0; i < employees.size(); i++) {
-
             for (int j = 0; j < elderlys.size(); j++) {
                 String startNodeId = "Employee_" + employees.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
@@ -350,34 +374,22 @@ public class DispatchService {
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
             int geneIndex = 0;
-            for (int i = 0; i < employees.size(); i++) {
-                int frontSeatCount = 0;
-                for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
-                    if (elderlys.get(chromosome.getGene(geneIndex)).requiredFrontSeat()) {
-                        frontSeatCount++;
+            for (EmployeeDTO employee : employees) {
+                boolean frontSeatAssigned = false;
+                List<ElderlyDTO> assignedElderlies = new ArrayList<>();
+                for (int j = 0; j < employee.maximumCapacity() && geneIndex < chromosome.getGeneLength();
+                     j++, geneIndex++) {
+                    ElderlyDTO elderly = elderlys.get(chromosome.getGene(geneIndex));
+                    assignedElderlies.add(elderly);
+                    if (elderly.requiredFrontSeat()) {
+                        if (frontSeatAssigned) {
+                            fitness = 0.0; // 앞자리가 필요한 노인이 둘 이상 배정된 경우
+                            break;
+                        }
+                        frontSeatAssigned = true;
                     }
-                    geneIndex++;
                 }
-
-                if (frontSeatCount > 1) {
-                    fitness = 0.0;
-                }
-
-                if (geneIndex >= chromosome.getGeneLength()) {
-                    break;
-                }
-
             }
-
-//            for (int i = 0; i < chromosome.getGeneLength(); i++) {
-//                if (elderly.get(chromosome.getGene(i)).isRequiredFrontSeat()) {
-//                    frontSeatCount++;
-//                }
-//            }
-//
-//            if (frontSeatCount < requiredFrontSeat) {
-//                fitness = 0.0;
-//            }
 
             return fitness;
         }
@@ -410,8 +422,12 @@ public class DispatchService {
 //                            employees.get(maximumCapacityIndex).getHomeAddress());
 
                     if (employeeIndex < employees.size()) {
-                        employeeIndex++;
                         maximumCapacity = employees.get(employeeIndex).maximumCapacity();
+
+                        if (employeeIndex != employees.size() - 1) {
+                            employeeIndex++;
+                        }
+
                     }
                     capacityIndex = 0;
                     departureTimes.add(departureTime);
