@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
+import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
@@ -91,12 +92,13 @@ public class DispatchService {
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
         CompanyDTO company = requestDispatchDTO.company();
+        List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
 
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
 
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix);
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments);
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
         // 최적의 솔루션 추출
@@ -252,20 +254,25 @@ public class DispatchService {
 
         private final List<EmployeeDTO> employees;
         private final List<ElderlyDTO> elderlys;
+        private final Map<Integer, List<Integer>> fixedAssignmentsMap;
+
         private final Map<String, Map<String, Integer>> distanceMatrix;
 
 
         public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
-                                Map<String, Map<String, Integer>> distanceMatrix) {
+                                Map<String, Map<String, Integer>> distanceMatrix,
+                                List<FixedAssignmentsDTO> fixedAssignments) {
             this.employees = employees;
             this.elderlys = elderly;
             this.distanceMatrix = distanceMatrix;
+            this.fixedAssignmentsMap = generateFixedAssignmentMap(fixedAssignments);
         }
 
 
         public List<Chromosome> run() {
+
             // 초기 솔루션 생성
-            List<Chromosome> chromosomes = generateInitialPopulation();
+            List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
 
             // 반복
             for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -289,11 +296,28 @@ public class DispatchService {
             return chromosomes.stream().sorted().collect(Collectors.toList());
         }
 
-        private List<Chromosome> generateInitialPopulation() {
+        private Map<Integer, List<Integer>> generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignments) {
+
+            Map<Integer, List<Integer>> fixedAssignmentMap = new HashMap<>();
+            if (fixedAssignments == null) {
+                return fixedAssignmentMap;
+            }
+
+            for (FixedAssignmentsDTO fixedAssignment : fixedAssignments) {
+                int employeeIdx = fixedAssignment.employee_idx();
+                int elderlyIdx = fixedAssignment.elderly_idx();
+
+                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
+            }
+
+            return fixedAssignmentMap;
+        }
+
+        private List<Chromosome> generateInitialPopulation(Map<Integer, List<Integer>> fixedAssignmentMap) {
             List<Chromosome> chromosomes = new ArrayList<>();
             for (int i = 0; i < POPULATION_SIZE; i++) {
 
-                chromosomes.add(new Chromosome(employees, elderlys));
+                chromosomes.add(new Chromosome(employees, elderlys, fixedAssignmentMap));
 
             }
             return chromosomes;
@@ -500,29 +524,32 @@ public class DispatchService {
 
 
         private void mutate(List<Chromosome> offspringChromosomes, int numElderly) {
-
             Random rand = new Random();
 
             for (Chromosome chromosome : offspringChromosomes) {
                 if (rand.nextDouble() < MUTATION_RATE) {
                     int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
-                    int mutationPoint2 = rand.nextInt(chromosome.getGenes().get(mutationPoint1).size());
+                    List<Integer> employeeAssignment = chromosome.getGenes().get(mutationPoint1);
+                    int mutationPoint2 = rand.nextInt(employeeAssignment.size());
                     int newElderly = rand.nextInt(numElderly);
-                    chromosome.getGenes().get(mutationPoint1).set(mutationPoint2, newElderly);
+
+                    // 현재 할당된 노인을 새로운 노인으로 변이
+                    int currentElderly = employeeAssignment.set(mutationPoint2, newElderly);
+
+                    // 변이로 인해 중복된 노인이 할당된 경우, 중복 제거
+                    for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                        if (i != mutationPoint1) { // 동일 직원 제외
+                            List<Integer> otherEmployeeAssignment = chromosome.getGenes().get(i);
+                            int index = otherEmployeeAssignment.indexOf(newElderly);
+                            if (index != -1) { // 중복된 노인 발견
+                                // 중복된 노인을 이전 노인으로 교체하여 중복 제거
+                                otherEmployeeAssignment.set(index, currentElderly);
+                                break; // 중복 제거 후 반복 종료
+                            }
+                        }
+                    }
                 }
             }
-
-//            for (Chromosome offspring : offspringChromosomes) {
-//                // 돌연변이 확률만큼 돌연변이 발생
-//                if (Math.random() < MUTATION_RATE) {
-//                    // 돌연변이 지점 랜덤하게 선택
-//                    int mutationPoint = (int) (Math.random() * offspring.getGeneLength());
-//
-//                    // 돌연변이 발생
-//                    int newValue = (int) (Math.random() * employees.size());
-//                    offspring.setGene(mutationPoint, newValue);
-//                }
-//            }
         }
 
         private List<Chromosome> combinePopulations(List<Chromosome> chromosomes,

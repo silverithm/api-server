@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import lombok.Getter;
 import lombok.Setter;
@@ -42,7 +43,8 @@ public class Chromosome implements Comparable<Chromosome> {
     //            population.add(chromosome);
     //        }
     //        return population;
-    public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly) {
+    public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+                      Map<Integer, List<Integer>> fixedAssignments) {
 
         totalElderly = elderly.size();
         int numEmployees = employees.size();
@@ -56,15 +58,35 @@ public class Chromosome implements Comparable<Chromosome> {
         int[] employeesCapacityLeft = new int[numEmployees];
         for (int e = 0; e < numEmployees; e++) {
             employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
+            chromosome.add(new ArrayList<>()); // 미리 리스트를 초기화
+        }
+
+
+        // 먼저 차량 배치에 참여할 직원과 노인을 정하고
+        // 다음페이지로 넘어감
+        // 직원과 노인의 아이디를 넘겨주는 것이 아니라
+        // 차량배치에 참여하는 직원과 노인의 인덱스 번호를 직원 리스트, 노인 리스트와 함께 넘ㄱ줌
+        // 백엔드는 이 인덱스를 가지고 Map을 생성함
+
+        // 고정 할당 처리
+        for (Map.Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
+            int employeeIndex = entry.getKey();
+            List<Integer> fixedElderlyIds = entry.getValue();
+            for (Integer elderlyId : fixedElderlyIds) {
+                if (employeesCapacityLeft[employeeIndex] > 0) {
+                    chromosome.get(employeeIndex).add(elderlyId);
+                    employeesCapacityLeft[employeeIndex]--;
+                    elderlyIndices.remove(elderlyId); // 이미 할당된 노인은 리스트에서 제거
+                } else {
+                    throw new IllegalStateException("직원 " + employeeIndex + "의 capacity가 초과되었습니다.");
+                }
+            }
         }
 
         int startIndex = 0;
-        while (startIndex < totalElderly) {
+        while (startIndex < elderlyIndices.size()) {
             boolean assigned = false;
-            for (int e = 0; e < numEmployees && startIndex < totalElderly; e++) {
-                if (chromosome.size() <= e) {
-                    chromosome.add(new ArrayList<>());
-                }
+            for (int e = 0; e < numEmployees && startIndex < elderlyIndices.size(); e++) {
                 if (employeesCapacityLeft[e] > 0) {
                     chromosome.get(e).add(elderlyIndices.get(startIndex));
                     employeesCapacityLeft[e]--;
@@ -72,7 +94,6 @@ public class Chromosome implements Comparable<Chromosome> {
                     assigned = true;
                 }
             }
-            // 모든 직원의 capacity가 꽉 찼고, 여전히 할당되지 않은 노인이 있다면, 처리할 수 없는 상황임
             if (!assigned) {
                 throw new IllegalStateException("모든 직원의 capacity가 초과되어 더 이상 노인을 할당할 수 없습니다.");
             }
