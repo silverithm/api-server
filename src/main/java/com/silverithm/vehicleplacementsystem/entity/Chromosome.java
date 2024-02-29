@@ -43,39 +43,39 @@ public class Chromosome implements Comparable<Chromosome> {
     //        }
     //        return population;
     public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly) {
-        // 유전자 생성
-//        for (int i = 0; i < elderly.size(); i++) {
-//            genes.add(i);
-//        }
+
         totalElderly = elderly.size();
         int numEmployees = employees.size();
-        int totalElderly = elderly.size();
-
         List<Integer> elderlyIndices = new ArrayList<>();
         for (int i = 0; i < totalElderly; i++) {
             elderlyIndices.add(i);
         }
-        Collections.shuffle(elderlyIndices); // 노인 인덱스를 랜덤하게 섞습니다.
+        Collections.shuffle(elderlyIndices);
 
-        // 여기서부터 각 직원에게 노인을 배정하는 로직을 진행합니다.
-        List<List<Integer>> chromosome = new ArrayList<>(); // 최종 결과를 저장할 리스트
-        int baseNumAssigned = totalElderly / numEmployees;
-
-        List<Integer> extraAssignments = new ArrayList<>();
-        for (int i = 0; i < totalElderly % numEmployees; i++) {
-            extraAssignments.add(i);
+        List<List<Integer>> chromosome = new ArrayList<>();
+        int[] employeesCapacityLeft = new int[numEmployees];
+        for (int e = 0; e < numEmployees; e++) {
+            employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
         }
-        Collections.shuffle(extraAssignments);
 
         int startIndex = 0;
-        for (int e = 0; e < numEmployees; e++) {
-            int numAssigned = baseNumAssigned + (extraAssignments.contains(e) ? 1 : 0);
-            List<Integer> employeeAssignment = new ArrayList<>();
-            for (int k = 0; k < numAssigned; k++) {
-                employeeAssignment.add(elderlyIndices.get(startIndex + k));
+        while (startIndex < totalElderly) {
+            boolean assigned = false;
+            for (int e = 0; e < numEmployees && startIndex < totalElderly; e++) {
+                if (chromosome.size() <= e) {
+                    chromosome.add(new ArrayList<>());
+                }
+                if (employeesCapacityLeft[e] > 0) {
+                    chromosome.get(e).add(elderlyIndices.get(startIndex));
+                    employeesCapacityLeft[e]--;
+                    startIndex++;
+                    assigned = true;
+                }
             }
-            chromosome.add(employeeAssignment);
-            startIndex += numAssigned;
+            // 모든 직원의 capacity가 꽉 찼고, 여전히 할당되지 않은 노인이 있다면, 처리할 수 없는 상황임
+            if (!assigned) {
+                throw new IllegalStateException("모든 직원의 capacity가 초과되어 더 이상 노인을 할당할 수 없습니다.");
+            }
         }
 
         genes = chromosome;
