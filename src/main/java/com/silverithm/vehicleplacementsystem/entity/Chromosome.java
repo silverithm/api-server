@@ -13,7 +13,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class Chromosome implements Comparable<Chromosome> {
+public class Chromosome implements Comparable<Chromosome>, Cloneable {
 
     private List<List<Integer>> genes;
     private double fitness;
@@ -61,7 +61,6 @@ public class Chromosome implements Comparable<Chromosome> {
             chromosome.add(new ArrayList<>()); // 미리 리스트를 초기화
         }
 
-
         // 먼저 차량 배치에 참여할 직원과 노인을 정하고
         // 다음페이지로 넘어감
         // 직원과 노인의 아이디를 넘겨주는 것이 아니라
@@ -103,6 +102,7 @@ public class Chromosome implements Comparable<Chromosome> {
 
     }
 
+
     public int getGeneLength() {
         return genes.size();
     }
@@ -121,4 +121,14 @@ public class Chromosome implements Comparable<Chromosome> {
         return Double.compare(other.fitness, fitness);
     }
 
+    @Override
+    public Chromosome clone() {
+        try {
+            Chromosome clone = (Chromosome) super.clone();
+            // TODO: copy mutable state here, so the clone can't change the internals of the original
+            return clone;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+    }
 }

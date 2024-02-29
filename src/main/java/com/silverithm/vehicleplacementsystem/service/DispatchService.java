@@ -139,6 +139,8 @@ public class DispatchService {
 //            System.out.println();
 //        }
 
+        System.out.println(bestChromosome.getGenes() + " " + bestChromosome.getFitness());
+
         for (int i = 0; i < employees.size(); i++) {
             System.out.print(employees.get(i).name() + " : ");
             for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
@@ -472,13 +474,13 @@ public class DispatchService {
             List<Chromosome> offspring = new ArrayList<>();
 
             for (int i = 0; i < selectedChromosomes.size(); i += 2) {
-                Chromosome parent1 = selectedChromosomes.get(i);
-                Chromosome parent2 = selectedChromosomes.get(i + 1);
+                Chromosome parent1 = selectedChromosomes.get(i).clone();
+                Chromosome parent2 = selectedChromosomes.get(i + 1).clone();
 
                 if (i + 1 < selectedChromosomes.size() && rand.nextDouble() < crossoverRate) {
                     // Perform crossover only if there is a pair to crossover with
-                    Chromosome child1 = parent1;
-                    Chromosome child2 = parent2;
+                    Chromosome child1 = parent1.clone();
+                    Chromosome child2 = parent2.clone();
 
                     int crossoverPoint = rand.nextInt(parent1.getGenes().size());
                     for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
