@@ -9,6 +9,7 @@ import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,9 +34,20 @@ public class DispatchService {
     //가까운 거리일수록 가중치가 더 들어가야함 - 가까운 거리를 붙여주어야함
     //고정 시키는 인원이 주어지면 해당 직원에게 고정 인원이 없으면 점수를 0으로 해주어야함
 
-    private static int MAX_ITERATIONS = 100;
-    private static int POPULATION_SIZE = 1000;
+    private static int MAX_ITERATIONS = 90;
+    private static int POPULATION_SIZE = 2000;
     private static double MUTATION_RATE = 0.005;
+    private static double CROSSOVER_RATE = 0.85;
+    public static final int SINGLE_POINT = 0;
+    public static final int TWO_POINT = 1;
+    public static final int UNIFORM = 2;
+    public static final int[] CROSSOVER_TYPES = {
+            SINGLE_POINT,
+            TWO_POINT,
+            UNIFORM
+    };
+
+
     @Autowired
     private LinkDistanceRepository linkDistanceRepository;
 
@@ -106,20 +118,9 @@ public class DispatchService {
 
         System.out.println(bestChromosome.getDepartureTimes());
 
-//        for (int i = 0; i < bestChromosome.getGenes().size(); i++) {
-//            System.out.print(bestChromosome.getGenes().get(i) + 1 + " ");
-//        }
 
-        for (int i = 0; i < bestChromosome.getGenes().size(); i++) {
-            for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
-                System.out.print(bestChromosome.getGenes().get(i).get(j) + 1 + " ");
-            }
-        }
-
-        System.out.println();
         System.out.println();
         System.out.println("- - - - - - - - - - - - - - - - - - - - ");
-        System.out.println();
         System.out.println();
         System.out.println("배차 정보");
         System.out.println();
@@ -342,6 +343,8 @@ public class DispatchService {
 
             // 모든 퇴근 시간의 합 계산
             double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
+            // 적합도 계산
+            fitness = 10000000 / (totalDepartureTime + 1.0);
 
             for (int i = 0; i < chromosome.getGenes().size(); i++) {
 
@@ -351,14 +354,11 @@ public class DispatchService {
 
                     if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
                             .get("Elderly_" + elderlys.get(elderlyIndex2).id()) == 0) {
-                        fitness += 1;
+                        fitness += 50;
                     }
 
                 }
             }
-
-            // 적합도 계산
-            fitness = 1.0 / (totalDepartureTime + 1.0);
 
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
@@ -410,66 +410,95 @@ public class DispatchService {
             for (int i = 0; i < POPULATION_SIZE; i++) {
                 // 룰렛 휠 선택
                 int selectedIndex = rouletteWheelSelection(chromosomes);
-                selectedChromosomes.add(chromosomes.get(selectedIndex));
+                System.out.println(chromosomes.get(selectedIndex).clone().getGenes());
+                selectedChromosomes.add(chromosomes.get(selectedIndex).clone());
             }
+            System.out.println();
             return selectedChromosomes;
         }
 
         private int rouletteWheelSelection(List<Chromosome> chromosomes) {
-            // 적합도 총합 계산
+            // 전체 적합도 합계 계산
             double totalFitness = chromosomes.stream().mapToDouble(Chromosome::getFitness).sum();
 
             // 룰렛 휠 생성
             List<Double> rouletteWheel = new ArrayList<>();
             double cumulativeFitness = 0.0;
             for (Chromosome chromosome : chromosomes) {
-                cumulativeFitness += chromosome.getFitness();
-                rouletteWheel.add(cumulativeFitness / totalFitness);
+                cumulativeFitness += chromosome.getFitness() / totalFitness;
+                rouletteWheel.add(cumulativeFitness);
             }
 
-            // 랜덤 값 생성
-            double randomValue = Math.random();
+            // 랜덤 값 생성 (0과 cumulativeFitaness 사이)
+            double randomValue = Math.random() * cumulativeFitness;
 
             // 선택된 인덱스 찾기
             int selectedIndex = 0;
-            while (randomValue > rouletteWheel.get(selectedIndex)) {
+
+            while (selectedIndex < chromosomes.size() - 1 && randomValue > rouletteWheel.get(selectedIndex)) {
                 selectedIndex++;
             }
 
             return selectedIndex;
         }
 
-        //        private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
-//            double crossoverRate = 0.85;
-//
+//        private List<Chromosome> crossover(List<Chromosome> selectedChromosomes, List<ElderlyDTO> elderlys) {
 //            Random rand = new Random();
 //            List<Chromosome> offspring = new ArrayList<>();
 //
 //            for (int i = 0; i < selectedChromosomes.size(); i += 2) {
-//                Chromosome parent1 = selectedChromosomes.get(i);
-//                Chromosome parent2 = selectedChromosomes.get(i + 1);
+//                Chromosome parent1 = selectedChromosomes.get(i).clone();
+//                Chromosome parent2 = selectedChromosomes.get(i + 1).clone();
 //
-//                if (rand.nextDouble() < crossoverRate) {
+//                if (i + 1 < selectedChromosomes.size() && rand.nextDouble() < CROSSOVER_RATE) {
+//                    // Perform crossover only if there is a pair to crossover with
+//                    Chromosome child1 = parent1.clone();
+//                    Chromosome child2 = parent2.clone();
+//
 //                    int crossoverPoint = rand.nextInt(parent1.getGenes().size());
 //                    for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
-//                        List<Integer> temp = parent1.getGenes().get(j);
-//                        parent1.getGenes().set(j, parent2.getGenes().get(j));
-//                        parent2.getGenes().set(j, temp);
+//                        // Swap the gene segments at the crossover point
+//                        child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+//                        child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
 //                    }
-//                }
 //
-//                offspring.add(parent1);
-//                offspring.add(parent2);
+//                    // Validate and fix any duplicates within the children
+//                    fixDuplicateAssignments(child1, elderlys);
+//                    fixDuplicateAssignments(child2, elderlys);
+//
+//                    offspring.add(child1);
+//                    offspring.add(child2);
+//                } else {
+//                    // If no crossover, add clones of the parents to the offspring
+//                    offspring.add(parent1);
+//                    offspring.add(parent2);
+//                }
 //            }
 //
-//            selectedChromosomes.clear();
-//            selectedChromosomes.addAll(offspring);
-//
-//            return selectedChromosomes;
-//
+//            return offspring;
 //        }
+//
+//        private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
+//            Set<Integer> assignedElderly = new HashSet<>();
+//            for (List<Integer> gene : child.getGenes()) {
+//                for (int i = 0; i < gene.size(); i++) {
+//                    int elderlyId = gene.get(i);
+//                    if (!assignedElderly.add(elderlyId)) {
+//                        // Found a duplicate within this child, find a replacement
+//                        for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
+//                            if (!assignedElderly.contains(newElderlyId)) {
+//                                gene.set(i, newElderlyId);
+//                                assignedElderly.add(newElderlyId);
+//                                break;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+
+
         private List<Chromosome> crossover(List<Chromosome> selectedChromosomes, List<ElderlyDTO> elderlys) {
-            double crossoverRate = 0.85;
             Random rand = new Random();
             List<Chromosome> offspring = new ArrayList<>();
 
@@ -477,32 +506,96 @@ public class DispatchService {
                 Chromosome parent1 = selectedChromosomes.get(i).clone();
                 Chromosome parent2 = selectedChromosomes.get(i + 1).clone();
 
-                if (i + 1 < selectedChromosomes.size() && rand.nextDouble() < crossoverRate) {
-                    // Perform crossover only if there is a pair to crossover with
-                    Chromosome child1 = parent1.clone();
-                    Chromosome child2 = parent2.clone();
-
-                    int crossoverPoint = rand.nextInt(parent1.getGenes().size());
-                    for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
-                        // Swap the gene segments at the crossover point
-                        child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
-                        child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+                // Crossover 확률에 따라 진행
+                if (rand.nextDouble() < CROSSOVER_RATE) {
+                    // 교차 방법 선택
+                    int crossoverType = rand.nextInt(CROSSOVER_TYPES.length);
+                    switch (CROSSOVER_TYPES[crossoverType]) {
+                        case SINGLE_POINT:
+                            offspring.addAll(singlePointCrossover(parent1, parent2, elderlys));
+                            break;
+                        case TWO_POINT:
+                            offspring.addAll(twoPointCrossover(parent1, parent2, elderlys));
+                            break;
+                        case UNIFORM:
+                            offspring.addAll(uniformCrossover(parent1, parent2, elderlys));
+                            break;
                     }
-
-                    // Validate and fix any duplicates within the children
-                    fixDuplicateAssignments(child1, elderlys);
-                    fixDuplicateAssignments(child2, elderlys);
-
-                    offspring.add(child1);
-                    offspring.add(child2);
                 } else {
-                    // If no crossover, add clones of the parents to the offspring
-                    offspring.add(parent1);
-                    offspring.add(parent2);
+                    // Crossover가 일어나지 않으면 부모 복제
+                    offspring.add(parent1.clone());
+                    offspring.add(parent2.clone());
                 }
             }
 
             return offspring;
+        }
+
+        private List<Chromosome> singlePointCrossover(Chromosome parent1, Chromosome parent2,
+                                                      List<ElderlyDTO> elderlys) {
+            Random rand = new Random();
+            int crossoverPoint = rand.nextInt(parent1.getGenes().size());
+            Chromosome child1 = parent1.clone();
+            Chromosome child2 = parent2.clone();
+
+            for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
+                // 교차 지점 이후 유전자 교환
+
+                child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+                child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+
+            }
+
+            fixDuplicateAssignments(child1, elderlys);
+            fixDuplicateAssignments(child2, elderlys);
+
+            return Arrays.asList(child1, child2);
+        }
+
+        private List<Chromosome> twoPointCrossover(Chromosome parent1, Chromosome parent2, List<ElderlyDTO> elderlys) {
+            Random rand = new Random();
+
+            int crossoverPoint1 = rand.nextInt(parent1.getGenes().size());
+            int crossoverPoint2 = rand.nextInt(parent1.getGenes().size());
+            if (crossoverPoint1 > crossoverPoint2) {
+                int temp = crossoverPoint1;
+                crossoverPoint1 = crossoverPoint2;
+                crossoverPoint2 = temp;
+            }
+
+            Chromosome child1 = parent1.clone();
+            Chromosome child2 = parent2.clone();
+
+            for (int j = crossoverPoint1; j < crossoverPoint2; j++) {
+                // 두 교차 지점 사이 유전자 교환
+                child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+                child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+            }
+
+            fixDuplicateAssignments(child1, elderlys);
+            fixDuplicateAssignments(child2, elderlys);
+
+            return Arrays.asList(child1, child2);
+        }
+
+        private List<Chromosome> uniformCrossover(Chromosome parent1, Chromosome parent2, List<ElderlyDTO> elderlys) {
+            Random rand = new Random();
+
+            Chromosome child1 = parent1.clone();
+            Chromosome child2 = parent2.clone();
+
+            for (int j = 0; j < parent1.getGenes().size(); j++) {
+                // 균일 교차: 확률에 따라 유전자 교환
+                if (rand.nextDouble() < 0.5) {
+                    child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+                    child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+                }
+            }
+
+            fixDuplicateAssignments(child1, elderlys);
+            fixDuplicateAssignments(child2, elderlys);
+
+            return Arrays.asList(child1, child2);
         }
 
         private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
@@ -511,7 +604,7 @@ public class DispatchService {
                 for (int i = 0; i < gene.size(); i++) {
                     int elderlyId = gene.get(i);
                     if (!assignedElderly.add(elderlyId)) {
-                        // Found a duplicate within this child, find a replacement
+                        // 중복 발생 시, 다른 노인으로 교체
                         for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
                             if (!assignedElderly.contains(newElderlyId)) {
                                 gene.set(i, newElderlyId);
@@ -537,6 +630,7 @@ public class DispatchService {
 
                     // 현재 할당된 노인을 새로운 노인으로 변이
                     int currentElderly = employeeAssignment.set(mutationPoint2, newElderly);
+                    chromosome.getGenes().get(mutationPoint1).set(mutationPoint2, newElderly);
 
                     // 변이로 인해 중복된 노인이 할당된 경우, 중복 제거
                     for (int i = 0; i < chromosome.getGenes().size(); i++) {
@@ -546,6 +640,7 @@ public class DispatchService {
                             if (index != -1) { // 중복된 노인 발견
                                 // 중복된 노인을 이전 노인으로 교체하여 중복 제거
                                 otherEmployeeAssignment.set(index, currentElderly);
+                                chromosome.getGenes().set(i, otherEmployeeAssignment);
                                 break; // 중복 제거 후 반복 종료
                             }
                         }
