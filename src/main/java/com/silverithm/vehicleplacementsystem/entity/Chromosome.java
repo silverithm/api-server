@@ -4,45 +4,25 @@ package com.silverithm.vehicleplacementsystem.entity;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class Chromosome implements Comparable<Chromosome>, Cloneable {
+@NoArgsConstructor
+public class Chromosome implements Comparable<Chromosome> {
 
     private List<List<Integer>> genes;
     private double fitness;
     private List<Double> departureTimes;
     private int totalElderly;
 
-
-    //        List<List<List<Integer>>> population = new ArrayList<>();
-    //        for (int i = 0; i < popSize; i++) {
-    //            List<Integer> elderlyIndices = new ArrayList<>();
-    //            for (int j = 0; j < numElderly; j++) {
-    //                elderlyIndices.add(j);
-    //            }
-    //            Collections.shuffle(elderlyIndices);
-    //
-    //            List<List<Integer>> chromosome = new ArrayList<>();
-    //            int startIndex = 0;
-    //            for (int e = 0; e < numEmployees; e++) {
-    //                int numAssigned = (e < 2) ? 4 : 3;
-    //                List<Integer> employeeAssignment = new ArrayList<>();
-    //                for (int k = 0; k < numAssigned; k++) {
-    //                    employeeAssignment.add(elderlyIndices.get(startIndex + k));
-    //                }
-    //                chromosome.add(employeeAssignment);
-    //                startIndex += numAssigned;
-    //            }
-    //            population.add(chromosome);
-    //        }
-    //        return population;
     public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                       Map<Integer, List<Integer>> fixedAssignments) {
 
@@ -103,6 +83,24 @@ public class Chromosome implements Comparable<Chromosome>, Cloneable {
     }
 
 
+    public static Chromosome copy(Chromosome original) {
+        Chromosome copyObject = new Chromosome();
+
+        // 깊은 복사를 위한 새로운 리스트 생성
+        List<List<Integer>> newGenes = new ArrayList<>();
+        for (List<Integer> gene : original.getGenes()) {
+            newGenes.add(new ArrayList<>(gene));
+        }
+        copyObject.genes = newGenes;
+
+        copyObject.totalElderly = original.getTotalElderly();
+        copyObject.fitness = original.getFitness();
+        copyObject.departureTimes = original.getDepartureTimes();
+
+        return copyObject;
+    }
+
+
     public int getGeneLength() {
         return genes.size();
     }
@@ -121,14 +119,5 @@ public class Chromosome implements Comparable<Chromosome>, Cloneable {
         return Double.compare(other.fitness, fitness);
     }
 
-    @Override
-    public Chromosome clone() {
-        try {
-            Chromosome clone = (Chromosome) super.clone();
-            // TODO: copy mutable state here, so the clone can't change the internals of the original
-            return clone;
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError();
-        }
-    }
+
 }

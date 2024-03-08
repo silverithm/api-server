@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
+import com.silverithm.vehicleplacementsystem.service.DispatchService.GeneticAlgorithm;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,15 @@ public class DispatchServiceTest {
                 new Location(35.17240084, 128.87264091));
         //then
         assertThat(totalTime).isNotZero();
+
+    }
+
+    @Test
+    public void crossoverTest() {
+        //given
+        //when
+
+        //then
 
     }
 
