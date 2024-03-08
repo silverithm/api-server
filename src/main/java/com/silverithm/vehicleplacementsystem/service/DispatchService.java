@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,9 +35,9 @@ public class DispatchService {
     //가까운 거리일수록 가중치가 더 들어가야함 - 가까운 거리를 붙여주어야함
     //고정 시키는 인원이 주어지면 해당 직원에게 고정 인원이 없으면 점수를 0으로 해주어야함
 
-    private static int MAX_ITERATIONS = 4;
-    private static int POPULATION_SIZE = 4;
-    private static double MUTATION_RATE = 0.005;
+    private static int MAX_ITERATIONS = 300;
+    private static int POPULATION_SIZE = 2000;
+    private static double MUTATION_RATE = 0.5;
     private static double CROSSOVER_RATE = 0.85;
     public static final int SINGLE_POINT = 0;
     public static final int TWO_POINT = 1;
@@ -272,17 +273,17 @@ public class DispatchService {
 
                 // 선택
                 List<Chromosome> selectedChromosomes = selectParents(chromosomes);
-                System.out.println("selectedChromosomes - - -" + i);
-                for (Chromosome chromosome : selectedChromosomes) {
-                    System.out.println(chromosome.getGenes());
-                }
+//                System.out.println("selectedChromosomes - - -" + i);
+//                for (Chromosome chromosome : selectedChromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
 
                 // 교차
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
-                System.out.println("offspringChromosomes - - -" + i);
-                for (Chromosome chromosome : offspringChromosomes) {
-                    System.out.println(chromosome.getGenes());
-                }
+//                System.out.println("offspringChromosomes - - -" + i);
+//                for (Chromosome chromosome : offspringChromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
 
                 // 돌연변이
                 mutate(offspringChromosomes, elderlys.size());
@@ -293,14 +294,21 @@ public class DispatchService {
 
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
-                System.out.println("nextGenerations - - -" + i);
+//                System.out.println("nextGenerations - - -" + i);
+//                for (Chromosome chromosome : chromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
+
+                System.out.println("nextGenerations - - -");
                 for (Chromosome chromosome : chromosomes) {
-                    System.out.println(chromosome.getGenes());
+                    System.out.println(chromosome.getGenes() + " / " + chromosome.getFitness());
                 }
             }
 
+            Collections.sort(chromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
             // 최적의 솔루션 추출
-            return chromosomes.stream().sorted().collect(Collectors.toList());
+            return chromosomes;
+
         }
 
         private Map<Integer, List<Integer>> generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignments) {
@@ -553,53 +561,44 @@ public class DispatchService {
 
         private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
             Set<Integer> assignedElderly = new HashSet<>();
-            for (int i = 0; i < child.getGenes().size(); i++) {
-                List<Integer> gene = child.getGenes().get(i);
-                List<Integer> newGene = new ArrayList<>(gene); // 수정된 부분: 새 리스트로 교체
-                for (int j = 0; j < newGene.size(); j++) {
-                    int elderlyId = newGene.get(j);
+            for (List<Integer> gene : child.getGenes()) {
+                for (int i = 0; i < gene.size(); i++) {
+                    int elderlyId = gene.get(i);
                     if (!assignedElderly.add(elderlyId)) {
+                        // 중복 발생 시, 다른 노인으로 교체
                         for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
                             if (!assignedElderly.contains(newElderlyId)) {
-                                newGene.set(j, newElderlyId); // newGene 수정
+                                gene.set(i, newElderlyId);
                                 assignedElderly.add(newElderlyId);
                                 break;
                             }
                         }
                     }
                 }
-                child.getGenes().set(i, newGene); // 자식 Chromosome의 리스트를 교체하는 부분
             }
         }
 
-
         private void mutate(List<Chromosome> offspringChromosomes, int numElderly) {
+
             Random rand = new Random();
 
             for (Chromosome chromosome : offspringChromosomes) {
                 if (rand.nextDouble() < MUTATION_RATE) {
+
                     int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
                     List<Integer> employeeAssignment = chromosome.getGenes().get(mutationPoint1);
                     int mutationPoint2 = rand.nextInt(employeeAssignment.size());
-                    int newElderly = rand.nextInt(numElderly);
 
-                    // 현재 할당된 노인을 새로운 노인으로 변이
-                    int currentElderly = employeeAssignment.set(mutationPoint2, newElderly);
-                    chromosome.getGenes().get(mutationPoint1).set(mutationPoint2, newElderly);
+                    int mutationPoint3 = rand.nextInt(chromosome.getGenes().size());
+                    List<Integer> employeeAssignment2 = chromosome.getGenes().get(mutationPoint3);
+                    int mutationPoint4 = rand.nextInt(employeeAssignment2.size());
 
-                    // 변이로 인해 중복된 노인이 할당된 경우, 중복 제거
-                    for (int i = 0; i < chromosome.getGenes().size(); i++) {
-                        if (i != mutationPoint1) { // 동일 직원 제외
-                            List<Integer> otherEmployeeAssignment = chromosome.getGenes().get(i);
-                            int index = otherEmployeeAssignment.indexOf(newElderly);
-                            if (index != -1) { // 중복된 노인 발견
-                                // 중복된 노인을 이전 노인으로 교체하여 중복 제거
-                                otherEmployeeAssignment.set(index, currentElderly);
-                                chromosome.getGenes().set(i, otherEmployeeAssignment);
-                                break; // 중복 제거 후 반복 종료
-                            }
-                        }
-                    }
+                    int tempElderly = employeeAssignment2.get(mutationPoint4);
+
+                    employeeAssignment2.set(mutationPoint4, employeeAssignment.get(mutationPoint2));
+                    employeeAssignment.set(mutationPoint2, tempElderly);
+
+
                 }
             }
         }
@@ -611,12 +610,12 @@ public class DispatchService {
             combinedChromosomes.addAll(offspringChromosomes);
 
             // 정렬
-            combinedChromosomes.stream().sorted().collect(Collectors.toList());
+            Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
 
-            System.out.println("combinedChromosomes - - -");
-            for (Chromosome chromosome : combinedChromosomes) {
-                System.out.println(chromosome.getGenes() + " / " + chromosome.getFitness());
-            }
+//            System.out.println("combinedChromosomes - - -");
+//            for (Chromosome chromosome : combinedChromosomes) {
+//                System.out.println(chromosome.getGenes() + " / " + chromosome.getFitness());
+//            }
 
             // 최상위 개체만 선택
             return combinedChromosomes.subList(0, POPULATION_SIZE);

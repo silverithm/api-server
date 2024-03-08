@@ -16,7 +16,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Chromosome implements Comparable<Chromosome> {
+public class Chromosome {
 
     private List<List<Integer>> genes;
     private double fitness;
@@ -112,12 +112,6 @@ public class Chromosome implements Comparable<Chromosome> {
 //    public void setGene(int index, int value) {
 //        genes.set(index, value);
 //    }
-
-
-    @Override
-    public int compareTo(Chromosome other) {
-        return Double.compare(other.fitness, fitness);
-    }
 
 
 }
