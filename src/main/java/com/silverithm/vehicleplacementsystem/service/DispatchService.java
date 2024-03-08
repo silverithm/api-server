@@ -37,8 +37,8 @@ public class DispatchService {
 
     private static boolean[] visited;
 
-    private static int MAX_ITERATIONS = 120;
-    private static int POPULATION_SIZE = 7000;
+    private static int MAX_ITERATIONS = 200;
+    private static int POPULATION_SIZE = 1000;
     private static double MUTATION_RATE = 0.05;
     private static double CROSSOVER_RATE = 0.8;
     public static final int SINGLE_POINT = 0;
@@ -386,9 +386,26 @@ public class DispatchService {
                             .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 500) {
                         fitness += 10;
                     }
-
-
                 }
+
+                if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) == 0) {
+                    fitness += 50;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) <= 250) {
+                    fitness += 30;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) <= 500) {
+                    fitness += 10;
+                }
+
+
             }
 
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
