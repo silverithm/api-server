@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -278,7 +277,7 @@ public class DispatchService {
             // 반복
             for (int i = 0; i < MAX_ITERATIONS; i++) {
                 // 평가
-                evaluatePopulation(chromosomes, employees, distanceMatrix);
+                evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
 
                 // 선택
                 List<Chromosome> selectedChromosomes = selectParents(chromosomes);
@@ -351,14 +350,16 @@ public class DispatchService {
         }
 
         private void evaluatePopulation(List<Chromosome> chromosomes, List<EmployeeDTO> employee,
-                                        Map<String, Map<String, Integer>> distanceMatrix) {
+                                        Map<String, Map<String, Integer>> distanceMatrix,
+                                        Map<Integer, List<Integer>> fixedAssignmentsMap) {
             for (Chromosome chromosome : chromosomes) {
-                chromosome.setFitness(calculateFitness(chromosome, employees, distanceMatrix));
+                chromosome.setFitness(calculateFitness(chromosome, employees, distanceMatrix, fixedAssignmentsMap));
             }
         }
 
         private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees,
-                                        Map<String, Map<String, Integer>> distanceMatrix) {
+                                        Map<String, Map<String, Integer>> distanceMatrix,
+                                        Map<Integer, List<Integer>> fixedAssignmentsMap) {
             double fitness = 0.0;
 
             // 퇴근 시간 계산
@@ -419,6 +420,15 @@ public class DispatchService {
                             break;
                         }
                         frontSeatAssigned = true;
+                    }
+                }
+            }
+
+            for (int employee_idx : fixedAssignmentsMap.keySet()) {
+                for (int elderly_idx : fixedAssignmentsMap.get(employee_idx)) {
+                    if (!chromosome.getGenes().get(employee_idx).contains(elderly_idx)) {
+                        fitness = 0.0;
+                        return fitness;
                     }
                 }
             }
