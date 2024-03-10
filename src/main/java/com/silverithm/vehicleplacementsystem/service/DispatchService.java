@@ -7,6 +7,7 @@ import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
+import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.Arrays;
@@ -37,8 +38,8 @@ public class DispatchService {
     private static boolean[] visited;
 
     private static int MAX_ITERATIONS = 200;
-    private static int POPULATION_SIZE = 1000;
-    private static double MUTATION_RATE = 0.05;
+    private static int POPULATION_SIZE = 3000;
+    private static double MUTATION_RATE = 0.5;
     private static double CROSSOVER_RATE = 0.8;
     public static final int SINGLE_POINT = 0;
     public static final int TWO_POINT = 1;
@@ -112,7 +113,8 @@ public class DispatchService {
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
 
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments);
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
+                requestDispatchDTO.dispatchType());
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
         // 최적의 솔루션 추출
@@ -180,6 +182,7 @@ public class DispatchService {
 
             if (totalTime.isPresent()) {
                 distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
             }
 
             if (totalTime.isEmpty()) {
@@ -251,17 +254,18 @@ public class DispatchService {
         private final List<EmployeeDTO> employees;
         private final List<ElderlyDTO> elderlys;
         private final Map<Integer, List<Integer>> fixedAssignmentsMap;
-
         private final Map<String, Map<String, Integer>> distanceMatrix;
+        private final DispatchType dispatchType;
 
 
         public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                                 Map<String, Map<String, Integer>> distanceMatrix,
-                                List<FixedAssignmentsDTO> fixedAssignments) {
+                                List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType) {
             this.employees = employees;
             this.elderlys = elderly;
             this.distanceMatrix = distanceMatrix;
             this.fixedAssignmentsMap = generateFixedAssignmentMap(fixedAssignments);
+            this.dispatchType = dispatchType;
         }
 
 
@@ -389,21 +393,43 @@ public class DispatchService {
                     }
                 }
 
-                if (
-                        distanceMatrix.get("Elderly_" + elderlys.get(
-                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                .get("Employee_" + employees.get(i).id()) == 0) {
-                    fitness += 50;
-                } else if (
-                        distanceMatrix.get("Elderly_" + elderlys.get(
-                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                .get("Employee_" + employees.get(i).id()) <= 250) {
-                    fitness += 30;
-                } else if (
-                        distanceMatrix.get("Elderly_" + elderlys.get(
-                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                .get("Employee_" + employees.get(i).id()) <= 500) {
-                    fitness += 10;
+                if (dispatchType.equals(DispatchType.OUT)) {
+                    if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Employee_" + employees.get(i).id()) == 0) {
+                        fitness += 50;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Employee_" + employees.get(i).id()) <= 250) {
+                        fitness += 30;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Employee_" + employees.get(i).id()) <= 500) {
+                        fitness += 10;
+                    }
+                }
+
+                if (dispatchType.equals((DispatchType.IN))) {
+                    if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Company") == 0) {
+                        fitness += 50;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Company") <= 250) {
+                        fitness += 30;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Company") <= 500) {
+                        fitness += 10;
+                    }
+
                 }
 
 
@@ -439,25 +465,53 @@ public class DispatchService {
         private List<Double> calculateDepartureTimes(Chromosome chromosome) {
             List<Double> departureTimes = new ArrayList<>();
 
-            for (int i = 0; i < chromosome.getGenes().size(); i++) {
-                double departureTime = 0.0;
-                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
-                    String company = "Company";
-                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
-                    String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
+            if (dispatchType.equals(DispatchType.OUT)) {
+                for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                    double departureTime = 0.0;
+                    for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                        String company = "Company";
+                        String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                        String destinationNodeId =
+                                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
-                    if (j == 0) {
-                        departureTime += distanceMatrix.get(company).get("Elderly_" + elderlys.get(j).id());
+                        if (j == 0) {
+                            departureTime += distanceMatrix.get(company).get("Elderly_" + elderlys.get(j).id());
+                        }
+
+                        departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                     }
 
-                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+                    departureTime += distanceMatrix.get(
+                                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).size() - 1).id())
+                            .get("Employee_" + employees.get(i).id());
+
+                    departureTimes.add(departureTime);
                 }
+            }
 
-                departureTime += distanceMatrix.get(
-                                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).size() - 1).id())
-                        .get("Employee_" + employees.get(i).id());
+            if (dispatchType.equals(DispatchType.IN)) {
+                for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                    String company = "Company";
+                    double departureTime = 0.0;
+                    for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                        String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                        String destinationNodeId =
+                                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
-                departureTimes.add(departureTime);
+                        if (j == 0) {
+                            departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
+                                    .get("Elderly_" + elderlys.get(j).id());
+                        }
+
+                        departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+                    }
+
+                    departureTime += distanceMatrix.get(
+                                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).size() - 1).id())
+                            .get(company);
+
+                    departureTimes.add(departureTime);
+                }
             }
 
             return departureTimes;
