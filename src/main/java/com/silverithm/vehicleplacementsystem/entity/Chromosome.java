@@ -63,10 +63,13 @@ public class Chromosome {
         }
 
         int startIndex = 0;
+        int cnt = 1;
         while (startIndex < elderlyIndices.size()) {
             boolean assigned = false;
             for (int e = 0; e < numEmployees && startIndex < elderlyIndices.size(); e++) {
-                if (employeesCapacityLeft[e] > 0) {
+                if (employeesCapacityLeft[e] > 0
+                        && employees.get(e).maximumCapacity() - employeesCapacityLeft[e] < cnt) {
+
                     chromosome.get(e).add(elderlyIndices.get(startIndex));
                     employeesCapacityLeft[e]--;
                     startIndex++;
@@ -76,6 +79,7 @@ public class Chromosome {
             if (!assigned) {
                 throw new IllegalStateException("모든 직원의 capacity가 초과되어 더 이상 노인을 할당할 수 없습니다.");
             }
+            cnt++;
         }
 
         genes = chromosome;

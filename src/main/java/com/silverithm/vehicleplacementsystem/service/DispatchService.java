@@ -39,8 +39,8 @@ public class DispatchService {
 
     private static int MAX_ITERATIONS = 200;
     private static int POPULATION_SIZE = 3000;
-    private static double MUTATION_RATE = 0.5;
-    private static double CROSSOVER_RATE = 0.8;
+    private static double MUTATION_RATE = 0.8;
+    private static double CROSSOVER_RATE = 0.9;
     public static final int SINGLE_POINT = 0;
     public static final int TWO_POINT = 1;
     public static final int UNIFORM = 2;
@@ -285,31 +285,31 @@ public class DispatchService {
 
                 // 선택
                 List<Chromosome> selectedChromosomes = selectParents(chromosomes);
-                System.out.println("selectedChromosomes - - -" + i);
-                for (Chromosome chromosome : selectedChromosomes) {
-                    System.out.println(chromosome.getGenes());
-                }
+//                System.out.println("selectedChromosomes - - -" + i);
+//                for (Chromosome chromosome : selectedChromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
 
                 // 교차
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
-                System.out.println("offspringChromosomes - - -" + i);
-                for (Chromosome chromosome : offspringChromosomes) {
-                    System.out.println(chromosome.getGenes());
-                }
+//                System.out.println("offspringChromosomes - - -" + i);
+//                for (Chromosome chromosome : offspringChromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
 
                 // 돌연변이
                 mutate(offspringChromosomes, elderlys.size());
-                System.out.println("mutateChromosomes - - -" + i);
-                for (Chromosome chromosome : offspringChromosomes) {
-                    System.out.println(chromosome.getGenes());
-                }
+//                System.out.println("mutateChromosomes - - -" + i);
+//                for (Chromosome chromosome : offspringChromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
 
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
-                System.out.println("nextGenerations - - -" + i);
-                for (Chromosome chromosome : chromosomes) {
-                    System.out.println(chromosome.getGenes());
-                }
+//                System.out.println("nextGenerations - - -" + i);
+//                for (Chromosome chromosome : chromosomes) {
+//                    System.out.println(chromosome.getGenes());
+//                }
 
                 System.out.println("nextGenerations - - -");
 
@@ -413,6 +413,27 @@ public class DispatchService {
                 }
 
                 if (dispatchType.equals((DispatchType.IN))) {
+
+                    if (
+                            distanceMatrix.get("Employee_" + employees.get(i).id())
+                                    .get("Elderly_" + elderlys.get(
+                                                    chromosome.getGenes().get(i).get(0))
+                                            .id()) == 0) {
+                        fitness += 50;
+                    } else if (
+                            distanceMatrix.get("Employee_" + employees.get(i).id())
+                                    .get("Elderly_" + elderlys.get(
+                                                    chromosome.getGenes().get(i).get(0))
+                                            .id()) == 250) {
+                        fitness += 30;
+                    } else if (
+                            distanceMatrix.get("Employee_" + employees.get(i).id())
+                                    .get("Elderly_" + elderlys.get(
+                                                    chromosome.getGenes().get(i).get(0))
+                                            .id()) == 500) {
+                        fitness += 10;
+                    }
+
                     if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
