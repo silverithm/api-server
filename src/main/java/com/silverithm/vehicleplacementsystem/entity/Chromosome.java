@@ -36,6 +36,7 @@ public class Chromosome {
 
         List<List<Integer>> chromosome = new ArrayList<>();
         int[] employeesCapacityLeft = new int[numEmployees];
+
         for (int e = 0; e < numEmployees; e++) {
             employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
             chromosome.add(new ArrayList<>()); // 미리 리스트를 초기화
@@ -99,14 +100,19 @@ public class Chromosome {
 //
 //    }
         for (int i = 0; i < numEmployees; i++) {
-            chromosome.get(i).add(elderlyIndices.get(i));
-            employeesCapacityLeft[i]--;
-            elderlyIndices.remove(i);
+            if (employeesCapacityLeft[i] > 0) {
+                chromosome.get(i).add(elderlyIndices.get(0));
+                employeesCapacityLeft[i]--;
+                elderlyIndices.remove(0);
+            }
+
         }
         for (int i = 0; i < numEmployees; i++) {
-            chromosome.get(i).add(elderlyIndices.get(i));
-            employeesCapacityLeft[i]--;
-            elderlyIndices.remove(i);
+            if (employeesCapacityLeft[i] > 0) {
+                chromosome.get(i).add(elderlyIndices.get(0));
+                employeesCapacityLeft[i]--;
+                elderlyIndices.remove(0);
+            }
         }
 
         int startIndex = 0;

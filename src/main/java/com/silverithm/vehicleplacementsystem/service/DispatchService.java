@@ -39,9 +39,9 @@ public class DispatchService {
     private static boolean[] visited;
 
     private static int MAX_ITERATIONS = 300;
-    private static int POPULATION_SIZE = 3000;
-    private static double MUTATION_RATE = 0.8;
-    private static double CROSSOVER_RATE = 0.75;
+    private static int POPULATION_SIZE = 6000;
+    private static double MUTATION_RATE = 0.9;
+    private static double CROSSOVER_RATE = 0.8;
     public static final int SINGLE_POINT = 0;
     public static final int TWO_POINT = 1;
     public static final int UNIFORM = 2;
@@ -416,12 +416,22 @@ public class DispatchService {
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Employee_" + employees.get(i).id()) <= 250) {
-                        fitness += 3;
+                        fitness += 2;
                     } else if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Employee_" + employees.get(i).id()) <= 500) {
-                        fitness += 1;
+                        fitness += 1.5;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Employee_" + employees.get(i).id()) <= 750) {
+                        fitness += 1.0;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Employee_" + employees.get(i).id()) <= 1000) {
+                        fitness += 0.5;
                     }
                 }
 
