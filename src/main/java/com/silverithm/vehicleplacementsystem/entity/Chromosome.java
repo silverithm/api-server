@@ -62,24 +62,63 @@ public class Chromosome {
             }
         }
 
-        int startIndex = 0;
-        int cnt = 1;
-        while (startIndex < elderlyIndices.size()) {
-            boolean assigned = false;
-            for (int e = 0; e < numEmployees && startIndex < elderlyIndices.size(); e++) {
-                if (employeesCapacityLeft[e] > 0
-                        && employees.get(e).maximumCapacity() - employeesCapacityLeft[e] < cnt) {
+//        int startIndex = 0;
+//        int cnt = 1;
+//        Random rand = new Random();
+//        while (startIndex < elderlyIndices.size()) {
+////            boolean assigned = false;
+//            int randIndex = rand.nextInt(numEmployees);
+//            System.out.println(randIndex);
+//
+////            for (int e = 0; e < numEmployees && startIndex < elderlyIndices.size(); e++) {
+////                if (employeesCapacityLeft[e] > 0
+////                        && employees.get(e).maximumCapacity() - employeesCapacityLeft[e] < cnt) {
+////
+////                    chromosome.get(e).add(elderlyIndices.get(startIndex));
+////                    employeesCapacityLeft[e]--;
+////                    startIndex++;
+////                    assigned = true;
+////                }
+////            }
+//
+//            if (employeesCapacityLeft[randIndex] > 0) {
+//
+//                chromosome.get(randIndex).add(elderlyIndices.get(startIndex));
+//                employeesCapacityLeft[randIndex]--;
+//                startIndex++;
+////                assigned = true;
+//            }
+//
+////            if (!assigned) {
+////                throw new IllegalStateException("모든 직원의 capacity가 초과되어 더 이상 노인을 할당할 수 없습니다.");
+////            }
+////            cnt++;
+//        }
+//
+//        genes = chromosome;
+//
+//    }
+        for (int i = 0; i < numEmployees; i++) {
+            chromosome.get(i).add(elderlyIndices.get(i));
+            employeesCapacityLeft[i]--;
+            elderlyIndices.remove(i);
+        }
+        for (int i = 0; i < numEmployees; i++) {
+            chromosome.get(i).add(elderlyIndices.get(i));
+            employeesCapacityLeft[i]--;
+            elderlyIndices.remove(i);
+        }
 
-                    chromosome.get(e).add(elderlyIndices.get(startIndex));
-                    employeesCapacityLeft[e]--;
-                    startIndex++;
-                    assigned = true;
-                }
+        int startIndex = 0;
+        Random rand = new Random();
+        while (startIndex < elderlyIndices.size()) {
+            int randIndex = rand.nextInt(numEmployees);
+            if (employeesCapacityLeft[randIndex] > 0) {
+                chromosome.get(randIndex).add(elderlyIndices.get(startIndex));
+                employeesCapacityLeft[randIndex]--;
+                startIndex++;
             }
-            if (!assigned) {
-                throw new IllegalStateException("모든 직원의 capacity가 초과되어 더 이상 노인을 할당할 수 없습니다.");
-            }
-            cnt++;
+
         }
 
         genes = chromosome;

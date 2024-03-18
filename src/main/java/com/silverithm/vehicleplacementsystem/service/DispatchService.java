@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -37,10 +38,10 @@ public class DispatchService {
 
     private static boolean[] visited;
 
-    private static int MAX_ITERATIONS = 200;
+    private static int MAX_ITERATIONS = 300;
     private static int POPULATION_SIZE = 3000;
     private static double MUTATION_RATE = 0.8;
-    private static double CROSSOVER_RATE = 0.9;
+    private static double CROSSOVER_RATE = 0.75;
     public static final int SINGLE_POINT = 0;
     public static final int TWO_POINT = 1;
     public static final int UNIFORM = 2;
@@ -121,6 +122,12 @@ public class DispatchService {
         Chromosome bestChromosome = chromosomes.get(0);
 
         System.out.println(bestChromosome.getDepartureTimes());
+
+        double sum = 0;
+        for (double value : bestChromosome.getDepartureTimes()) {
+            sum += value;
+        }
+        System.out.println(sum / bestChromosome.getGenes().size());
 
         System.out.println();
         System.out.println("- - - - - - - - - - - - - - - - - - - - ");
@@ -273,10 +280,10 @@ public class DispatchService {
 
             // 초기 솔루션 생성
             List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
-            System.out.println("chromosomes - - -");
-            for (Chromosome chromosome : chromosomes) {
-                System.out.println(chromosome.getGenes());
-            }
+//            System.out.println("chromosomes - - -");
+//            for (Chromosome chromosome : chromosomes) {
+//                System.out.println(chromosome.getGenes());
+//            }
 
             // 반복
             for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -383,13 +390,19 @@ public class DispatchService {
 
                     if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
                             .get("Elderly_" + elderlys.get(elderlyIndex2).id()) == 0) {
-                        fitness += 50;
+                        fitness += 5;
                     } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
                             .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 250) {
-                        fitness += 30;
+                        fitness += 4;
                     } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
                             .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 500) {
-                        fitness += 10;
+                        fitness += 3;
+                    } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                            .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 750) {
+                        fitness += 2;
+                    } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                            .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 1000) {
+                        fitness += 1;
                     }
                 }
 
@@ -398,17 +411,17 @@ public class DispatchService {
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Employee_" + employees.get(i).id()) == 0) {
-                        fitness += 50;
+                        fitness += 5;
                     } else if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Employee_" + employees.get(i).id()) <= 250) {
-                        fitness += 30;
+                        fitness += 3;
                     } else if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Employee_" + employees.get(i).id()) <= 500) {
-                        fitness += 10;
+                        fitness += 1;
                     }
                 }
 
@@ -419,37 +432,60 @@ public class DispatchService {
                                     .get("Elderly_" + elderlys.get(
                                                     chromosome.getGenes().get(i).get(0))
                                             .id()) == 0) {
-                        fitness += 50;
+                        fitness += 5;
                     } else if (
                             distanceMatrix.get("Employee_" + employees.get(i).id())
                                     .get("Elderly_" + elderlys.get(
                                                     chromosome.getGenes().get(i).get(0))
-                                            .id()) == 250) {
-                        fitness += 30;
+                                            .id()) <= 250) {
+                        fitness += 2;
                     } else if (
                             distanceMatrix.get("Employee_" + employees.get(i).id())
                                     .get("Elderly_" + elderlys.get(
                                                     chromosome.getGenes().get(i).get(0))
-                                            .id()) == 500) {
-                        fitness += 10;
+                                            .id()) <= 500) {
+                        fitness += 1.5;
+                    } else if (
+                            distanceMatrix.get("Employee_" + employees.get(i).id())
+                                    .get("Elderly_" + elderlys.get(
+                                                    chromosome.getGenes().get(i).get(0))
+                                            .id()) <= 750) {
+                        fitness += 1.0;
+                    } else if (
+                            distanceMatrix.get("Employee_" + employees.get(i).id())
+                                    .get("Elderly_" + elderlys.get(
+                                                    chromosome.getGenes().get(i).get(0))
+                                            .id()) <= 1000) {
+                        fitness += 0.5;
                     }
 
                     if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Company") == 0) {
-                        fitness += 50;
+                        fitness += 5;
                     } else if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Company") <= 250) {
-                        fitness += 30;
+                        fitness += 2;
                     } else if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
                                             chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                                     .get("Company") <= 500) {
-                        fitness += 10;
+                        fitness += 1.5;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Company") <= 750) {
+                        fitness += 1.0;
+                    } else if (
+                            distanceMatrix.get("Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                    .get("Company") <= 1000) {
+                        fitness += 0.5;
                     }
+
 
                 }
 
@@ -727,6 +763,10 @@ public class DispatchService {
                 List<Integer> newGene1 = new ArrayList<>(parent2.getGenes().get(j));
                 List<Integer> newGene2 = new ArrayList<>(parent1.getGenes().get(j));
 
+                if (newGene1.size() != newGene2.size()) {
+                    continue;
+                }
+
                 child1.getGenes().set(j, newGene1);
                 child2.getGenes().set(j, newGene2);
 
@@ -753,6 +793,11 @@ public class DispatchService {
             Chromosome child2 = Chromosome.copy(parent2);
 
             for (int j = crossoverPoint1; j < crossoverPoint2; j++) {
+
+                if (parent2.getGenes().size() != parent1.getGenes().get(j).size()) {
+                    continue;
+                }
+
                 // 두 교차 지점 사이 유전자 교환
                 child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
                 child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
@@ -771,6 +816,10 @@ public class DispatchService {
             Chromosome child2 = Chromosome.copy(parent2);
 
             for (int j = 0; j < parent1.getGenes().size(); j++) {
+
+                if (parent2.getGenes().size() != parent1.getGenes().get(j).size()) {
+                    continue;
+                }
                 // 균일 교차: 확률에 따라 유전자 교환
                 if (rand.nextDouble() < 0.5) {
                     child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
