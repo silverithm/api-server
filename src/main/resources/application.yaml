@@ -13,7 +13,7 @@ spring:
         show_sql: true
         format_sql: true
         hbm2ddl:
-          auto: update
+          auto: create
     database: h2
     database-platform: org.hibernate.dialect.H2Dialect
 

@@ -14,14 +14,12 @@ public class Elderly extends Node {
 
 
     private String name;
-    private int age;
     @Embedded
     private Location homeAddress;
     private boolean requiredFrontSeat;
 
-    public Elderly(String name, int age, Location homeAddress, boolean requiredFrontSeat) {
+    public Elderly(String name, Location homeAddress, boolean requiredFrontSeat) {
         this.name = name;
-        this.age = age;
         this.homeAddress = homeAddress;
         this.requiredFrontSeat = requiredFrontSeat;
     }

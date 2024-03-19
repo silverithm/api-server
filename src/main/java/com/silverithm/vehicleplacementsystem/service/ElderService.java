@@ -36,7 +36,7 @@ public class ElderService {
 
         Location homeAddress = getAddressCoordinates(addElderRequest.homeAddress());
 
-        Elderly elderly = new Elderly(addElderRequest.name(), addElderRequest.age(), homeAddress,
+        Elderly elderly = new Elderly(addElderRequest.name(), homeAddress,
                 addElderRequest.requireFrontSeat());
         elderRepository.save(elderly);
     }
