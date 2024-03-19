@@ -145,12 +145,6 @@ public class JwtTokenProvider {
 
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
 
-        System.out.println("resolveToken request1 : " + request.getHeaderNames());
-        System.out.println("resolveToken request2 : " + request.toString());
-        System.out.println("resolveToken request3 : " + request.getQueryString());
-
-        System.out.println("resolveToken value test4 : " + request.getHeader(AUTHORIZATION_HEADER));
-
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_TYPE)) {
             return bearerToken.substring(7);
         }
