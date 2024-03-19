@@ -5,6 +5,7 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -24,6 +25,9 @@ public class Elderly extends Node {
         this.requiredFrontSeat = requiredFrontSeat;
     }
 
+    public String getName() {
+        return name;
+    }
 
     public Location getHomeAddress() {
         return homeAddress;
@@ -32,5 +36,6 @@ public class Elderly extends Node {
     public boolean isRequiredFrontSeat() {
         return requiredFrontSeat;
     }
+
 
 }
