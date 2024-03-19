@@ -51,4 +51,8 @@ public class ElderService {
 
         return elderlyDTOS;
     }
+
+    public void deleteElder(Long elderId) {
+        elderRepository.deleteById(elderId);
+    }
 }
