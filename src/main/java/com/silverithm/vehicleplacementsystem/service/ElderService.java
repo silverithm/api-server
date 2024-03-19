@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
+import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -54,5 +56,13 @@ public class ElderService {
 
     public void deleteElder(Long elderId) {
         elderRepository.deleteById(elderId);
+    }
+
+    @Transactional
+    public void updateElder(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) {
+        Location updatedHomeAddress = geocodingService.getAddressCoordinates(elderUpdateRequestDTO.homeAddress());
+        Elderly elderly = elderRepository.findById(id).orElseThrow();
+        elderly.update(elderUpdateRequestDTO.name(), updatedHomeAddress,
+                elderUpdateRequestDTO.requiredFrontSeat());
     }
 }

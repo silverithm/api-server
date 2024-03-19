@@ -37,5 +37,11 @@ public class Elderly extends Node {
         return requiredFrontSeat;
     }
 
+    public void update(String name, Location homeAddress, boolean requiredFrontSeat) {
+        this.name = name;
+        this.homeAddress = homeAddress;
+        this.requiredFrontSeat = requiredFrontSeat;
+    }
+
 
 }
