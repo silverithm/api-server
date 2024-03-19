@@ -1,4 +1,4 @@
-package com.silverithm.vehicleplacementsystem.config;
+package com.silverithm.vehicleplacementsystem.config.querydsl;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;

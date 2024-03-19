@@ -34,9 +34,12 @@ public class AppUser {
     private String accessToken;
     private String refreshToken;
 
-    public void update(String accessToken, String refreshToken){
-        this.accessToken=accessToken;
-        this.refreshToken=refreshToken;
+    public void update(String accessToken, String refreshToken) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
     }
 
+    public void updateRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
 }

@@ -1,8 +1,10 @@
 package com.silverithm.vehicleplacementsystem.security;
 
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.jwt.JwtAuthenticationFilter;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -26,7 +28,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class WebSecurityConfigure {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private RedisUtils redisUtils;
 
 
     @Bean
@@ -56,13 +62,11 @@ public class WebSecurityConfigure {
                 .authorizeHttpRequests(
                         authorize -> authorize
                                 .requestMatchers("/h2-console/*").permitAll()
-                                .requestMatchers("/signin").permitAll()
-                                .requestMatchers("/signup").permitAll()
+                                .requestMatchers("api/v1/signin").permitAll()
+                                .requestMatchers("api/v1/signup").permitAll()
                                 .anyRequest().authenticated()
-                );
-
-        //jwt filter 설정
-        http.addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+                ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
