@@ -15,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.xml.sax.helpers.LocatorImpl;
 
 @Entity
 @Getter
@@ -29,7 +30,7 @@ public class Employee extends Node {
             @AttributeOverride(name = "latitude", column = @Column(name = "workplace_latitude")),
             @AttributeOverride(name = "longitude", column = @Column(name = "workplace_longitude"))
     })
-    private Location workplace;
+    private Location workPlace;
 
     @Embedded
     @AttributeOverrides({
@@ -41,11 +42,17 @@ public class Employee extends Node {
 
     public Employee(String name, Location workplace, Location homeAddress, int maximumCapacity) {
         this.name = name;
-        this.workplace = workplace;
+        this.workPlace = workplace;
         this.homeAddress = homeAddress;
         this.maximumCapacity = maximumCapacity;
     }
 
 
+    public void update(String name, Location homeAddress, Location workPlace, int maxCapacity) {
+        this.name = name;
+        this.homeAddress = homeAddress;
+        this.workPlace = workPlace;
+        this.maximumCapacity = maxCapacity;
+    }
 }
 

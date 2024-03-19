@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
+import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ElderService;
 import com.silverithm.vehicleplacementsystem.service.EmployeeService;
 import java.util.List;
@@ -42,8 +43,8 @@ public class EmployeeController {
 
     @PutMapping("/api/v1/employee/{id}")
     public String updateElder(@PathVariable("id") final Long id,
-                              @RequestBody ElderUpdateRequestDTO elderUpdateRequestDTO) {
-        employeeService.updateEmployee(id, elderUpdateRequestDTO);
+                              @RequestBody EmployeeUpdateRequestDTO employeeUpdateRequestDTO) {
+        employeeService.updateEmployee(id, employeeUpdateRequestDTO);
         return "Success";
     }
 }
