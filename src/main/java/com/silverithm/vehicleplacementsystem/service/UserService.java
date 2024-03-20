@@ -65,11 +65,11 @@ public class UserService {
     public TokenInfo signin(UserSigninDTO userSigninDTO) {
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(userSigninDTO.getName(), userSigninDTO.getPassword()));
+                    new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
 
-            AppUser findUser = userRepository.findByUsername(userSigninDTO.getName());
+            AppUser findUser = userRepository.findByUsername(userSigninDTO.getEmail());
 
-            TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getName(),
+            TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
                     Collections.singleton(findUser.getUserRole()));
 
             findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
