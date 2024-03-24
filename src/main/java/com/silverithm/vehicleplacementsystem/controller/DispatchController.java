@@ -5,11 +5,13 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 public class DispatchController {
 
@@ -17,7 +19,7 @@ public class DispatchController {
     private DispatchService dispatchService;
 
     // RESTful API endpoint
-    @PostMapping("/dispatch")
+    @PostMapping("/api/v1/dispatch")
     public List<Location> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
         dispatchService.getOptimizedAssignments(requestDispatchDTO);
         return null;
