@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
@@ -22,7 +23,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("api/v1/signin")
-    public TokenInfo login(@RequestBody UserSigninDTO userSigninDTO) {
+    public SigninResponseDTO login(@RequestBody UserSigninDTO userSigninDTO) {
         return userService.signin(userSigninDTO);
     }
 
@@ -37,7 +38,6 @@ public class UserController {
         userService.logout(request);
         return ResponseEntity.ok().build();
     }
-
 
 //    @DeleteMapping(value = "/{username}")
 //    public String delete(@PathVariable String username) {

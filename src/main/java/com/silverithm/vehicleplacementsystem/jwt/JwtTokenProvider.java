@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.jwt;
 
 
+import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -56,8 +57,7 @@ public class JwtTokenProvider {
     }
 
     //name, authorities 를 가지고 AccessToken, RefreshToken 을 생성하는 메서드
-    public UserResponseDTO.TokenInfo generateToken(String name,
-                                                   Collection<? extends GrantedAuthority> inputAuthorities) {
+    public UserResponseDTO.TokenInfo generateToken(String name, Collection<? extends GrantedAuthority> inputAuthorities) {
         //권한 가져오기
         String authorities = inputAuthorities.stream()
                 .map(GrantedAuthority::getAuthority)

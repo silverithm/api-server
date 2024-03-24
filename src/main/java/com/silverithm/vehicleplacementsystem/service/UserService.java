@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
@@ -67,7 +68,7 @@ public class UserService {
     }
 
     @Transactional
-    public TokenInfo signin(UserSigninDTO userSigninDTO) {
+    public SigninResponseDTO signin(UserSigninDTO userSigninDTO) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
@@ -79,7 +80,7 @@ public class UserService {
 
             findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
 
-            return tokenInfo;
+            return new SigninResponseDTO(findUser.getCompanyName(), findUser.getCompanyAddress(), tokenInfo);
 
 
         } catch (AuthenticationException e) {

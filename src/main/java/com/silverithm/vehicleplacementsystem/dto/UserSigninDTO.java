@@ -7,5 +7,5 @@ public class UserSigninDTO {
 
     private String email;
     private String password;
-
+    
 }

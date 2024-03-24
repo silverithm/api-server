@@ -6,6 +6,7 @@ import lombok.Getter;
 
 public class UserResponseDTO {
 
+
     @Builder
     @Getter
     @AllArgsConstructor
@@ -15,5 +16,7 @@ public class UserResponseDTO {
         private Long accessTokenExpirationTime;
         private String refreshToken;
         private Long refreshTokenExpirationTime;
+        private String companyName;
+        private Location companyAddress;
     }
 }
