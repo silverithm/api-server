@@ -1,10 +1,12 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -45,6 +47,9 @@ public class UserService {
     private UserRepository userRepository;
     @Autowired
     private RedisUtils redisUtils;
+
+    @Autowired
+    private GeocodingService geocodingService;
 
     private Key secretKey;
 
@@ -87,21 +92,20 @@ public class UserService {
         TokenInfo tokenInfo = jwtTokenProvider.generateToken(userDataDTO.getName(),
                 Collections.singleton(userDataDTO.getRole()));
 
-        if (!userRepository.existsByUsername(userDataDTO.getName())) {
+        if (!userRepository.existsByEmail(userDataDTO.getEmail())) {
+            Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
 
             System.out.println(userDataDTO.getName());
-            AppUser user = new AppUser();
-            user.setUsername(userDataDTO.getName());
-            user.setEmail(userDataDTO.getEmail());
-            user.setPassword(passwordEncoder.encode(userDataDTO.getPassword()));
-            user.setUserRole(userDataDTO.getRole());
-            user.setAccessToken(tokenInfo.getAccessToken());
-            user.setRefreshToken(tokenInfo.getRefreshToken());
+            AppUser user = new AppUser(userDataDTO.getName(), userDataDTO.getEmail(),
+                    passwordEncoder.encode(userDataDTO.getPassword()), userDataDTO.getRole(),
+                    tokenInfo.getAccessToken(), tokenInfo.getRefreshToken(),
+                    userDataDTO.getCompanyName(), companyLocation);
+
             userRepository.save(user);
 
             return tokenInfo;
         } else {
-            throw new CustomException("Username is already in use", HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomException("Useremail is already in use", HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 

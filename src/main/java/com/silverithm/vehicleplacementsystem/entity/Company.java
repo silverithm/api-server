@@ -14,10 +14,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class Company extends Node {
 
+    private String name;
     @Embedded
     private Location companyAddress;
 
-    public Company(Location companyAddress) {
+    public Company(String name, Location companyAddress) {
+        this.name = name;
         this.companyAddress = companyAddress;
     }
 }

@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.UserRole;
 import java.util.Collection;
 import java.util.List;
@@ -12,4 +13,6 @@ public class UserDataDTO {
     private String email;
     private String password;
     private UserRole role;
+    private String companyName;
+    private String companyAddress;
 }

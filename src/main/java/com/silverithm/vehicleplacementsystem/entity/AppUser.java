@@ -1,14 +1,16 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
+import com.silverithm.vehicleplacementsystem.dto.Location;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
-import java.util.List;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -21,7 +23,6 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
     private String username;
 
     @Column(unique = true, nullable = false)
@@ -33,6 +34,26 @@ public class AppUser {
 
     private String accessToken;
     private String refreshToken;
+    private String companyName;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "latitude", column = @Column(name = "company_latitude")),
+            @AttributeOverride(name = "longitude", column = @Column(name = "company_longitude"))
+    })
+    private Location companyAddress;
+
+    public AppUser(String name, String email, String encode, UserRole role, String accessToken, String refreshToken,
+                   String companyName, Location companyLocation) {
+        this.username = name;
+        this.email = email;
+        this.password = encode;
+        this.userRole = role;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.companyName = companyName;
+        this.companyAddress = companyLocation;
+    }
 
     public void update(String accessToken, String refreshToken) {
         this.accessToken = accessToken;
@@ -42,4 +63,5 @@ public class AppUser {
     public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
     }
+
 }
