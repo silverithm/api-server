@@ -51,9 +51,9 @@ public class ElderService {
     }
 
 
-    public List<ElderlyDTO> getElders() {
+    public List<ElderlyDTO> getElders(Long userId) {
 
-        List<Elderly> elderlys = elderRepository.findAll();
+        List<Elderly> elderlys = elderRepository.findByUserId(userId);
 
         List<ElderlyDTO> elderlyDTOS = elderlys.stream()
                 .map(elderly -> new ElderlyDTO(elderly.getId(), elderly.getName(), elderly.getHomeAddress(),

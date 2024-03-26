@@ -26,13 +26,13 @@ public class ElderController {
         return "Success";
     }
 
-    @GetMapping("/api/v1/elders")
-    public List<ElderlyDTO> getElders() {
-        return elderService.getElders();
+    @GetMapping("/api/v1/elders/{userId}")
+    public List<ElderlyDTO> getElders(@PathVariable("userId") final Long userId) {
+        return elderService.getElders(userId);
     }
 
     @DeleteMapping("/api/v1/elder/{id}")
-    public String getElders(@PathVariable("id") final Long id) {
+    public String deleteElder(@PathVariable("id") final Long id) {
         elderService.deleteElder(id);
         return "Success";
     }

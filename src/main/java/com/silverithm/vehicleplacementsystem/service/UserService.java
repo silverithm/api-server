@@ -80,7 +80,8 @@ public class UserService {
 
             findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
 
-            return new SigninResponseDTO(findUser.getCompanyName(), findUser.getCompanyAddress(), tokenInfo);
+            return new SigninResponseDTO(findUser.getId(), findUser.getCompanyName(), findUser.getCompanyAddress(),
+                    tokenInfo);
 
 
         } catch (AuthenticationException e) {

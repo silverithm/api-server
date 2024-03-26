@@ -30,9 +30,9 @@ public class EmployeeController {
         return "Success";
     }
 
-    @GetMapping("/api/v1/employees")
-    public List<EmployeeDTO> getEmployees() {
-        return employeeService.getEmployees();
+    @GetMapping("/api/v1/employees/{userId}")
+    public List<EmployeeDTO> getEmployees(@PathVariable("userId") final Long userId) {
+        return employeeService.getEmployees(userId);
     }
 
     @DeleteMapping("/api/v1/employee/{id}")

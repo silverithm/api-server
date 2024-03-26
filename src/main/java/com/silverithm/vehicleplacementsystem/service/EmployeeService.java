@@ -44,8 +44,8 @@ public class EmployeeService {
         employeeRepository.save(employee);
     }
 
-    public List<EmployeeDTO> getEmployees() {
-        List<Employee> employees = employeeRepository.findAll();
+    public List<EmployeeDTO> getEmployees(Long userId) {
+        List<Employee> employees = employeeRepository.findByUserId(userId);
 
         List<EmployeeDTO> employeeDTOS = employees.stream()
                 .map(employee -> new EmployeeDTO(employee.getId(), employee.getName(), employee.getHomeAddress(),
