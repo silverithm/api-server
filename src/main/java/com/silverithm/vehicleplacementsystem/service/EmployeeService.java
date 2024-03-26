@@ -6,8 +6,10 @@ import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,10 @@ public class EmployeeService {
     private EmployeeRepository employeeRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+
+    @Autowired
     private GeocodingService geocodingService;
 
     public void addEmployee(AddEmployeeRequest addEmployeeRequest) {
@@ -31,8 +37,10 @@ public class EmployeeService {
         System.out.println(homeAddress + " " + addEmployeeRequest.homeAddress());
         System.out.println(workPlace + " " + addEmployeeRequest.workPlace());
 
+        AppUser user = userRepository.findById(addEmployeeRequest.id()).orElseThrow();
+
         Employee employee = new Employee(addEmployeeRequest.name(), workPlace, homeAddress,
-                addEmployeeRequest.maxCapacity());
+                addEmployeeRequest.maxCapacity(), user);
         employeeRepository.save(employee);
     }
 

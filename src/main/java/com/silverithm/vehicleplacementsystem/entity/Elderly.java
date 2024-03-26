@@ -5,6 +5,8 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -19,10 +21,15 @@ public class Elderly extends Node {
     private Location homeAddress;
     private boolean requiredFrontSeat;
 
-    public Elderly(String name, Location homeAddress, boolean requiredFrontSeat) {
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private AppUser user;
+
+    public Elderly(String name, Location homeAddress, boolean requiredFrontSeat, AppUser user) {
         this.name = name;
         this.homeAddress = homeAddress;
         this.requiredFrontSeat = requiredFrontSeat;
+        this.user = user;
     }
 
     public String getName() {

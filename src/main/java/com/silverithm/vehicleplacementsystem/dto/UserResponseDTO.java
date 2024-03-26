@@ -16,7 +16,6 @@ public class UserResponseDTO {
         private Long accessTokenExpirationTime;
         private String refreshToken;
         private Long refreshTokenExpirationTime;
-        private String companyName;
-        private Location companyAddress;
+
     }
 }

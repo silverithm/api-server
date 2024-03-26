@@ -11,6 +11,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -21,6 +23,7 @@ public class AppUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
     private Long id;
 
     private String username;
@@ -35,6 +38,7 @@ public class AppUser {
     private String accessToken;
     private String refreshToken;
     private String companyName;
+
 
     @Embedded
     @AttributeOverrides({

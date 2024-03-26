@@ -10,6 +10,8 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -40,11 +42,16 @@ public class Employee extends Node {
     private Location homeAddress;
     private int maximumCapacity;
 
-    public Employee(String name, Location workplace, Location homeAddress, int maximumCapacity) {
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private AppUser user;
+
+    public Employee(String name, Location workplace, Location homeAddress, int maximumCapacity, AppUser user) {
         this.name = name;
         this.workPlace = workplace;
         this.homeAddress = homeAddress;
         this.maximumCapacity = maximumCapacity;
+        this.user = user;
     }
 
 

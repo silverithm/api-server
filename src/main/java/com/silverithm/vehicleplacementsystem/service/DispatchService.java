@@ -36,8 +36,6 @@ public class DispatchService {
     //가까운 거리일수록 가중치가 더 들어가야함 - 가까운 거리를 붙여주어야함
     //고정 시키는 인원이 주어지면 해당 직원에게 고정 인원이 없으면 점수를 0으로 해주어야함
 
-    private static boolean[] visited;
-
     private static int MAX_ITERATIONS = 300;
     private static int POPULATION_SIZE = 20000;
     private static double MUTATION_RATE = 0.9;

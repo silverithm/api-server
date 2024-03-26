@@ -7,10 +7,13 @@ import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,14 +34,19 @@ public class ElderService {
     private ElderRepository elderRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private GeocodingService geocodingService;
 
     public void addElder(AddElderRequest addElderRequest) {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addElderRequest.homeAddress());
 
+        AppUser user = userRepository.findById(addElderRequest.id()).orElseThrow();
+
         Elderly elderly = new Elderly(addElderRequest.name(), homeAddress,
-                addElderRequest.requireFrontSeat());
+                addElderRequest.requireFrontSeat(), user);
         elderRepository.save(elderly);
     }
 
