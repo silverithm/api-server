@@ -39,17 +39,9 @@ public class DispatchService {
     private static boolean[] visited;
 
     private static int MAX_ITERATIONS = 300;
-    private static int POPULATION_SIZE = 6000;
+    private static int POPULATION_SIZE = 20000;
     private static double MUTATION_RATE = 0.9;
-    private static double CROSSOVER_RATE = 0.8;
-    public static final int SINGLE_POINT = 0;
-    public static final int TWO_POINT = 1;
-    public static final int UNIFORM = 2;
-    public static final int[] CROSSOVER_TYPES = {
-            SINGLE_POINT,
-            TWO_POINT,
-            UNIFORM
-    };
+    private static double CROSSOVER_RATE = 0.7;
 
 
     @Autowired
@@ -204,6 +196,10 @@ public class DispatchService {
 
         for (int i = 0; i < elderlys.size(); i++) {
             for (int j = 0; j < elderlys.size(); j++) {
+                if (i == j) {
+                    continue;
+                }
+
                 String startNodeId = "Elderly_" + elderlys.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
@@ -229,6 +225,7 @@ public class DispatchService {
 
         for (int i = 0; i < employees.size(); i++) {
             for (int j = 0; j < elderlys.size(); j++) {
+
                 String startNodeId = "Employee_" + employees.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
@@ -291,7 +288,7 @@ public class DispatchService {
                 evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
 
                 // 선택
-                List<Chromosome> selectedChromosomes = selectParents(chromosomes);
+                List<Chromosome> selectedChromosomes = chromosomes;
 //                System.out.println("selectedChromosomes - - -" + i);
 //                for (Chromosome chromosome : selectedChromosomes) {
 //                    System.out.println(chromosome.getGenes());
@@ -549,7 +546,8 @@ public class DispatchService {
                     }
 
                     departureTime += distanceMatrix.get(
-                                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).size() - 1).id())
+                                    "Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                             .get("Employee_" + employees.get(i).id());
 
                     departureTimes.add(departureTime);
@@ -574,7 +572,8 @@ public class DispatchService {
                     }
 
                     departureTime += distanceMatrix.get(
-                                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).size() - 1).id())
+                                    "Elderly_" + elderlys.get(
+                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                             .get(company);
 
                     departureTimes.add(departureTime);
@@ -632,19 +631,21 @@ public class DispatchService {
 
                 // Crossover 확률에 따라 진행
                 if (rand.nextDouble() < CROSSOVER_RATE) {
-                    // 교차 방법 선택
-                    int crossoverType = rand.nextInt(CROSSOVER_TYPES.length);
-                    switch (CROSSOVER_TYPES[crossoverType]) {
-                        case SINGLE_POINT:
-                            offspring.addAll(singlePointCrossover(parent1, parent2, elderlys));
-                            break;
-                        case TWO_POINT:
-                            offspring.addAll(twoPointCrossover(parent1, parent2, elderlys));
-                            break;
-                        case UNIFORM:
-                            offspring.addAll(uniformCrossover(parent1, parent2, elderlys));
-                            break;
-                    }
+
+                    offspring.addAll(multiPointCrossover(parent1, parent2, elderlys));
+
+//                    int crossoverType = rand.nextInt(CROSSOVER_TYPES.length);
+//                    switch (CROSSOVER_TYPES[crossoverType]) {
+//                        case SINGLE_POINT:
+//                            offspring.addAll(singlePointCrossover(parent1, parent2, elderlys));
+//                            break;
+//                        case TWO_POINT:
+//                            offspring.addAll(twoPointCrossover(parent1, parent2, elderlys));
+//                            break;
+//                        case UNIFORM:
+//                            offspring.addAll(uniformCrossover(parent1, parent2, elderlys));
+//                            break;
+//                    }
                 } else {
                     // Crossover가 일어나지 않으면 부모 복제
                     offspring.add(parent1);
@@ -655,103 +656,36 @@ public class DispatchService {
             return offspring;
         }
 
-//        private List<Chromosome> crossover(List<Chromosome> selectedChromosomes, List<ElderlyDTO> elderlys) {
-//            Random rand = new Random();
-//            List<Chromosome> offspring = new ArrayList<>();
-//
-//            for (int i = 0; i < selectedChromosomes.size(); i += 2) {
-//                Chromosome parent1 = Chromosome.copy(selectedChromosomes.get(i));
-//                Chromosome parent2 = Chromosome.copy(selectedChromosomes.get(i + 1));
-//
-//                if (rand.nextDouble() < CROSSOVER_RATE) {
-//                    int crossoverType = rand.nextInt(CROSSOVER_TYPES.length);
-//
-//                    switch (CROSSOVER_TYPES[crossoverType]) {
-//                        case SINGLE_POINT:
-//                            offspring.addAll(innerListSinglePointCrossover(parent1, parent2, elderlys));
-//                            break;
-//                        case TWO_POINT:
-//                            offspring.addAll(innerListTwoPointCrossover(parent1, parent2, elderlys));
-//                            break;
-//                        case UNIFORM:
-//                            offspring.addAll(innerListUniformCrossover(parent1, parent2, elderlys));
-//                            break;
-//                    }
-//                } else {
-//                    offspring.add(parent1);
-//                    offspring.add(parent2);
-//                }
-//            }
-//
-//            return offspring;
-//        }
 
-
-        private List<Chromosome> innerListSinglePointCrossover(Chromosome parent1, Chromosome parent2,
-                                                               List<ElderlyDTO> elderlys) {
-            // Example: Randomly selects inner list and applies single-point crossover
+        private List<Chromosome> multiPointCrossover(Chromosome parent1, Chromosome parent2,
+                                                     List<ElderlyDTO> elderlys) {
             Random rand = new Random();
-            int crossoverListIndex = rand.nextInt(parent1.getGenes().size());
-            int crossoverPoint = rand.nextInt(parent1.getGenes().get(crossoverListIndex).size());
-
-            Chromosome child1 = Chromosome.copy(parent1);
-            Chromosome child2 = Chromosome.copy(parent2);
-
-            // Swap inner list elements after the crossover point
-            for (int i = crossoverPoint; i < parent1.getGenes().get(crossoverListIndex).size() - 1; i++) {
-                int temp = child1.getGenes().get(crossoverListIndex).get(i);
-                child1.getGenes().get(crossoverListIndex).set(i, child2.getGenes().get(crossoverListIndex).get(i));
-                child2.getGenes().get(crossoverListIndex).set(i, temp);
+            int[] crossoverPoints = new int[2];
+            for (int i = 0; i < crossoverPoints.length; i++) {
+                crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
             }
-
-            fixDuplicateAssignments(child1, elderlys);
-            fixDuplicateAssignments(child2, elderlys);
-
-            return Arrays.asList(child1, child2);
-        }
-
-        private List<Chromosome> innerListUniformCrossover(Chromosome parent1, Chromosome parent2,
-                                                           List<ElderlyDTO> elderlys) {
-            Random rand = new Random();
-            int crossoverListIndex = rand.nextInt(parent1.getGenes().size());
+            Arrays.sort(crossoverPoints);
 
             Chromosome child1 = Chromosome.copy(parent1);
             Chromosome child2 = Chromosome.copy(parent2);
 
-            for (int i = 0; i < parent1.getGenes().get(crossoverListIndex).size(); i++) {
-                if (rand.nextDouble() < 0.5) {
-                    int temp = child1.getGenes().get(crossoverListIndex).get(i);
-                    child1.getGenes().get(crossoverListIndex).set(i, child2.getGenes().get(crossoverListIndex).get(i));
-                    child2.getGenes().get(crossoverListIndex).set(i, temp);
+            for (int i = 0; i < crossoverPoints.length; i++) {
+                int start = i == 0 ? 0 : crossoverPoints[i - 1];
+                int end = crossoverPoints[i];
+                for (int j = start; j < end; j++) {
+                    List<Integer> parent1Gene = parent1.getGenes().get(j);
+                    List<Integer> parent2Gene = parent2.getGenes().get(j);
+                    int minLength = Math.min(parent1Gene.size(), parent2Gene.size());
+                    for (int k = 0; k < minLength; k++) {
+                        if (i % 2 == 0) {
+                            child1.getGenes().get(j).set(k, parent1Gene.get(k));
+                            child2.getGenes().get(j).set(k, parent2Gene.get(k));
+                        } else {
+                            child1.getGenes().get(j).set(k, parent2Gene.get(k));
+                            child2.getGenes().get(j).set(k, parent1Gene.get(k));
+                        }
+                    }
                 }
-            }
-
-            fixDuplicateAssignments(child1, elderlys);
-            fixDuplicateAssignments(child2, elderlys);
-
-            return Arrays.asList(child1, child2);
-        }
-
-        private List<Chromosome> innerListTwoPointCrossover(Chromosome parent1, Chromosome parent2,
-                                                            List<ElderlyDTO> elderlys) {
-            Random rand = new Random();
-            int crossoverListIndex = rand.nextInt(parent1.getGenes().size());
-
-            int crossoverPoint1 = rand.nextInt(parent1.getGenes().get(crossoverListIndex).size());
-            int crossoverPoint2 = rand.nextInt(parent1.getGenes().get(crossoverListIndex).size());
-            if (crossoverPoint1 > crossoverPoint2) {
-                int temp = crossoverPoint1;
-                crossoverPoint1 = crossoverPoint2;
-                crossoverPoint2 = temp;
-            }
-
-            Chromosome child1 = Chromosome.copy(parent1);
-            Chromosome child2 = Chromosome.copy(parent2);
-
-            for (int i = crossoverPoint1; i < crossoverPoint2; i++) {
-                int temp = child1.getGenes().get(crossoverListIndex).get(i);
-                child1.getGenes().get(crossoverListIndex).set(i, child2.getGenes().get(crossoverListIndex).get(i));
-                child2.getGenes().get(crossoverListIndex).set(i, temp);
             }
 
             fixDuplicateAssignments(child1, elderlys);
