@@ -39,11 +39,11 @@ public class ElderService {
     @Autowired
     private GeocodingService geocodingService;
 
-    public void addElder(AddElderRequest addElderRequest) {
+    public void addElder(Long userId, AddElderRequest addElderRequest) {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addElderRequest.homeAddress());
 
-        AppUser user = userRepository.findById(addElderRequest.id()).orElseThrow();
+        AppUser user = userRepository.findById(userId).orElseThrow();
 
         Elderly elderly = new Elderly(addElderRequest.name(), homeAddress,
                 addElderRequest.requireFrontSeat(), user);

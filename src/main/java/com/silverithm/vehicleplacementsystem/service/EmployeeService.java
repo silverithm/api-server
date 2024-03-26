@@ -29,7 +29,7 @@ public class EmployeeService {
     @Autowired
     private GeocodingService geocodingService;
 
-    public void addEmployee(AddEmployeeRequest addEmployeeRequest) {
+    public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addEmployeeRequest.homeAddress());
         Location workPlace = geocodingService.getAddressCoordinates(addEmployeeRequest.workPlace());
@@ -37,7 +37,7 @@ public class EmployeeService {
         System.out.println(homeAddress + " " + addEmployeeRequest.homeAddress());
         System.out.println(workPlace + " " + addEmployeeRequest.workPlace());
 
-        AppUser user = userRepository.findById(addEmployeeRequest.id()).orElseThrow();
+        AppUser user = userRepository.findById(userId).orElseThrow();
 
         Employee employee = new Employee(addEmployeeRequest.name(), workPlace, homeAddress,
                 addEmployeeRequest.maxCapacity(), user);

@@ -20,9 +20,9 @@ public class ElderController {
 
     private final ElderService elderService;
 
-    @PostMapping("/api/v1/elder")
-    public String elderAdd(@RequestBody AddElderRequest addElderRequest) {
-        elderService.addElder(addElderRequest);
+    @PostMapping("/api/v1/elder/{userId}")
+    public String elderAdd(@PathVariable("userId") final Long userId, @RequestBody AddElderRequest addElderRequest) {
+        elderService.addElder(userId, addElderRequest);
         return "Success";
     }
 

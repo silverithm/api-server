@@ -24,9 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmployeeController {
     private final EmployeeService employeeService;
 
-    @PostMapping("/api/v1/employee")
-    public String elderAdd(@RequestBody AddEmployeeRequest addEmployeeRequest) {
-        employeeService.addEmployee(addEmployeeRequest);
+    @PostMapping("/api/v1/employee/{userId}")
+    public String elderAdd(@PathVariable("userId") final Long userId,
+                           @RequestBody AddEmployeeRequest addEmployeeRequest) {
+        employeeService.addEmployee(userId, addEmployeeRequest);
         return "Success";
     }
 
