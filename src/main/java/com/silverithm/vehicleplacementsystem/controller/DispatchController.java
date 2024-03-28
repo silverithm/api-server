@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 
+import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
@@ -20,9 +21,8 @@ public class DispatchController {
 
     // RESTful API endpoint
     @PostMapping("/api/v1/dispatch")
-    public List<Location> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
-        dispatchService.getOptimizedAssignments(requestDispatchDTO);
-        return null;
+    public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
+        return dispatchService.getOptimizedAssignments(requestDispatchDTO);
     }
 
 

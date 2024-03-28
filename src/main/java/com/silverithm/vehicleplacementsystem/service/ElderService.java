@@ -46,7 +46,7 @@ public class ElderService {
         AppUser user = userRepository.findById(userId).orElseThrow();
 
         Elderly elderly = new Elderly(addElderRequest.name(), homeAddress,
-                addElderRequest.requireFrontSeat(), user);
+                addElderRequest.requiredFrontSeat(), user);
         elderRepository.save(elderly);
     }
 

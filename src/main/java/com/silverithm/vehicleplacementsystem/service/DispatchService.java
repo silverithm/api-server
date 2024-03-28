@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
@@ -93,7 +94,7 @@ public class DispatchService {
 
     }
 
-    public List<EmployeeDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) {
+    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
@@ -141,9 +142,17 @@ public class DispatchService {
         System.out.println("순서 최적화 실행");
         System.out.println();
 
-        return employees;
-    }
+        List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
+        for (int i = 0; i < employees.size(); i++) {
+            List<String> assignmentElderNames = new ArrayList<>();
+            for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
+                assignmentElderNames.add(elderlys.get(bestChromosome.getGenes().get(i).get(j)).name());
+            }
+            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).name(), assignmentElderNames));
+        }
+        return assignmentResponseDTOS;
+    }
 
     private Map<String, Map<String, Integer>> calculateDistanceMatrix(List<EmployeeDTO> employees,
                                                                       List<ElderlyDTO> elderlys,
@@ -201,7 +210,8 @@ public class DispatchService {
                 String startNodeId = "Elderly_" + elderlys.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(
+                        startNodeId,
                         destinationNodeId);
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
 
@@ -227,7 +237,8 @@ public class DispatchService {
                 String startNodeId = "Employee_" + employees.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(
+                        startNodeId,
                         destinationNodeId);
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
 
@@ -720,7 +731,8 @@ public class DispatchService {
             return Arrays.asList(child1, child2);
         }
 
-        private List<Chromosome> twoPointCrossover(Chromosome parent1, Chromosome parent2, List<ElderlyDTO> elderlys) {
+        private List<Chromosome> twoPointCrossover(Chromosome parent1, Chromosome parent2,
+                                                   List<ElderlyDTO> elderlys) {
             Random rand = new Random();
 
             int crossoverPoint1 = rand.nextInt(parent1.getGenes().size());
@@ -751,7 +763,8 @@ public class DispatchService {
             return Arrays.asList(child1, child2);
         }
 
-        private List<Chromosome> uniformCrossover(Chromosome parent1, Chromosome parent2, List<ElderlyDTO> elderlys) {
+        private List<Chromosome> uniformCrossover(Chromosome parent1, Chromosome parent2,
+                                                  List<ElderlyDTO> elderlys) {
             Random rand = new Random();
 
             Chromosome child1 = Chromosome.copy(parent1);
