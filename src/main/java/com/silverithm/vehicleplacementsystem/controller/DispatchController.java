@@ -21,7 +21,7 @@ public class DispatchController {
 
     // RESTful API endpoint
     @PostMapping("/api/v1/dispatch")
-    public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
+    public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) throws Exception {
         return dispatchService.getOptimizedAssignments(requestDispatchDTO);
     }
 

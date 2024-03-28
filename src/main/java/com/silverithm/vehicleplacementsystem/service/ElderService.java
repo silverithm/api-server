@@ -39,7 +39,7 @@ public class ElderService {
     @Autowired
     private GeocodingService geocodingService;
 
-    public void addElder(Long userId, AddElderRequest addElderRequest) {
+    public void addElder(Long userId, AddElderRequest addElderRequest) throws Exception {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addElderRequest.homeAddress());
 
@@ -67,7 +67,7 @@ public class ElderService {
     }
 
     @Transactional
-    public void updateElder(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) {
+    public void updateElder(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) throws Exception {
         Location updatedHomeAddress = geocodingService.getAddressCoordinates(elderUpdateRequestDTO.homeAddress());
         Elderly elderly = elderRepository.findById(id).orElseThrow();
         elderly.update(elderUpdateRequestDTO.name(), updatedHomeAddress,

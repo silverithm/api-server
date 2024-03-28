@@ -89,7 +89,7 @@ public class UserService {
         }
     }
 
-    public TokenInfo signup(UserDataDTO userDataDTO) {
+    public TokenInfo signup(UserDataDTO userDataDTO) throws Exception {
 
         TokenInfo tokenInfo = jwtTokenProvider.generateToken(userDataDTO.getName(),
                 Collections.singleton(userDataDTO.getRole()));

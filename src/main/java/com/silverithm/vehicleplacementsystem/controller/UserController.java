@@ -28,7 +28,7 @@ public class UserController {
     }
 
     @PostMapping("api/v1/signup")
-    public TokenInfo signup(@RequestBody UserDataDTO userDataDTO) {
+    public TokenInfo signup(@RequestBody UserDataDTO userDataDTO) throws  Exception {
         return userService.signup(userDataDTO);
     }
 

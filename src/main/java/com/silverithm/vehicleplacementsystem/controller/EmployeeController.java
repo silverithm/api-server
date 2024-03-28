@@ -26,7 +26,7 @@ public class EmployeeController {
 
     @PostMapping("/api/v1/employee/{userId}")
     public String elderAdd(@PathVariable("userId") final Long userId,
-                           @RequestBody AddEmployeeRequest addEmployeeRequest) {
+                           @RequestBody AddEmployeeRequest addEmployeeRequest) throws Exception{
         employeeService.addEmployee(userId, addEmployeeRequest);
         return "Success";
     }
@@ -44,7 +44,7 @@ public class EmployeeController {
 
     @PutMapping("/api/v1/employee/{id}")
     public String updateElder(@PathVariable("id") final Long id,
-                              @RequestBody EmployeeUpdateRequestDTO employeeUpdateRequestDTO) {
+                              @RequestBody EmployeeUpdateRequestDTO employeeUpdateRequestDTO) throws Exception {
         employeeService.updateEmployee(id, employeeUpdateRequestDTO);
         return "Success";
     }

@@ -16,7 +16,7 @@ public class GeocodingService {
         this.key = key;
     }
 
-    public Location getAddressCoordinates(String address) {
+    public Location getAddressCoordinates(String address)  throws Exception{
         try {
             String baseUrl = "https://maps.googleapis.com/maps/api/geocode/json";
             String finalUrl = baseUrl + "?address=" + address.replace(" ", "+") + "&key=" + key;
@@ -34,7 +34,7 @@ public class GeocodingService {
             return new Location(latitude, longitude);
         } catch (Exception e) {
             e.printStackTrace();
-            return null; // 오류 처리는 상황에 맞게 조정
+            throw new Exception(); // 오류 처리는 상황에 맞게 조정
         }
     }
 }

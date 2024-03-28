@@ -29,10 +29,16 @@ public class EmployeeService {
     @Autowired
     private GeocodingService geocodingService;
 
-    public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) {
+    public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) throws Exception {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addEmployeeRequest.homeAddress());
         Location workPlace = geocodingService.getAddressCoordinates(addEmployeeRequest.workPlace());
+
+
+        if(homeAddress == null || workPlace ==null){
+            throw new Exception();
+        }
+
 
         System.out.println(homeAddress + " " + addEmployeeRequest.homeAddress());
         System.out.println(workPlace + " " + addEmployeeRequest.workPlace());
@@ -61,7 +67,7 @@ public class EmployeeService {
     }
 
     @Transactional
-    public void updateEmployee(Long id, EmployeeUpdateRequestDTO employeeUpdateRequestDTO) {
+    public void updateEmployee(Long id, EmployeeUpdateRequestDTO employeeUpdateRequestDTO) throws Exception {
 
         Location updatedHomeAddress = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.homeAddress());
         Location updatedWorkPlace = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.workPlace());

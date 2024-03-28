@@ -94,16 +94,16 @@ public class DispatchService {
 
     }
 
-    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) {
+    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception{
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
         CompanyDTO company = requestDispatchDTO.company();
         List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
 
+
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
-
         // 유전 알고리즘 실행
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 requestDispatchDTO.dispatchType());
@@ -285,7 +285,7 @@ public class DispatchService {
         }
 
 
-        public List<Chromosome> run() {
+        public List<Chromosome> run() throws  Exception{
 
             // 초기 솔루션 생성
             List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
@@ -294,47 +294,52 @@ public class DispatchService {
 //                System.out.println(chromosome.getGenes());
 //            }
 
-            // 반복
-            for (int i = 0; i < MAX_ITERATIONS; i++) {
-                // 평가
-                evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
+            try{
+                for (int i = 0; i < MAX_ITERATIONS; i++) {
+                    // 평가
+                    evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
 
-                // 선택
-                List<Chromosome> selectedChromosomes = chromosomes;
+                    // 선택
+                    List<Chromosome> selectedChromosomes = chromosomes;
 //                System.out.println("selectedChromosomes - - -" + i);
 //                for (Chromosome chromosome : selectedChromosomes) {
 //                    System.out.println(chromosome.getGenes());
 //                }
 
-                // 교차
-                List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
+                    // 교차
+                    List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
 //                System.out.println("offspringChromosomes - - -" + i);
 //                for (Chromosome chromosome : offspringChromosomes) {
 //                    System.out.println(chromosome.getGenes());
 //                }
 
-                // 돌연변이
-                mutate(offspringChromosomes, elderlys.size());
+                    // 돌연변이
+                    mutate(offspringChromosomes, elderlys.size());
 //                System.out.println("mutateChromosomes - - -" + i);
 //                for (Chromosome chromosome : offspringChromosomes) {
 //                    System.out.println(chromosome.getGenes());
 //                }
 
-                // 다음 세대 생성
-                chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
+                    // 다음 세대 생성
+                    chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
 //                System.out.println("nextGenerations - - -" + i);
 //                for (Chromosome chromosome : chromosomes) {
 //                    System.out.println(chromosome.getGenes());
 //                }
 
-                System.out.println("nextGenerations - - -");
+                    System.out.println("nextGenerations - - -");
 
-                System.out.println(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
+                    System.out.println(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
 
 //                for (Chromosome chromosome : chromosomes) {
 //                    System.out.println(chromosome.getGenes() + " / " + chromosome.getFitness());
 //                }
+                }
+            }catch(Exception e){
+                throw new Exception();
             }
+            // 반복
+
 
             Collections.sort(chromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
             // 최적의 솔루션 추출
