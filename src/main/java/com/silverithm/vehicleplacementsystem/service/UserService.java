@@ -136,5 +136,9 @@ public class UserService {
         AppUser findUser = userRepository.findByUsername(userEmail);
         findUser.updateRefreshToken(null);
     }
+
+    public AppUser loadUserByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
 }
 

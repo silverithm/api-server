@@ -1,21 +1,28 @@
 package com.silverithm.vehicleplacementsystem.security;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.jwt.JwtAuthenticationFilter;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
+import com.silverithm.vehicleplacementsystem.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -34,13 +41,27 @@ public class WebSecurityConfigure {
     @Autowired
     private RedisUtils redisUtils;
 
+    @Autowired
+    private UserRepository userRepository;
+
+
 
     @Bean
     public AuthenticationManager authenticationManagerBean() throws Exception {
         return new AuthenticationManager() {
             @Override
             public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-                return null;
+                String username = authentication.getName();
+                String password = authentication.getCredentials().toString();
+
+                AppUser user = userRepository.findByUsername(username);
+
+                if (passwordEncoder().matches(password, user.getPassword())) {
+                    return new UsernamePasswordAuthenticationToken(username, password);
+                } else {
+                    throw new AuthenticationException("Invalid username/password supplied") {
+                    };
+                }
             }
         };
     }
