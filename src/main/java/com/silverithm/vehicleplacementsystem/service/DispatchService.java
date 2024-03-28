@@ -144,12 +144,15 @@ public class DispatchService {
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
+        List<Double> departureTimes = bestChromosome.getDepartureTimes();
         for (int i = 0; i < employees.size(); i++) {
             List<String> assignmentElderNames = new ArrayList<>();
+
             for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
                 assignmentElderNames.add(elderlys.get(bestChromosome.getGenes().get(i).get(j)).name());
             }
-            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).name(), assignmentElderNames));
+            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).name(),
+                    (int) (departureTimes.get(i) / 60), assignmentElderNames));
         }
         return assignmentResponseDTOS;
     }
@@ -548,7 +551,8 @@ public class DispatchService {
                                 "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
                         if (j == 0) {
-                            departureTime += distanceMatrix.get(company).get("Elderly_" + elderlys.get(j).id());
+                            departureTime += distanceMatrix.get(company)
+                                    .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
                         }
 
                         departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
@@ -574,7 +578,7 @@ public class DispatchService {
 
                         if (j == 0) {
                             departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(j).id());
+                                    .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
                         }
 
                         departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
