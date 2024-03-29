@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 @Service
+@Slf4j
 public class DispatchService {
 
     //가까운 거리일수록 가중치가 더 들어가야함 - 가까운 거리를 붙여주어야함
@@ -84,23 +86,17 @@ public class DispatchService {
         );
 
         int totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalTime\":")[1].split(",")[0].trim());
-        // API 응답 출력
-        System.out.println("Response status code: " + responseEntity.getStatusCode());
-        System.out.println("Response body: " + responseEntity.getBody());
-        System.out.println("totalTime " + totalTime);
-
+        log.info("Tmap API :  " + totalTime);
         return totalTime;
-
 
     }
 
-    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception{
+    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
         CompanyDTO company = requestDispatchDTO.company();
         List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
-
 
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
@@ -112,35 +108,12 @@ public class DispatchService {
         // 최적의 솔루션 추출
         Chromosome bestChromosome = chromosomes.get(0);
 
-        System.out.println(bestChromosome.getDepartureTimes());
-
         double sum = 0;
         for (double value : bestChromosome.getDepartureTimes()) {
             sum += value;
         }
-        System.out.println(sum / bestChromosome.getGenes().size());
 
-        System.out.println();
-        System.out.println("- - - - - - - - - - - - - - - - - - - - ");
-        System.out.println();
-        System.out.println("배차 정보");
-        System.out.println();
-
-        System.out.println(bestChromosome.getGenes() + " " + bestChromosome.getFitness());
-
-        for (int i = 0; i < employees.size(); i++) {
-            System.out.print(employees.get(i).name() + " : ");
-            for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
-                System.out.print(elderlys.get(bestChromosome.getGenes().get(i).get(j)).name() + " , ");
-            }
-            System.out.println();
-        }
-
-        System.out.println();
-        System.out.println("- - - - - - - - - - - - - - - - - - - - ");
-        System.out.println();
-        System.out.println("순서 최적화 실행");
-        System.out.println();
+        log.info(bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
@@ -285,61 +258,36 @@ public class DispatchService {
         }
 
 
-        public List<Chromosome> run() throws  Exception{
+        public List<Chromosome> run() throws Exception {
 
             // 초기 솔루션 생성
             List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
-//            System.out.println("chromosomes - - -");
-//            for (Chromosome chromosome : chromosomes) {
-//                System.out.println(chromosome.getGenes());
-//            }
 
-            try{
+            try {
                 for (int i = 0; i < MAX_ITERATIONS; i++) {
                     // 평가
                     evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
 
                     // 선택
                     List<Chromosome> selectedChromosomes = chromosomes;
-//                System.out.println("selectedChromosomes - - -" + i);
-//                for (Chromosome chromosome : selectedChromosomes) {
-//                    System.out.println(chromosome.getGenes());
-//                }
 
                     // 교차
                     List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
-//                System.out.println("offspringChromosomes - - -" + i);
-//                for (Chromosome chromosome : offspringChromosomes) {
-//                    System.out.println(chromosome.getGenes());
-//                }
 
                     // 돌연변이
                     mutate(offspringChromosomes, elderlys.size());
-//                System.out.println("mutateChromosomes - - -" + i);
-//                for (Chromosome chromosome : offspringChromosomes) {
-//                    System.out.println(chromosome.getGenes());
-//                }
 
                     // 다음 세대 생성
                     chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
-//                System.out.println("nextGenerations - - -" + i);
-//                for (Chromosome chromosome : chromosomes) {
-//                    System.out.println(chromosome.getGenes());
-//                }
 
-                    System.out.println("nextGenerations - - -");
+                    log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
 
-                    System.out.println(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
 
-//                for (Chromosome chromosome : chromosomes) {
-//                    System.out.println(chromosome.getGenes() + " / " + chromosome.getFitness());
-//                }
                 }
-            }catch(Exception e){
+            } catch (Exception e) {
                 throw new Exception();
             }
             // 반복
-
 
             Collections.sort(chromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
             // 최적의 솔루션 추출
@@ -606,10 +554,8 @@ public class DispatchService {
             for (int i = 0; i < POPULATION_SIZE; i++) {
                 // 룰렛 휠 선택
                 int selectedIndex = rouletteWheelSelection(chromosomes);
-//                System.out.println(chromosomes.get(selectedIndex).clone().getGenes());
                 selectedChromosomes.add(Chromosome.copy(chromosomes.get(selectedIndex)));
             }
-//            System.out.println();
             return selectedChromosomes;
         }
 
@@ -851,21 +797,11 @@ public class DispatchService {
             // 정렬
             Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
 
-//            System.out.println("combinedChromosomes - - -");
-//            for (Chromosome chromosome : combinedChromosomes) {
-//                System.out.println(chromosome.getGenes() + " / " + chromosome.getFitness());
-//            }
-
             // 최상위 개체만 선택
             return combinedChromosomes.subList(0, POPULATION_SIZE);
         }
 
 
-    }
-
-    public List<Location> findClosestLocations(RequestDispatchDTO requestDispatchDTO) {
-
-        return null;
     }
 
 
