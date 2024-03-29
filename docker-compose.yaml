@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+
+  db:
+    image: mysql
+    environment:
+      MYSQL_DATABASE: silverithm
+      MYSQL_USER: user
+      MYSQL_PASSWORD: 1234
+      MYSQL_ROOT_PASSWORD: 1234
+    ports:
+      - "3307:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    restart: always
+
+  app:
+    container_name: silverithm-backend
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3307/silverithm?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: 1234
+    depends_on:
+      - db
+    restart: always
+
+volumes:
+  db-data:

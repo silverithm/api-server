@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -41,7 +42,6 @@ public class Chromosome {
             employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
             chromosome.add(new ArrayList<>()); // 미리 리스트를 초기화
         }
-
         // 먼저 차량 배치에 참여할 직원과 노인을 정하고
         // 다음페이지로 넘어감
         // 직원과 노인의 아이디를 넘겨주는 것이 아니라
@@ -63,42 +63,6 @@ public class Chromosome {
             }
         }
 
-//        int startIndex = 0;
-//        int cnt = 1;
-//        Random rand = new Random();
-//        while (startIndex < elderlyIndices.size()) {
-////            boolean assigned = false;
-//            int randIndex = rand.nextInt(numEmployees);
-//            System.out.println(randIndex);
-//
-////            for (int e = 0; e < numEmployees && startIndex < elderlyIndices.size(); e++) {
-////                if (employeesCapacityLeft[e] > 0
-////                        && employees.get(e).maximumCapacity() - employeesCapacityLeft[e] < cnt) {
-////
-////                    chromosome.get(e).add(elderlyIndices.get(startIndex));
-////                    employeesCapacityLeft[e]--;
-////                    startIndex++;
-////                    assigned = true;
-////                }
-////            }
-//
-//            if (employeesCapacityLeft[randIndex] > 0) {
-//
-//                chromosome.get(randIndex).add(elderlyIndices.get(startIndex));
-//                employeesCapacityLeft[randIndex]--;
-//                startIndex++;
-////                assigned = true;
-//            }
-//
-////            if (!assigned) {
-////                throw new IllegalStateException("모든 직원의 capacity가 초과되어 더 이상 노인을 할당할 수 없습니다.");
-////            }
-////            cnt++;
-//        }
-//
-//        genes = chromosome;
-//
-//    }
         for (int i = 0; i < numEmployees; i++) {
             if (employeesCapacityLeft[i] > 0) {
                 chromosome.get(i).add(elderlyIndices.get(0));
