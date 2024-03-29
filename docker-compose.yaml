@@ -2,6 +2,7 @@ version: '3.8'
 services:
 
   db:
+    container_name: silverithm_db
     image: mysql
     environment:
       MYSQL_DATABASE: silverithm
@@ -9,10 +10,12 @@ services:
       MYSQL_PASSWORD: 1234
       MYSQL_ROOT_PASSWORD: 1234
     ports:
-      - "3307:3306"
+      - "3306:3306"
     volumes:
       - db-data:/var/lib/mysql
     restart: always
+    networks:
+      - silverithm_network
 
   app:
     container_name: silverithm-backend
@@ -20,12 +23,17 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://host.docker.internal:3307/silverithm?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://silverithm_db:3306/silverithm?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: 1234
     depends_on:
       - db
     restart: always
+    networks:
+      - silverithm_network
 
 volumes:
   db-data:
+
+networks:
+  silverithm_network:
