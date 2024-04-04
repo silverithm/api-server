@@ -270,25 +270,30 @@ public class DispatchService {
 
         public List<Chromosome> run() throws Exception {
 
+
             // 초기 솔루션 생성
             List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
-
+            log.info("generateInitialPopulcation Success");
             try {
                 for (int i = 0; i < MAX_ITERATIONS; i++) {
                     // 평가
                     evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
+                    log.info("evalulatePopulation Success");
 
                     // 선택
                     List<Chromosome> selectedChromosomes = chromosomes;
+                    log.info("selectedChromosomes Success");
 
                     // 교차
                     List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
-
+                    log.info("crossover Success");
                     // 돌연변이
                     mutate(offspringChromosomes, elderlys.size());
+                    log.info("mutate Success");
 
                     // 다음 세대 생성
                     chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
+                    log.info("combinePopulations Success");
 
                     log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
 
