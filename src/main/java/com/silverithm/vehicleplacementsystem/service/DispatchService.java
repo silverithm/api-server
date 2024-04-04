@@ -504,6 +504,8 @@ public class DispatchService {
                 }
             }
 
+            log.info("calculate check : " + fixedAssignmentsMap);
+
             for (int employee_idx : fixedAssignmentsMap.keySet()) {
                 for (int elderly_idx : fixedAssignmentsMap.get(employee_idx)) {
                     if (!chromosome.getGenes().get(employee_idx).contains(elderly_idx)) {
