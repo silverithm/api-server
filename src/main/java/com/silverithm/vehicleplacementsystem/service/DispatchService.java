@@ -110,7 +110,6 @@ public class DispatchService {
         log.info(employees.toString());
         log.info(elderlys.toString());
         log.info(company.toString());
-        log.info(fixedAssignments.toString());
         log.info("-----------------------");
 
 
@@ -296,7 +295,7 @@ public class DispatchService {
 
                 }
             } catch (Exception e) {
-                throw new Exception();
+                throw new Exception("run exception");
             }
             // 반복
 
