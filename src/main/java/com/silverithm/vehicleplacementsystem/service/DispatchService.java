@@ -360,9 +360,12 @@ public class DispatchService {
                                         Map<Integer, List<Integer>> fixedAssignmentsMap) {
             double fitness = 0.0;
 
+            log.info("calculateFitness success");
             // 퇴근 시간 계산
             List<Double> departureTimes = calculateDepartureTimes(chromosome);
             chromosome.setDepartureTimes(departureTimes);
+
+            log.info("calculateDepartureTimes success");
 
             // 모든 퇴근 시간의 합 계산
             double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
@@ -393,6 +396,7 @@ public class DispatchService {
                     }
                 }
 
+                log.info("distancematrix 1 success");
                 if (dispatchType.equals(DispatchType.OUT)) {
                     if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
@@ -488,6 +492,7 @@ public class DispatchService {
 
 
             }
+            log.info("distancematrix 2 success");
 
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
@@ -503,6 +508,8 @@ public class DispatchService {
                     }
                 }
             }
+            log.info("fontseat success");
+
 
             log.info("calculate check : " + fixedAssignmentsMap);
 
