@@ -104,14 +104,12 @@ public class DispatchService {
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 requestDispatchDTO.dispatchType());
 
-
         log.info("dispatch request info");
         log.info(requestDispatchDTO.toString());
         log.info(employees.toString());
         log.info(elderlys.toString());
         log.info(company.toString());
         log.info("-----------------------");
-
 
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
@@ -270,9 +268,9 @@ public class DispatchService {
 
         public List<Chromosome> run() throws Exception {
 
-
             // 초기 솔루션 생성
             List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
+            log.info(fixedAssignmentsMap.toString());
             log.info("generateInitialPopulcation Success");
             try {
                 for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -321,7 +319,15 @@ public class DispatchService {
                 int employeeIdx = fixedAssignment.employee_idx();
                 int elderlyIdx = fixedAssignment.elderly_idx();
 
-                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
+                if (fixedAssignmentMap.get(employeeIdx) == null) {
+                    fixedAssignmentMap.put(employeeIdx, new ArrayList<>());
+                } else {
+                    List<Integer> prevList = fixedAssignmentMap.get(employeeIdx);
+                    prevList.add(elderlyIdx);
+                    fixedAssignmentMap.put(employeeIdx, prevList);
+                }
+
+//                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
             }
 
             return fixedAssignmentMap;
