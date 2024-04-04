@@ -104,13 +104,6 @@ public class DispatchService {
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 requestDispatchDTO.dispatchType());
 
-        log.info("dispatch request info");
-        log.info(requestDispatchDTO.toString());
-        log.info(employees.toString());
-        log.info(elderlys.toString());
-        log.info(company.toString());
-        log.info("-----------------------");
-
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
         // 최적의 솔루션 추출
@@ -270,8 +263,7 @@ public class DispatchService {
 
             // 초기 솔루션 생성
             List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
-            log.info(fixedAssignmentsMap.toString());
-            log.info("generateInitialPopulcation Success");
+
             try {
                 for (int i = 0; i < MAX_ITERATIONS; i++) {
                     // 평가
@@ -325,11 +317,9 @@ public class DispatchService {
                     fixedAssignmentMap.put(employeeIdx, createdList);
                 } else {
                     List<Integer> prevList = fixedAssignmentMap.get(employeeIdx);
-                    log.info(prevList.toString());
                     prevList.add(elderlyIdx);
                     fixedAssignmentMap.put(employeeIdx, prevList);
                 }
-                log.info(fixedAssignmentMap.get(employeeIdx).toString());
 
 //                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
             }
@@ -360,13 +350,9 @@ public class DispatchService {
                                         Map<Integer, List<Integer>> fixedAssignmentsMap) {
             double fitness = 0.0;
 
-            log.info("calculateFitness success");
-            log.info(chromosome.getGenes().toString());
             // 퇴근 시간 계산
             List<Double> departureTimes = calculateDepartureTimes(chromosome);
             chromosome.setDepartureTimes(departureTimes);
-
-            log.info("calculateDepartureTimes success");
 
             // 모든 퇴근 시간의 합 계산
             double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
@@ -397,7 +383,6 @@ public class DispatchService {
                     }
                 }
 
-                log.info("distancematrix 1 success");
                 if (dispatchType.equals(DispatchType.OUT)) {
                     if (
                             distanceMatrix.get("Elderly_" + elderlys.get(
@@ -493,7 +478,6 @@ public class DispatchService {
 
 
             }
-            log.info("distancematrix 2 success");
 
             // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
@@ -509,10 +493,6 @@ public class DispatchService {
                     }
                 }
             }
-            log.info("fontseat success");
-
-            log.info("calculate check : " + fixedAssignmentsMap);
-
             for (int employee_idx : fixedAssignmentsMap.keySet()) {
                 for (int elderly_idx : fixedAssignmentsMap.get(employee_idx)) {
                     if (!chromosome.getGenes().get(employee_idx).contains(elderly_idx)) {
