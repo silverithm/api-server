@@ -103,6 +103,17 @@ public class DispatchService {
         // 유전 알고리즘 실행
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 requestDispatchDTO.dispatchType());
+
+
+        log.info("dispatch request info");
+        log.info(requestDispatchDTO.toString());
+        log.info(employees.toString());
+        log.info(elderlys.toString());
+        log.info(company.toString());
+        log.info(fixedAssignments.toString());
+        log.info("-----------------------");
+
+
         List<Chromosome> chromosomes = geneticAlgorithm.run();
 
         // 최적의 솔루션 추출
