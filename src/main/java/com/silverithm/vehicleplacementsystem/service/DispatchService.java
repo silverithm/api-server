@@ -319,10 +319,13 @@ public class DispatchService {
                 int employeeIdx = fixedAssignment.employee_idx();
                 int elderlyIdx = fixedAssignment.elderly_idx();
 
+                log.info(fixedAssignmentMap.get(employeeIdx).toString());
+
                 if (fixedAssignmentMap.get(employeeIdx) == null) {
                     fixedAssignmentMap.put(employeeIdx, new ArrayList<>());
                 } else {
                     List<Integer> prevList = fixedAssignmentMap.get(employeeIdx);
+                    log.info(prevList.toString());
                     prevList.add(elderlyIdx);
                     fixedAssignmentMap.put(employeeIdx, prevList);
                 }
