@@ -361,6 +361,7 @@ public class DispatchService {
             double fitness = 0.0;
 
             log.info("calculateFitness success");
+            log.info(chromosome.toString());
             // 퇴근 시간 계산
             List<Double> departureTimes = calculateDepartureTimes(chromosome);
             chromosome.setDepartureTimes(departureTimes);
@@ -509,7 +510,6 @@ public class DispatchService {
                 }
             }
             log.info("fontseat success");
-
 
             log.info("calculate check : " + fixedAssignmentsMap);
 
