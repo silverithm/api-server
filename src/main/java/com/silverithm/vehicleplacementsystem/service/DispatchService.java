@@ -320,7 +320,9 @@ public class DispatchService {
                 int elderlyIdx = fixedAssignment.elderly_idx();
 
                 if (fixedAssignmentMap.get(employeeIdx) == null) {
-                    fixedAssignmentMap.put(employeeIdx, new ArrayList<>());
+                    List<Integer> createdList = new ArrayList<>();
+                    createdList.add(elderlyIdx);
+                    fixedAssignmentMap.put(employeeIdx, createdList);
                 } else {
                     List<Integer> prevList = fixedAssignmentMap.get(employeeIdx);
                     log.info(prevList.toString());
