@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -277,13 +278,18 @@ public class GeneticAlgorithmService {
                 }
             }
         }
-        for (int employee_idx : fixedAssignmentsMap.keySet()) {
-            for (int elderly_idx : fixedAssignmentsMap.get(employee_idx)) {
+        int employee_idx = 0;
+        for (int employee_id : fixedAssignmentsMap.keySet()) {
+            for (long elderly_id : fixedAssignmentsMap.get(employee_id)) {
+                int elderly_idx = elderlys.stream().map((elder) -> elder.id()).collect(Collectors.toList())
+                        .indexOf(elderly_id);
+
                 if (!chromosome.getGenes().get(employee_idx).contains(elderly_idx)) {
                     fitness = 0.0;
                     return fitness;
                 }
             }
+            employee_idx++;
         }
 
         return fitness;
@@ -322,11 +328,12 @@ public class GeneticAlgorithmService {
             for (int i = 0; i < chromosome.getGenes().size(); i++) {
                 String company = "Company";
                 double departureTime = 0.0;
+
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
                     String destinationNodeId =
                             "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
-
                     if (j == 0) {
                         departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
                                 .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());

@@ -4,7 +4,6 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
-import com.silverithm.vehicleplacementsystem.service.DispatchService.GeneticAlgorithm;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -25,7 +24,10 @@ public class DispatchServiceTest {
 //        List<Employee> employees = new ArrayList<>();
 //        List<Elderly> elderly = new ArrayList<>();
 //        int requiredFrontSeat = employees.size();
-////        dispatchService.getOptimizedAssignments(employees, elderly, requiredFrontSeat);
+//
+//        dispatchService
+//
+//
 //    }
 //
 //    @Test

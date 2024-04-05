@@ -10,13 +10,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Setter
 @NoArgsConstructor
+@Slf4j
 public class Chromosome {
 
     private List<List<Integer>> genes;
@@ -48,19 +51,23 @@ public class Chromosome {
         // 차량배치에 참여하는 직원과 노인의 인덱스 번호를 직원 리스트, 노인 리스트와 함께 넘겨줌
         // 백엔드는 이 인덱스를 가지고 Map을 생성함
 
+        int employeeIndex = 0;
         // 고정 할당 처리
         for (Map.Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
-            int employeeIndex = entry.getKey();
+
             List<Integer> fixedElderlyIds = entry.getValue();
-            for (Integer elderlyId : fixedElderlyIds) {
+            for (long elderlyId : fixedElderlyIds) {
                 if (employeesCapacityLeft[employeeIndex] > 0) {
-                    chromosome.get(employeeIndex).add(elderlyId);
+                    int idx = elderly.stream().map((elder) -> elder.id()).collect(Collectors.toList())
+                            .indexOf(elderlyId);
+                    chromosome.get(employeeIndex).add(idx);
                     employeesCapacityLeft[employeeIndex]--;
-                    elderlyIndices.remove(elderlyId); // 이미 할당된 노인은 리스트에서 제거
+                    elderlyIndices.removeIf(elderlyIndicie -> elderlyIndicie == idx);
                 } else {
                     throw new IllegalStateException("직원 " + employeeIndex + "의 capacity가 초과되었습니다.");
                 }
             }
+            employeeIndex++;
         }
 
         for (int i = 0; i < numEmployees; i++) {
