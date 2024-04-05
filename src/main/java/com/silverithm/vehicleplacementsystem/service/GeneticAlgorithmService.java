@@ -1,144 +1,603 @@
-//package com.silverithm.vehicleplacementsystem.service;
-//
-//import org.springframework.stereotype.Service;
-//import java.util.ArrayList;
-//import java.util.Collections;
-//import java.util.List;
-//import java.util.Map;
-//import java.util.Random;
-//
-//public class GeneticAlgorithmService {
-//
-//    // 초기 인구 생성
-//    public static List<List<List<Integer>>> initializePopulation(int popSize, int numElderly, int numEmployees) {
-//        List<List<List<Integer>>> population = new ArrayList<>();
-//        for (int i = 0; i < popSize; i++) {
-//            List<Integer> elderlyIndices = new ArrayList<>();
-//            for (int j = 0; j < numElderly; j++) {
-//                elderlyIndices.add(j);
-//            }
-//            Collections.shuffle(elderlyIndices);
-//
-//            List<List<Integer>> chromosome = new ArrayList<>();
-//            int startIndex = 0;
-//            for (int e = 0; e < numEmployees; e++) {
-//                int numAssigned = (e < 2) ? 4 : 3;
-//                List<Integer> employeeAssignment = new ArrayList<>();
-//                for (int k = 0; k < numAssigned; k++) {
-//                    employeeAssignment.add(elderlyIndices.get(startIndex + k));
-//                }
-//                chromosome.add(employeeAssignment);
-//                startIndex += numAssigned;
-//            }
-//            population.add(chromosome);
-//        }
-//        return population;
-//    }
-//
-//    // 적합도 계산
-//    public static double evaluateChromosome(List<List<Integer>> chromosome,
-//                                            Map<String, Map<String, Integer>> distanceMap) {
-//        double totalTime = 0;
-//        for (List<Integer> employeeAssignment : chromosome) {
-//            totalTime += distanceMap.getOrDefault("Company_" + employeeAssignment.get(0), 0);
-//            for (int i = 0; i < employeeAssignment.size() - 1; i++) {
-//                totalTime += distanceMap.getOrDefault(employeeAssignment.get(i) + "_" + employeeAssignment.get(i + 1),
-//                        0);
-//            }
-//        }
-//        return 1 / totalTime;
-//    }
-//
-//    // 토너먼트 선택
-//    public static List<List<List<Integer>>> tournamentSelection(List<List<List<Integer>>> population,
-//                                                                Map<String, Map<String, Integer>> distanceMap,
-//                                                                int tournamentSize) {
-//        List<List<List<Integer>>> selected = new ArrayList<>();
-//        Random rand = new Random();
-//
-//        while (selected.size() < population.size()) {
-//            List<List<List<Integer>>> tournament = new ArrayList<>();
-//            for (int i = 0; i < tournamentSize; i++) {
-//                int randomIndex = rand.nextInt(population.size());
-//                tournament.add(population.get(randomIndex));
-//            }
-//
-//            tournament.sort((o1, o2) -> Double.compare(evaluateChromosome(o2, distanceMap),
-//                    evaluateChromosome(o1, distanceMap)));
-//            selected.add(new ArrayList<>(tournament.get(0)));
-//        }
-//
-//        return selected;
-//    }
-//
-//    // 한 점 교차
-//    public static void singlePointCrossover(List<List<List<Integer>>> population, double crossoverRate) {
-//        Random rand = new Random();
-//        List<List<List<Integer>>> offspring = new ArrayList<>();
-//
-//        for (int i = 0; i < population.size(); i += 2) {
-//            List<List<Integer>> parent1 = population.get(i);
-//            List<List<Integer>> parent2 = population.get(i + 1);
-//
-//            if (rand.nextDouble() < crossoverRate) {
-//                int crossoverPoint = rand.nextInt(parent1.size());
-//                for (int j = crossoverPoint; j < parent1.size(); j++) {
-//                    List<Integer> temp = parent1.get(j);
-//                    parent1.set(j, parent2.get(j));
-//                    parent2.set(j, temp);
-//                }
-//            }
-//
-//            offspring.add(parent1);
-//            offspring.add(parent2);
-//        }
-//
-//        population.clear();
-//        population.addAll(offspring);
-//    }
-//
-//    // 돌연변이
-//    public static void mutate(List<List<List<Integer>>> population, double mutationRate, int numElderly) {
-//        Random rand = new Random();
-//
-//        for (List<List<Integer>> chromosome : population) {
-//            if (rand.nextDouble() < mutationRate) {
-//                int mutationPoint1 = rand.nextInt(chromosome.size());
-//                int mutationPoint2 = rand.nextInt(chromosome.get(mutationPoint1).size());
-//                int newElderly = rand.nextInt(numElderly);
-//                chromosome.get(mutationPoint1).set(mutationPoint2, newElderly);
-//            }
-//        }
-//    }
-//
-//    // 유전 알고리즘 실행
-//    public static void runGeneticAlgorithm(int popSize, int numElderly, int numEmployees,
-//                                           Map<String, Map<String, Integer>> distanceMap, int tournamentSize,
-//                                           double crossoverRate,
-//                                           double mutationRate, int numGenerations) {
-//        List<List<List<Integer>>> population = initializePopulation(popSize, numElderly, numEmployees);
-//
-//        for (int i = 0; i < numGenerations; i++) {
-//            List<List<List<Integer>>> selected = tournamentSelection(population, distanceMap, tournamentSize);
-//            singlePointCrossover(selected, crossoverRate);
-//            mutate(selected, mutationRate, numElderly);
-//            population = selected;
-//        }
-//
-//        // 결과 출력 또는 추가 처리
-//        List<List<Integer>> bestSolution = population.get(0);
-//        double bestFitness = evaluateChromosome(bestSolution, distanceMap);
-//        for (List<List<Integer>> chromosome : population) {
-//            double fitness = evaluateChromosome(chromosome, distanceMap);
-//            if (fitness > bestFitness) {
-//                bestFitness = fitness;
-//                bestSolution = chromosome;
-//            }
-//        }
-//
-//        System.out.println("Best solution found:");
-//        System.out.println(bestSolution);
-//        System.out.println("With fitness:");
-//        System.out.println(bestFitness);
-//    }
-//}
+package com.silverithm.vehicleplacementsystem.service;
+
+import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
+import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
+import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
+import com.silverithm.vehicleplacementsystem.entity.Chromosome;
+import com.silverithm.vehicleplacementsystem.entity.DispatchType;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class GeneticAlgorithmService {
+
+    private static int MAX_ITERATIONS = 300;
+    private static int POPULATION_SIZE = 20000;
+    private static double MUTATION_RATE = 0.9;
+    private static double CROSSOVER_RATE = 0.7;
+
+
+    private final List<EmployeeDTO> employees;
+    private final List<ElderlyDTO> elderlys;
+    private final Map<Integer, List<Integer>> fixedAssignmentsMap;
+    private final Map<String, Map<String, Integer>> distanceMatrix;
+    private final DispatchType dispatchType;
+
+
+    public GeneticAlgorithmService(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+                                   Map<String, Map<String, Integer>> distanceMatrix,
+                                   List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType) {
+        this.employees = employees;
+        this.elderlys = elderly;
+        this.distanceMatrix = distanceMatrix;
+        this.fixedAssignmentsMap = generateFixedAssignmentMap(fixedAssignments);
+        this.dispatchType = dispatchType;
+    }
+
+
+    public List<Chromosome> run() throws Exception {
+
+        // 초기 솔루션 생성
+        List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
+
+        try {
+            for (int i = 0; i < MAX_ITERATIONS; i++) {
+                // 평가
+                evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
+                log.info("evalulatePopulation Success");
+
+                // 선택
+                List<Chromosome> selectedChromosomes = chromosomes;
+                log.info("selectedChromosomes Success");
+
+                // 교차
+                List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
+                log.info("crossover Success");
+                // 돌연변이
+                mutate(offspringChromosomes, elderlys.size());
+                log.info("mutate Success");
+
+                // 다음 세대 생성
+                chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
+                log.info("combinePopulations Success");
+
+                log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
+
+
+            }
+        } catch (Exception e) {
+            throw new Exception("run exception");
+        }
+        // 반복
+
+        Collections.sort(chromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
+        // 최적의 솔루션 추출
+        return chromosomes;
+
+    }
+
+    private Map<Integer, List<Integer>> generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignments) {
+
+        Map<Integer, List<Integer>> fixedAssignmentMap = new HashMap<>();
+        if (fixedAssignments == null) {
+            return fixedAssignmentMap;
+        }
+
+        for (FixedAssignmentsDTO fixedAssignment : fixedAssignments) {
+            int employeeIdx = fixedAssignment.employee_idx();
+            int elderlyIdx = fixedAssignment.elderly_idx();
+
+            if (fixedAssignmentMap.get(employeeIdx) == null) {
+                List<Integer> createdList = new ArrayList<>();
+                createdList.add(elderlyIdx);
+                fixedAssignmentMap.put(employeeIdx, createdList);
+            } else {
+                List<Integer> prevList = fixedAssignmentMap.get(employeeIdx);
+                prevList.add(elderlyIdx);
+                fixedAssignmentMap.put(employeeIdx, prevList);
+            }
+
+//                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
+        }
+
+        return fixedAssignmentMap;
+    }
+
+    private List<Chromosome> generateInitialPopulation(Map<Integer, List<Integer>> fixedAssignmentMap) {
+        List<Chromosome> chromosomes = new ArrayList<>();
+        for (int i = 0; i < POPULATION_SIZE; i++) {
+
+            chromosomes.add(new Chromosome(employees, elderlys, fixedAssignmentMap));
+
+        }
+        return chromosomes;
+    }
+
+    private void evaluatePopulation(List<Chromosome> chromosomes, List<EmployeeDTO> employee,
+                                    Map<String, Map<String, Integer>> distanceMatrix,
+                                    Map<Integer, List<Integer>> fixedAssignmentsMap) {
+        for (Chromosome chromosome : chromosomes) {
+            chromosome.setFitness(calculateFitness(chromosome, employees, distanceMatrix, fixedAssignmentsMap));
+        }
+    }
+
+    private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees,
+                                    Map<String, Map<String, Integer>> distanceMatrix,
+                                    Map<Integer, List<Integer>> fixedAssignmentsMap) {
+        double fitness = 0.0;
+
+        // 퇴근 시간 계산
+        List<Double> departureTimes = calculateDepartureTimes(chromosome);
+        chromosome.setDepartureTimes(departureTimes);
+
+        // 모든 퇴근 시간의 합 계산
+        double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
+        // 적합도 계산
+        fitness = 10000000 / (totalDepartureTime + 1.0);
+
+        for (int i = 0; i < chromosome.getGenes().size(); i++) {
+
+            for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
+                int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
+
+                if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                        .get("Elderly_" + elderlys.get(elderlyIndex2).id()) == 0) {
+                    fitness += 5;
+                } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                        .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 250) {
+                    fitness += 4;
+                } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                        .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 500) {
+                    fitness += 3;
+                } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                        .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 750) {
+                    fitness += 2;
+                } else if (distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                        .get("Elderly_" + elderlys.get(elderlyIndex2).id()) <= 1000) {
+                    fitness += 1;
+                }
+            }
+
+            if (dispatchType.equals(DispatchType.OUT)) {
+                if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) == 0) {
+                    fitness += 5;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) <= 250) {
+                    fitness += 2;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) <= 500) {
+                    fitness += 1.5;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) <= 750) {
+                    fitness += 1.0;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Employee_" + employees.get(i).id()) <= 1000) {
+                    fitness += 0.5;
+                }
+            }
+
+            if (dispatchType.equals((DispatchType.IN))) {
+
+                if (
+                        distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(
+                                                chromosome.getGenes().get(i).get(0))
+                                        .id()) == 0) {
+                    fitness += 5;
+                } else if (
+                        distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(
+                                                chromosome.getGenes().get(i).get(0))
+                                        .id()) <= 250) {
+                    fitness += 2;
+                } else if (
+                        distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(
+                                                chromosome.getGenes().get(i).get(0))
+                                        .id()) <= 500) {
+                    fitness += 1.5;
+                } else if (
+                        distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(
+                                                chromosome.getGenes().get(i).get(0))
+                                        .id()) <= 750) {
+                    fitness += 1.0;
+                } else if (
+                        distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(
+                                                chromosome.getGenes().get(i).get(0))
+                                        .id()) <= 1000) {
+                    fitness += 0.5;
+                }
+
+                if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Company") == 0) {
+                    fitness += 5;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Company") <= 250) {
+                    fitness += 2;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Company") <= 500) {
+                    fitness += 1.5;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Company") <= 750) {
+                    fitness += 1.0;
+                } else if (
+                        distanceMatrix.get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                                .get("Company") <= 1000) {
+                    fitness += 0.5;
+                }
+
+
+            }
+
+
+        }
+
+        // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
+
+        for (int i = 0; i < employees.size(); i++) {
+            boolean frontSeatAssigned = false;
+            for (int j = 0; j < chromosome.getGenes().get(i).size(); j++) {
+                if (elderlys.get(j).requiredFrontSeat()) {
+                    if (frontSeatAssigned) {
+                        fitness = 0.0;
+                        break;
+                    }
+                    frontSeatAssigned = true;
+                }
+            }
+        }
+        for (int employee_idx : fixedAssignmentsMap.keySet()) {
+            for (int elderly_idx : fixedAssignmentsMap.get(employee_idx)) {
+                if (!chromosome.getGenes().get(employee_idx).contains(elderly_idx)) {
+                    fitness = 0.0;
+                    return fitness;
+                }
+            }
+        }
+
+        return fitness;
+    }
+
+    private List<Double> calculateDepartureTimes(Chromosome chromosome) {
+        List<Double> departureTimes = new ArrayList<>();
+
+        if (dispatchType.equals(DispatchType.OUT)) {
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                double departureTime = 0.0;
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                    String company = "Company";
+                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                    String destinationNodeId =
+                            "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
+
+                    if (j == 0) {
+                        departureTime += distanceMatrix.get(company)
+                                .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+                    }
+
+                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+                }
+
+                departureTime += distanceMatrix.get(
+                                "Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                        .get("Employee_" + employees.get(i).id());
+
+                departureTimes.add(departureTime);
+            }
+        }
+
+        if (dispatchType.equals(DispatchType.IN)) {
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                String company = "Company";
+                double departureTime = 0.0;
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                    String destinationNodeId =
+                            "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
+
+                    if (j == 0) {
+                        departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+                    }
+
+                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+                }
+
+                departureTime += distanceMatrix.get(
+                                "Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                        .get(company);
+
+                departureTimes.add(departureTime);
+            }
+        }
+
+        return departureTimes;
+    }
+
+    private List<Chromosome> selectParents(List<Chromosome> chromosomes) {
+        List<Chromosome> selectedChromosomes = new ArrayList<>();
+        for (int i = 0; i < POPULATION_SIZE; i++) {
+            // 룰렛 휠 선택
+            int selectedIndex = rouletteWheelSelection(chromosomes);
+            selectedChromosomes.add(Chromosome.copy(chromosomes.get(selectedIndex)));
+        }
+        return selectedChromosomes;
+    }
+
+    private int rouletteWheelSelection(List<Chromosome> chromosomes) {
+        // 전체 적합도 합계 계산
+        double totalFitness = chromosomes.stream().mapToDouble(Chromosome::getFitness).sum();
+
+        // 룰렛 휠 생성
+        List<Double> rouletteWheel = new ArrayList<>();
+        double cumulativeFitness = 0.0;
+        for (Chromosome chromosome : chromosomes) {
+            cumulativeFitness += chromosome.getFitness() / totalFitness;
+            rouletteWheel.add(cumulativeFitness);
+        }
+
+        // 랜덤 값 생성 (0과 cumulativeFitaness 사이)
+        double randomValue = Math.random() * cumulativeFitness;
+
+        // 선택된 인덱스 찾기
+        int selectedIndex = 0;
+
+        while (selectedIndex < chromosomes.size() - 1 && randomValue > rouletteWheel.get(selectedIndex)) {
+            selectedIndex++;
+        }
+
+        return selectedIndex;
+    }
+
+    private List<Chromosome> crossover(List<Chromosome> selectedChromosomes, List<ElderlyDTO> elderlys) {
+        Random rand = new Random();
+        List<Chromosome> offspring = new ArrayList<>();
+
+        for (int i = 0; i < selectedChromosomes.size(); i += 2) {
+
+            Chromosome parent1 = Chromosome.copy(selectedChromosomes.get(i));
+            Chromosome parent2 = Chromosome.copy(selectedChromosomes.get(i + 1));
+
+            // Crossover 확률에 따라 진행
+            if (rand.nextDouble() < CROSSOVER_RATE) {
+
+                offspring.addAll(multiPointCrossover(parent1, parent2, elderlys));
+
+//                    int crossoverType = rand.nextInt(CROSSOVER_TYPES.length);
+//                    switch (CROSSOVER_TYPES[crossoverType]) {
+//                        case SINGLE_POINT:
+//                            offspring.addAll(singlePointCrossover(parent1, parent2, elderlys));
+//                            break;
+//                        case TWO_POINT:
+//                            offspring.addAll(twoPointCrossover(parent1, parent2, elderlys));
+//                            break;
+//                        case UNIFORM:
+//                            offspring.addAll(uniformCrossover(parent1, parent2, elderlys));
+//                            break;
+//                    }
+            } else {
+                // Crossover가 일어나지 않으면 부모 복제
+                offspring.add(parent1);
+                offspring.add(parent2);
+            }
+        }
+
+        return offspring;
+    }
+
+
+    private List<Chromosome> multiPointCrossover(Chromosome parent1, Chromosome parent2,
+                                                 List<ElderlyDTO> elderlys) {
+        Random rand = new Random();
+        int[] crossoverPoints = new int[2];
+        for (int i = 0; i < crossoverPoints.length; i++) {
+            crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
+        }
+        Arrays.sort(crossoverPoints);
+
+        Chromosome child1 = Chromosome.copy(parent1);
+        Chromosome child2 = Chromosome.copy(parent2);
+
+        for (int i = 0; i < crossoverPoints.length; i++) {
+            int start = i == 0 ? 0 : crossoverPoints[i - 1];
+            int end = crossoverPoints[i];
+            for (int j = start; j < end; j++) {
+                List<Integer> parent1Gene = parent1.getGenes().get(j);
+                List<Integer> parent2Gene = parent2.getGenes().get(j);
+                int minLength = Math.min(parent1Gene.size(), parent2Gene.size());
+                for (int k = 0; k < minLength; k++) {
+                    if (i % 2 == 0) {
+                        child1.getGenes().get(j).set(k, parent1Gene.get(k));
+                        child2.getGenes().get(j).set(k, parent2Gene.get(k));
+                    } else {
+                        child1.getGenes().get(j).set(k, parent2Gene.get(k));
+                        child2.getGenes().get(j).set(k, parent1Gene.get(k));
+                    }
+                }
+            }
+        }
+
+        fixDuplicateAssignments(child1, elderlys);
+        fixDuplicateAssignments(child2, elderlys);
+
+        return Arrays.asList(child1, child2);
+    }
+
+    private List<Chromosome> singlePointCrossover(Chromosome parent1, Chromosome parent2,
+                                                  List<ElderlyDTO> elderlys) {
+        Random rand = new Random();
+        int crossoverPoint = rand.nextInt(parent1.getGenes().size());
+        Chromosome child1 = Chromosome.copy(parent1);
+        Chromosome child2 = Chromosome.copy(parent2);
+
+        for (int j = crossoverPoint; j < parent1.getGenes().size(); j++) {
+            // 교차 지점 이후 유전자 교환
+
+            List<Integer> newGene1 = new ArrayList<>(parent2.getGenes().get(j));
+            List<Integer> newGene2 = new ArrayList<>(parent1.getGenes().get(j));
+
+            if (newGene1.size() != newGene2.size()) {
+                continue;
+            }
+
+            child1.getGenes().set(j, newGene1);
+            child2.getGenes().set(j, newGene2);
+
+        }
+
+        fixDuplicateAssignments(child1, elderlys);
+        fixDuplicateAssignments(child2, elderlys);
+
+        return Arrays.asList(child1, child2);
+    }
+
+    private List<Chromosome> twoPointCrossover(Chromosome parent1, Chromosome parent2,
+                                               List<ElderlyDTO> elderlys) {
+        Random rand = new Random();
+
+        int crossoverPoint1 = rand.nextInt(parent1.getGenes().size());
+        int crossoverPoint2 = rand.nextInt(parent1.getGenes().size());
+        if (crossoverPoint1 > crossoverPoint2) {
+            int temp = crossoverPoint1;
+            crossoverPoint1 = crossoverPoint2;
+            crossoverPoint2 = temp;
+        }
+
+        Chromosome child1 = Chromosome.copy(parent1);
+        Chromosome child2 = Chromosome.copy(parent2);
+
+        for (int j = crossoverPoint1; j < crossoverPoint2; j++) {
+
+            if (parent2.getGenes().size() != parent1.getGenes().get(j).size()) {
+                continue;
+            }
+
+            // 두 교차 지점 사이 유전자 교환
+            child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+            child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+        }
+
+        fixDuplicateAssignments(child1, elderlys);
+        fixDuplicateAssignments(child2, elderlys);
+
+        return Arrays.asList(child1, child2);
+    }
+
+    private List<Chromosome> uniformCrossover(Chromosome parent1, Chromosome parent2,
+                                              List<ElderlyDTO> elderlys) {
+        Random rand = new Random();
+
+        Chromosome child1 = Chromosome.copy(parent1);
+        Chromosome child2 = Chromosome.copy(parent2);
+
+        for (int j = 0; j < parent1.getGenes().size(); j++) {
+
+            if (parent2.getGenes().size() != parent1.getGenes().get(j).size()) {
+                continue;
+            }
+            // 균일 교차: 확률에 따라 유전자 교환
+            if (rand.nextDouble() < 0.5) {
+                child1.getGenes().set(j, new ArrayList<>(parent2.getGenes().get(j)));
+                child2.getGenes().set(j, new ArrayList<>(parent1.getGenes().get(j)));
+            }
+        }
+
+        fixDuplicateAssignments(child1, elderlys);
+        fixDuplicateAssignments(child2, elderlys);
+
+        return Arrays.asList(child1, child2);
+    }
+
+    private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
+        Set<Integer> assignedElderly = new HashSet<>();
+        for (List<Integer> gene : child.getGenes()) {
+            for (int i = 0; i < gene.size(); i++) {
+                int elderlyId = gene.get(i);
+                if (!assignedElderly.add(elderlyId)) {
+                    // 중복 발생 시, 다른 노인으로 교체
+                    for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
+                        if (!assignedElderly.contains(newElderlyId)) {
+                            gene.set(i, newElderlyId);
+                            assignedElderly.add(newElderlyId);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void mutate(List<Chromosome> offspringChromosomes, int numElderly) {
+
+        Random rand = new Random();
+
+        for (Chromosome chromosome : offspringChromosomes) {
+
+            if (rand.nextDouble() < MUTATION_RATE) {
+
+                int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
+                List<Integer> employeeAssignment = chromosome.getGenes().get(mutationPoint1);
+                int mutationPoint2 = rand.nextInt(employeeAssignment.size());
+
+                int mutationPoint3 = rand.nextInt(chromosome.getGenes().size());
+                List<Integer> employeeAssignment2 = chromosome.getGenes().get(mutationPoint3);
+                int mutationPoint4 = rand.nextInt(employeeAssignment2.size());
+
+                int tempElderly = employeeAssignment2.get(mutationPoint4);
+
+                employeeAssignment2.set(mutationPoint4, employeeAssignment.get(mutationPoint2));
+                employeeAssignment.set(mutationPoint2, tempElderly);
+
+
+            }
+        }
+    }
+
+    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes,
+                                                List<Chromosome> offspringChromosomes) {
+        List<Chromosome> combinedChromosomes = new ArrayList<>();
+        combinedChromosomes.addAll(chromosomes);
+        combinedChromosomes.addAll(offspringChromosomes);
+
+        // 정렬
+        Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
+
+        // 최상위 개체만 선택
+        return combinedChromosomes.subList(0, POPULATION_SIZE);
+    }
+
+
+}

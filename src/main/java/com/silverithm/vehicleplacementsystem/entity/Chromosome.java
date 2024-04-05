@@ -69,8 +69,8 @@ public class Chromosome {
                 employeesCapacityLeft[i]--;
                 elderlyIndices.remove(0);
             }
-
         }
+
         for (int i = 0; i < numEmployees; i++) {
             if (employeesCapacityLeft[i] > 0) {
                 chromosome.get(i).add(elderlyIndices.get(0));
