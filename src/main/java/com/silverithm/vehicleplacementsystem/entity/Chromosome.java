@@ -71,7 +71,7 @@ public class Chromosome {
         }
 
         for (int i = 0; i < numEmployees; i++) {
-            if (employeesCapacityLeft[i] > 0) {
+            if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0) {
                 chromosome.get(i).add(elderlyIndices.get(0));
                 employeesCapacityLeft[i]--;
                 elderlyIndices.remove(0);
@@ -79,7 +79,7 @@ public class Chromosome {
         }
 
         for (int i = 0; i < numEmployees; i++) {
-            if (employeesCapacityLeft[i] > 0) {
+            if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0) {
                 chromosome.get(i).add(elderlyIndices.get(0));
                 employeesCapacityLeft[i]--;
                 elderlyIndices.remove(0);
