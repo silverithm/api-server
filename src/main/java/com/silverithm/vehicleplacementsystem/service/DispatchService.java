@@ -115,7 +115,7 @@ public class DispatchService {
             sum += value;
         }
 
-        log.info(bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
+        log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
