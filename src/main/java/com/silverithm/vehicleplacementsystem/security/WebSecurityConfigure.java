@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -95,6 +96,10 @@ public class WebSecurityConfigure {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorize -> authorize
+                                .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
+                                .requestMatchers("/*").permitAll()
+                                .requestMatchers("/metrics/*").permitAll()
+                                .requestMatchers("/actuator/*").permitAll()
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()

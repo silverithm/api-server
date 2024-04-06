@@ -2,7 +2,6 @@ spring:
   profiles:
     active: prod
 
-
   #
   #logging:
   #  level:
