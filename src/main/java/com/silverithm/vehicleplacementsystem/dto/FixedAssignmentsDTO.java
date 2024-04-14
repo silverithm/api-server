@@ -1,5 +1,5 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
-public record FixedAssignmentsDTO(int employee_idx, int elderly_idx, int sequence) {
+public record FixedAssignmentsDTO(int employee_id, int elderly_id, int sequence) {
 }
 

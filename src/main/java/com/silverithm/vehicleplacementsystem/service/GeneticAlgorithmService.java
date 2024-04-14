@@ -88,8 +88,8 @@ public class GeneticAlgorithmService {
         }
 
         for (FixedAssignmentsDTO fixedAssignment : fixedAssignments) {
-            long employeeId = fixedAssignment.employee_idx();
-            long elderlyId = fixedAssignment.elderly_idx();
+            long employeeId = fixedAssignment.employee_id();
+            long elderlyId = fixedAssignment.elderly_id();
             int sequence = fixedAssignment.sequence();
 
             int employee_idx = employees.stream().map((employee) -> employee.id()).collect(Collectors.toList())
