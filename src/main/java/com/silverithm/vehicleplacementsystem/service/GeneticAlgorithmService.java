@@ -88,17 +88,28 @@ public class GeneticAlgorithmService {
         }
 
         for (FixedAssignmentsDTO fixedAssignment : fixedAssignments) {
-            int employeeIdx = fixedAssignment.employee_idx();
-            int elderlyIdx = fixedAssignment.elderly_idx();
+            long employeeId = fixedAssignment.employee_idx();
+            long elderlyId = fixedAssignment.elderly_idx();
+            int sequence = fixedAssignment.sequence();
 
-            if (fixedAssignmentMap.get(employeeIdx) == null) {
+            int employee_idx = employees.stream().map((employee) -> employee.id()).collect(Collectors.toList())
+                    .indexOf(employeeId);
+            int elderly_idx = elderlys.stream().map((elderly) -> elderly.id()).collect(Collectors.toList())
+                    .indexOf(elderlyId);
+
+            if (fixedAssignmentMap.get(employee_idx) == null && sequence > 0) {
                 List<Integer> createdList = new ArrayList<>();
-                createdList.add(elderlyIdx);
-                fixedAssignmentMap.put(employeeIdx, createdList);
-            } else {
-                List<Integer> prevList = fixedAssignmentMap.get(employeeIdx);
-                prevList.add(elderlyIdx);
-                fixedAssignmentMap.put(employeeIdx, prevList);
+
+                for (int i = 0; i < employees.get(employee_idx).maximumCapacity(); i++) {
+                    createdList.add(-1);
+                }
+
+                createdList.set(sequence - 1, (int) elderly_idx);
+                fixedAssignmentMap.put(employee_idx, createdList);
+            } else if (sequence > 0) {
+                List<Integer> prevList = fixedAssignmentMap.get(employee_idx);
+                prevList.set(sequence - 1, (int) elderly_idx);
+                fixedAssignmentMap.put(employee_idx, prevList);
             }
 
 //                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
@@ -110,7 +121,6 @@ public class GeneticAlgorithmService {
     private List<Chromosome> generateInitialPopulation(Map<Integer, List<Integer>> fixedAssignmentMap) {
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
-
             chromosomes.add(new Chromosome(employees, elderlys, fixedAssignmentMap));
 
         }
@@ -273,17 +283,17 @@ public class GeneticAlgorithmService {
                 }
             }
         }
-        int employee_idx = 0;
-        for (int employee_id : fixedAssignmentsMap.keySet()) {
-            for (long elderly_id : fixedAssignmentsMap.get(employee_id)) {
-                int elderly_idx = elderlys.stream().map((elder) -> elder.id()).collect(Collectors.toList())
-                        .indexOf(elderly_id);
+//        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
 
-                if (!chromosome.getGenes().get(employee_idx).contains(elderly_idx)) {
+        for (int employee_idx : fixedAssignmentsMap.keySet()) {
+            for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
+                if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
+                        && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
                     fitness = 0.0;
                     return fitness;
                 }
             }
+
             employee_idx++;
         }
 

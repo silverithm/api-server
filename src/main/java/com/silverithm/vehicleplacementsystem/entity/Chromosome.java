@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
+import jakarta.persistence.criteria.CriteriaBuilder.In;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,7 +44,11 @@ public class Chromosome {
 
         for (int e = 0; e < numEmployees; e++) {
             employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
-            chromosome.add(new ArrayList<>()); // 미리 리스트를 초기화
+            List<Integer> initialChromosome = new ArrayList<>();
+            for (int j = 0; j < employees.get(e).maximumCapacity(); j++) {
+                initialChromosome.add(-1);
+            }
+            chromosome.add(initialChromosome); // 미리 리스트를 초기화
         }
         // 먼저 차량 배치에 참여할 직원과 노인을 정하고
         // 다음페이지로 넘어감
@@ -51,53 +56,72 @@ public class Chromosome {
         // 차량배치에 참여하는 직원과 노인의 인덱스 번호를 직원 리스트, 노인 리스트와 함께 넘겨줌
         // 백엔드는 이 인덱스를 가지고 Map을 생성함
 
-        int employeeIndex = 0;
         // 고정 할당 처리
         for (Map.Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
 
-            List<Integer> fixedElderlyIds = entry.getValue();
-            for (long elderlyId : fixedElderlyIds) {
-                if (employeesCapacityLeft[employeeIndex] > 0) {
-                    int idx = elderly.stream().map((elder) -> elder.id()).collect(Collectors.toList())
-                            .indexOf(elderlyId);
-                    chromosome.get(employeeIndex).add(idx);
-                    employeesCapacityLeft[employeeIndex]--;
-                    elderlyIndices.removeIf(elderlyIndicie -> elderlyIndicie == idx);
+            List<Integer> fixedElderlyIdxs = entry.getValue();
+
+            for (long elderlyIdx : fixedElderlyIdxs) {
+                if (employeesCapacityLeft[entry.getKey()] > 0) {
+                    if (elderlyIdx > -1) {
+                        employeesCapacityLeft[entry.getKey()]--;
+                        elderlyIndices.removeIf(elderlyIndicie -> elderlyIndicie == elderlyIdx);
+                    }
+
                 } else {
-                    throw new IllegalStateException("직원 " + employeeIndex + "의 capacity가 초과되었습니다.");
+                    throw new IllegalStateException("직원 " + entry.getKey() + "의 capacity가 초과되었습니다.");
                 }
             }
-            employeeIndex++;
+            chromosome.set(entry.getKey(), new ArrayList<>(fixedElderlyIdxs));
         }
 
         for (int i = 0; i < numEmployees; i++) {
-            if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0) {
-                chromosome.get(i).add(elderlyIndices.get(0));
-                employeesCapacityLeft[i]--;
-                elderlyIndices.remove(0);
+            for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
+                if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0 && chromosome.get(i).get(j) == -1) {
+                    chromosome.get(i).set(j, elderlyIndices.get(0));
+                    employeesCapacityLeft[i]--;
+                    elderlyIndices.remove(0);
+                    break;
+                }
             }
         }
 
         for (int i = 0; i < numEmployees; i++) {
-            if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0) {
-                chromosome.get(i).add(elderlyIndices.get(0));
-                employeesCapacityLeft[i]--;
-                elderlyIndices.remove(0);
+            for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
+                if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0 && chromosome.get(i).get(j) == -1) {
+                    chromosome.get(i).set(j, elderlyIndices.get(0));
+                    employeesCapacityLeft[i]--;
+                    elderlyIndices.remove(0);
+                    break;
+                }
             }
         }
 
+        log.info("중간 체크 : " + chromosome.toString());
         int startIndex = 0;
         Random rand = new Random();
         while (startIndex < elderlyIndices.size()) {
             int randIndex = rand.nextInt(numEmployees);
-            if (employeesCapacityLeft[randIndex] > 0) {
-                chromosome.get(randIndex).add(elderlyIndices.get(startIndex));
-                employeesCapacityLeft[randIndex]--;
-                startIndex++;
+            for (int i = 0; i < chromosome.get(randIndex).size(); i++) {
+                if (chromosome.get(randIndex).get(i) == -1 && employeesCapacityLeft[randIndex] > 0) {
+                    chromosome.get(randIndex).set(i, Integer.valueOf(elderlyIndices.get(startIndex)));
+                    employeesCapacityLeft[randIndex]--;
+                    startIndex++;
+                    break;
+                }
             }
 
         }
 
+        for (int i = 0; i < chromosome.size(); i++) {
+            for (int j = 0; j < chromosome.get(i).size(); j++) {
+                if (chromosome.get(i).get(j) == -1) {
+                    chromosome.get(i).remove(j);
+                }
+            }
+        }
+
+        log.info("chromosome created : " + chromosome.toString());
         genes = chromosome;
 
     }
