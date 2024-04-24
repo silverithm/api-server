@@ -51,16 +51,21 @@ public class GeneticAlgorithmService {
 
         try {
             for (int i = 0; i < MAX_ITERATIONS; i++) {
+                log.info("1");
                 // 평가
                 evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
-
+                log.info("2");
                 // 선택
                 List<Chromosome> selectedChromosomes = chromosomes;
+                log.info("3");
 
                 // 교차
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
+                log.info("4");
+
                 // 돌연변이
                 mutate(offspringChromosomes, elderlys.size());
+                log.info("5");
 
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
@@ -138,19 +143,17 @@ public class GeneticAlgorithmService {
     private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees,
                                     Map<String, Map<String, Integer>> distanceMatrix,
                                     Map<Integer, List<Integer>> fixedAssignmentsMap) {
+
         double fitness = 0.0;
 
         // 퇴근 시간 계산
         List<Double> departureTimes = calculateDepartureTimes(chromosome);
         chromosome.setDepartureTimes(departureTimes);
-
         // 모든 퇴근 시간의 합 계산
         double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
         // 적합도 계산
         fitness = 10000000 / (totalDepartureTime + 1.0);
-
         for (int i = 0; i < chromosome.getGenes().size(); i++) {
-
             for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                 int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
                 int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
@@ -201,7 +204,6 @@ public class GeneticAlgorithmService {
                     fitness += 0.5;
                 }
             }
-
             if (dispatchType.equals((DispatchType.IN))) {
 
                 if (
@@ -268,7 +270,6 @@ public class GeneticAlgorithmService {
 
 
         }
-
         // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
         for (int i = 0; i < employees.size(); i++) {
@@ -284,7 +285,6 @@ public class GeneticAlgorithmService {
             }
         }
 //        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
-
         for (int employee_idx : fixedAssignmentsMap.keySet()) {
             for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
                 if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)

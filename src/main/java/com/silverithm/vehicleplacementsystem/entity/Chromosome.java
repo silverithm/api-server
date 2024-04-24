@@ -3,15 +3,12 @@ package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
-import jakarta.persistence.criteria.CriteriaBuilder.In;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -31,13 +28,9 @@ public class Chromosome {
     public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                       Map<Integer, List<Integer>> fixedAssignments) {
 
-        totalElderly = elderly.size();
+        int totalElderly = elderly.size();
         int numEmployees = employees.size();
-        List<Integer> elderlyIndices = new ArrayList<>();
-        for (int i = 0; i < totalElderly; i++) {
-            elderlyIndices.add(i);
-        }
-        Collections.shuffle(elderlyIndices);
+        List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
 
         List<List<Integer>> chromosome = new ArrayList<>();
         int[] employeesCapacityLeft = new int[numEmployees];
@@ -57,7 +50,7 @@ public class Chromosome {
         // 백엔드는 이 인덱스를 가지고 Map을 생성함
 
         // 고정 할당 처리
-        for (Map.Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
+        for (Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
 
             List<Integer> fixedElderlyIdxs = entry.getValue();
 
@@ -65,7 +58,7 @@ public class Chromosome {
                 if (employeesCapacityLeft[entry.getKey()] > 0) {
                     if (elderlyIdx > -1) {
                         employeesCapacityLeft[entry.getKey()]--;
-                        elderlyIndices.removeIf(elderlyIndicie -> elderlyIndicie == elderlyIdx);
+                        elderlyIndexs.removeIf(elderlyIndicie -> elderlyIndicie == elderlyIdx);
                     }
 
                 } else {
@@ -77,10 +70,10 @@ public class Chromosome {
 
         for (int i = 0; i < numEmployees; i++) {
             for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
-                if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0 && chromosome.get(i).get(j) == -1) {
-                    chromosome.get(i).set(j, elderlyIndices.get(0));
+                if (employeesCapacityLeft[i] > 0 && elderlyIndexs.size() > 0 && chromosome.get(i).get(j) == -1) {
+                    chromosome.get(i).set(j, elderlyIndexs.get(0));
                     employeesCapacityLeft[i]--;
-                    elderlyIndices.remove(0);
+                    elderlyIndexs.remove(0);
                     break;
                 }
             }
@@ -88,23 +81,22 @@ public class Chromosome {
 
         for (int i = 0; i < numEmployees; i++) {
             for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
-                if (employeesCapacityLeft[i] > 0 && elderlyIndices.size() > 0 && chromosome.get(i).get(j) == -1) {
-                    chromosome.get(i).set(j, elderlyIndices.get(0));
+                if (employeesCapacityLeft[i] > 0 && elderlyIndexs.size() > 0 && chromosome.get(i).get(j) == -1) {
+                    chromosome.get(i).set(j, elderlyIndexs.get(0));
                     employeesCapacityLeft[i]--;
-                    elderlyIndices.remove(0);
+                    elderlyIndexs.remove(0);
                     break;
                 }
             }
         }
 
-        log.info("중간 체크 : " + chromosome.toString());
         int startIndex = 0;
         Random rand = new Random();
-        while (startIndex < elderlyIndices.size()) {
+        while (startIndex < elderlyIndexs.size()) {
             int randIndex = rand.nextInt(numEmployees);
             for (int i = 0; i < chromosome.get(randIndex).size(); i++) {
                 if (chromosome.get(randIndex).get(i) == -1 && employeesCapacityLeft[randIndex] > 0) {
-                    chromosome.get(randIndex).set(i, Integer.valueOf(elderlyIndices.get(startIndex)));
+                    chromosome.get(randIndex).set(i, Integer.valueOf(elderlyIndexs.get(startIndex)));
                     employeesCapacityLeft[randIndex]--;
                     startIndex++;
                     break;
@@ -124,6 +116,15 @@ public class Chromosome {
         log.info("chromosome created : " + chromosome.toString());
         genes = chromosome;
 
+    }
+
+    private List<Integer> createRandomElderlyIndexs(int totalElderly) {
+        List<Integer> elderlyIndexs = new ArrayList<>();
+        for (int i = 0; i < totalElderly; i++) {
+            elderlyIndexs.add(i);
+        }
+        Collections.shuffle(elderlyIndexs);
+        return elderlyIndexs;
     }
 
 
