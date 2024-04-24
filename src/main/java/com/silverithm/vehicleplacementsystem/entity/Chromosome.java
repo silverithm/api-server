@@ -28,21 +28,14 @@ public class Chromosome {
     public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                       Map<Integer, List<Integer>> fixedAssignments) {
 
-        int totalElderly = elderly.size();
         int numEmployees = employees.size();
-        List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
-
-        List<List<Integer>> chromosome = new ArrayList<>();
+        int totalElderly = elderly.size();
         int[] employeesCapacityLeft = new int[numEmployees];
 
-        for (int e = 0; e < numEmployees; e++) {
-            employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
-            List<Integer> initialChromosome = new ArrayList<>();
-            for (int j = 0; j < employees.get(e).maximumCapacity(); j++) {
-                initialChromosome.add(-1);
-            }
-            chromosome.add(initialChromosome); // 미리 리스트를 초기화
-        }
+        List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
+        List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees, numEmployees,
+                employeesCapacityLeft);
+
         // 먼저 차량 배치에 참여할 직원과 노인을 정하고
         // 다음페이지로 넘어감
         // 직원과 노인의 아이디를 넘겨주는 것이 아니라
@@ -116,6 +109,20 @@ public class Chromosome {
         log.info("chromosome created : " + chromosome.toString());
         genes = chromosome;
 
+    }
+
+    private List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees,
+                                                                        int[] employeesCapacityLeft) {
+        List<List<Integer>> initializeChromosome = new ArrayList<>();
+        for (int e = 0; e < numEmployees; e++) {
+            List<Integer> chromosome = new ArrayList<>();
+            employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
+            for (int j = 0; j < employees.get(e).maximumCapacity(); j++) {
+                chromosome.add(-1);
+            }
+            initializeChromosome.add(chromosome);
+        }
+        return initializeChromosome;
     }
 
     private List<Integer> createRandomElderlyIndexs(int totalElderly) {
