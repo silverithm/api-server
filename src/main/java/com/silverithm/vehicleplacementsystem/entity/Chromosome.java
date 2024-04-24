@@ -43,23 +43,7 @@ public class Chromosome {
         // 백엔드는 이 인덱스를 가지고 Map을 생성함
 
         // 고정 할당 처리
-        for (Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
-
-            List<Integer> fixedElderlyIdxs = entry.getValue();
-
-            for (long elderlyIdx : fixedElderlyIdxs) {
-                if (employeesCapacityLeft[entry.getKey()] > 0) {
-                    if (elderlyIdx > -1) {
-                        employeesCapacityLeft[entry.getKey()]--;
-                        elderlyIndexs.removeIf(elderlyIndicie -> elderlyIndicie == elderlyIdx);
-                    }
-
-                } else {
-                    throw new IllegalStateException("직원 " + entry.getKey() + "의 capacity가 초과되었습니다.");
-                }
-            }
-            chromosome.set(entry.getKey(), new ArrayList<>(fixedElderlyIdxs));
-        }
+        fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
 
         for (int i = 0; i < numEmployees; i++) {
             for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
@@ -109,6 +93,27 @@ public class Chromosome {
         log.info("chromosome created : " + chromosome.toString());
         genes = chromosome;
 
+    }
+
+    private void fixElderlyAtChromosome(Map<Integer, List<Integer>> fixedAssignments, int[] employeesCapacityLeft,
+                           List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
+        for (Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
+
+            List<Integer> fixedElderlyIdxs = entry.getValue();
+
+            for (long elderlyIdx : fixedElderlyIdxs) {
+                if (employeesCapacityLeft[entry.getKey()] > 0) {
+                    if (elderlyIdx > -1) {
+                        employeesCapacityLeft[entry.getKey()]--;
+                        elderlyIndexs.removeIf(elderlyIndicie -> elderlyIndicie == elderlyIdx);
+                    }
+
+                } else {
+                    throw new IllegalStateException("직원 " + entry.getKey() + "의 capacity가 초과되었습니다.");
+                }
+            }
+            chromosome.set(entry.getKey(), new ArrayList<>(fixedElderlyIdxs));
+        }
     }
 
     private List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees,
