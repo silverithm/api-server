@@ -50,6 +50,14 @@ public class Chromosome {
 
         fixRandomElderlyIndexAtChromosome(numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
 
+        removeEmptyChromosome(chromosome);
+
+        log.info("chromosome created : " + chromosome.toString());
+        genes = chromosome;
+
+    }
+
+    private void removeEmptyChromosome(List<List<Integer>> chromosome) {
         for (int i = 0; i < chromosome.size(); i++) {
             for (int j = 0; j < chromosome.get(i).size(); j++) {
                 if (chromosome.get(i).get(j) == -1) {
@@ -57,14 +65,11 @@ public class Chromosome {
                 }
             }
         }
-
-        log.info("chromosome created : " + chromosome.toString());
-        genes = chromosome;
-
     }
 
-    private void fixRandomElderlyIndexAtChromosome(int numEmployees, int[] employeesCapacityLeft, List<Integer> elderlyIndexs,
-                           List<List<Integer>> chromosome) {
+    private void fixRandomElderlyIndexAtChromosome(int numEmployees, int[] employeesCapacityLeft,
+                                                   List<Integer> elderlyIndexs,
+                                                   List<List<Integer>> chromosome) {
         int startIndex = 0;
         Random rand = new Random();
         while (startIndex < elderlyIndexs.size()) {
