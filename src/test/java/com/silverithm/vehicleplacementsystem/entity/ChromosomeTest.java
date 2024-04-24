@@ -26,7 +26,17 @@ public class ChromosomeTest {
         Assertions.assertThat(elderlyIndexs.size()).isEqualTo(totalElderly);
     }
 
-
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+    public void createRandomElderlyIndexs_isChromosomeRangedInTotalElderly_Success(int totalElderly) {
+        //given
+        //when
+        List<Integer> elderlyIndexs = chromosome.createRandomElderlyIndexs(totalElderly);
+        //then
+        for (int i = 0; i < totalElderly; i++) {
+            Assertions.assertThat(elderlyIndexs).contains(i);
+        }
+    }
 
 
 }
