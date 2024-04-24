@@ -36,13 +36,6 @@ public class Chromosome {
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees, numEmployees,
                 employeesCapacityLeft);
 
-        // 먼저 차량 배치에 참여할 직원과 노인을 정하고
-        // 다음페이지로 넘어감
-        // 직원과 노인의 아이디를 넘겨주는 것이 아니라
-        // 차량배치에 참여하는 직원과 노인의 인덱스 번호를 직원 리스트, 노인 리스트와 함께 넘겨줌
-        // 백엔드는 이 인덱스를 가지고 Map을 생성함
-
-        // 고정 할당 처리
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
 
         fixInitialChromosome(employees, numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
@@ -52,12 +45,11 @@ public class Chromosome {
 
         removeEmptyChromosome(chromosome);
 
-        log.info("chromosome created : " + chromosome.toString());
         genes = chromosome;
 
     }
 
-    private void removeEmptyChromosome(List<List<Integer>> chromosome) {
+    public void removeEmptyChromosome(List<List<Integer>> chromosome) {
         for (int i = 0; i < chromosome.size(); i++) {
             for (int j = 0; j < chromosome.get(i).size(); j++) {
                 if (chromosome.get(i).get(j) == -1) {
@@ -67,9 +59,9 @@ public class Chromosome {
         }
     }
 
-    private void fixRandomElderlyIndexAtChromosome(int numEmployees, int[] employeesCapacityLeft,
-                                                   List<Integer> elderlyIndexs,
-                                                   List<List<Integer>> chromosome) {
+    public void fixRandomElderlyIndexAtChromosome(int numEmployees, int[] employeesCapacityLeft,
+                                                  List<Integer> elderlyIndexs,
+                                                  List<List<Integer>> chromosome) {
         int startIndex = 0;
         Random rand = new Random();
         while (startIndex < elderlyIndexs.size()) {
@@ -85,8 +77,8 @@ public class Chromosome {
         }
     }
 
-    private void fixInitialChromosome(List<EmployeeDTO> employees, int numEmployees, int[] employeesCapacityLeft,
-                                      List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
+    public void fixInitialChromosome(List<EmployeeDTO> employees, int numEmployees, int[] employeesCapacityLeft,
+                                     List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
         for (int i = 0; i < numEmployees; i++) {
             for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
                 if (employeesCapacityLeft[i] > 0 && elderlyIndexs.size() > 0 && chromosome.get(i).get(j) == -1) {
@@ -99,8 +91,8 @@ public class Chromosome {
         }
     }
 
-    private void fixElderlyAtChromosome(Map<Integer, List<Integer>> fixedAssignments, int[] employeesCapacityLeft,
-                                        List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
+    public void fixElderlyAtChromosome(Map<Integer, List<Integer>> fixedAssignments, int[] employeesCapacityLeft,
+                                       List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
         for (Entry<Integer, List<Integer>> entry : fixedAssignments.entrySet()) {
 
             List<Integer> fixedElderlyIdxs = entry.getValue();
@@ -120,8 +112,8 @@ public class Chromosome {
         }
     }
 
-    private List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees,
-                                                                        int[] employeesCapacityLeft) {
+    public List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees,
+                                                                       int[] employeesCapacityLeft) {
         List<List<Integer>> initializeChromosome = new ArrayList<>();
         for (int e = 0; e < numEmployees; e++) {
             List<Integer> chromosome = new ArrayList<>();
@@ -134,7 +126,7 @@ public class Chromosome {
         return initializeChromosome;
     }
 
-    private List<Integer> createRandomElderlyIndexs(int totalElderly) {
+    public List<Integer> createRandomElderlyIndexs(int totalElderly) {
         List<Integer> elderlyIndexs = new ArrayList<>();
         for (int i = 0; i < totalElderly; i++) {
             elderlyIndexs.add(i);
