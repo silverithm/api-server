@@ -48,20 +48,7 @@ public class Chromosome {
         fixInitialChromosome(employees, numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
 
-        int startIndex = 0;
-        Random rand = new Random();
-        while (startIndex < elderlyIndexs.size()) {
-            int randIndex = rand.nextInt(numEmployees);
-            for (int i = 0; i < chromosome.get(randIndex).size(); i++) {
-                if (chromosome.get(randIndex).get(i) == -1 && employeesCapacityLeft[randIndex] > 0) {
-                    chromosome.get(randIndex).set(i, Integer.valueOf(elderlyIndexs.get(startIndex)));
-                    employeesCapacityLeft[randIndex]--;
-                    startIndex++;
-                    break;
-                }
-            }
-
-        }
+        fixRandomElderlyIndexAtChromosome(numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
 
         for (int i = 0; i < chromosome.size(); i++) {
             for (int j = 0; j < chromosome.get(i).size(); j++) {
@@ -74,6 +61,23 @@ public class Chromosome {
         log.info("chromosome created : " + chromosome.toString());
         genes = chromosome;
 
+    }
+
+    private void fixRandomElderlyIndexAtChromosome(int numEmployees, int[] employeesCapacityLeft, List<Integer> elderlyIndexs,
+                           List<List<Integer>> chromosome) {
+        int startIndex = 0;
+        Random rand = new Random();
+        while (startIndex < elderlyIndexs.size()) {
+            int randIndex = rand.nextInt(numEmployees);
+            for (int i = 0; i < chromosome.get(randIndex).size(); i++) {
+                if (chromosome.get(randIndex).get(i) == -1 && employeesCapacityLeft[randIndex] > 0) {
+                    chromosome.get(randIndex).set(i, Integer.valueOf(elderlyIndexs.get(startIndex)));
+                    employeesCapacityLeft[randIndex]--;
+                    startIndex++;
+                    break;
+                }
+            }
+        }
     }
 
     private void fixInitialChromosome(List<EmployeeDTO> employees, int numEmployees, int[] employeesCapacityLeft,
