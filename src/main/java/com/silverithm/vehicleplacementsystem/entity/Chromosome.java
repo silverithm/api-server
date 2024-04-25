@@ -33,8 +33,7 @@ public class Chromosome {
 
         List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
-        List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees, numEmployees,
-                employeesCapacityLeft);
+        List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees);
 
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
@@ -120,9 +119,9 @@ public class Chromosome {
         }
     }
 
-    public List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees) {
+    public List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees) {
         List<List<Integer>> initializeChromosome = new ArrayList<>();
-        for (int e = 0; e < numEmployees; e++) {
+        for (int e = 0; e < employees.size(); e++) {
             List<Integer> chromosome = new ArrayList<>();
             for (int j = 0; j < employees.get(e).maximumCapacity(); j++) {
                 chromosome.add(-1);
