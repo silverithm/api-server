@@ -62,12 +62,33 @@ public class ChromosomeTest {
         int numEmployee = 5;
         int[] employeesCapacityLeft = new int[5];
         //when
-        List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees, numEmployee,
-                employeesCapacityLeft);
+        List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees);
         //then
         for (int i = 0; i < employees.size(); i++) {
             log.info(genes.get(i).toString());
             Assertions.assertThat(genes.get(i).size()).isEqualTo(employees.get(i).maximumCapacity());
+        }
+    }
+
+    @Test
+    public void initializeChromosomeWithMaximumCapacity_IsAllValueEqualMinus1_Success() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>();
+        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+        int numEmployee = 5;
+        int[] employeesCapacityLeft = new int[5];
+        //when
+        List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees);
+        //then
+        for (int i = 0; i < genes.size(); i++) {
+            log.info(genes.get(i).toString());
+            for (int j = 0; j < genes.get(i).size(); j++) {
+                Assertions.assertThat(genes.get(i).get(j)).isEqualTo(-1);
+            }
         }
     }
 
