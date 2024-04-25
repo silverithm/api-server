@@ -30,23 +30,31 @@ public class Chromosome {
 
         int numEmployees = employees.size();
         int totalElderly = elderly.size();
-        int[] employeesCapacityLeft = new int[numEmployees];
 
         List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
+        int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees, numEmployees,
                 employeesCapacityLeft);
 
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
-
         fixInitialChromosome(employees, numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
-
         fixRandomElderlyIndexAtChromosome(numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
-
         removeEmptyChromosome(chromosome);
 
         genes = chromosome;
 
+    }
+
+    private int[] initializeEmployeesCapacityLeft(List<EmployeeDTO> employees) {
+
+        int[] employeesCapacityLeft = new int[employees.size()];
+
+        for (int i = 0; i < employees.size(); i++) {
+            employeesCapacityLeft[i] = employees.get(i).maximumCapacity();
+        }
+
+        return employeesCapacityLeft;
     }
 
     public void removeEmptyChromosome(List<List<Integer>> chromosome) {
@@ -112,12 +120,10 @@ public class Chromosome {
         }
     }
 
-    public List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees,
-                                                                       int[] employeesCapacityLeft) {
+    public List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees, int numEmployees) {
         List<List<Integer>> initializeChromosome = new ArrayList<>();
         for (int e = 0; e < numEmployees; e++) {
             List<Integer> chromosome = new ArrayList<>();
-            employeesCapacityLeft[e] = employees.get(e).maximumCapacity();
             for (int j = 0; j < employees.get(e).maximumCapacity(); j++) {
                 chromosome.add(-1);
             }
