@@ -1,5 +1,8 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
+import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
+import com.silverithm.vehicleplacementsystem.dto.Location;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.CellRendererPane;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +47,27 @@ public class ChromosomeTest {
         //then
         for (int i = 0; i < totalElderly; i++) {
             Assertions.assertThat(elderlyIndexs).contains(i);
+        }
+    }
+
+    @Test
+    public void initializeChromosomeWithMaximumCapacity_SizeEqualCapacity_Success() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>();
+        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 5));
+        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 3));
+        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 2));
+        int numEmployee = 5;
+        int[] employeesCapacityLeft = new int[5];
+        //when
+        List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees, numEmployee,
+                employeesCapacityLeft);
+        //then
+        for (int i = 0; i < employees.size(); i++) {
+            log.info(genes.get(i).toString());
+            Assertions.assertThat(genes.get(i).size()).isEqualTo(employees.get(i).maximumCapacity());
         }
     }
 
