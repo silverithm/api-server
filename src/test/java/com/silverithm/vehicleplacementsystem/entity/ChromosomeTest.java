@@ -79,8 +79,7 @@ public class ChromosomeTest {
         employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
         employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
         employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
-        int numEmployee = 5;
-        int[] employeesCapacityLeft = new int[5];
+
         //when
         List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees);
         //then
