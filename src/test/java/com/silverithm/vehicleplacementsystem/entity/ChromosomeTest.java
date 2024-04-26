@@ -135,8 +135,42 @@ public class ChromosomeTest {
                 initialChromosome);
         //then
         log.info(initialChromosome.toString());
-        Assertions.assertThat(initialChromosome.get(0)).isEqualTo(Arrays.asList(-1,-1,0,1));
-        Assertions.assertThat(initialChromosome.get(3)).isEqualTo(Arrays.asList(-1,-1,2,3));
+        Assertions.assertThat(initialChromosome.get(0)).isEqualTo(Arrays.asList(-1, -1, 0, 1));
+        Assertions.assertThat(initialChromosome.get(3)).isEqualTo(Arrays.asList(-1, -1, 2, 3));
+    }
+
+    @Test
+    public void fixInitialChromosome_FirstAndSecondValueIsNotMinus1_Success() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>();
+        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
+        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+
+        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
+
+        List<Integer> randomElderlyIndexs = chromosome.createRandomElderlyIndexs(20);
+
+        List<List<Integer>> initialChromosome = chromosome.initializeChromosomeWithMaximumCapacity(employees);
+
+        //when
+        chromosome.fixInitialChromosome(employees, employeesCapacityLeft, randomElderlyIndexs, initialChromosome);
+        //then
+        log.info(initialChromosome.toString());
+
+        for (int i = 0; i < employees.size(); i++) {
+            for (int j = 0; j < initialChromosome.get(i).size(); j++) {
+                if (j <= 1) {
+                    Assertions.assertThat(initialChromosome.get(i).get(0)).isNotEqualTo(-1);
+                    Assertions.assertThat(initialChromosome.get(i).get(1)).isNotEqualTo(-1);
+                }
+                if (j > 1) {
+                    Assertions.assertThat(initialChromosome.get(i).get(j)).isEqualTo(-1);
+                }
+            }
+        }
     }
 
 

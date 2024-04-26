@@ -97,7 +97,6 @@ public class Chromosome {
                 }
             }
         }
-
     }
 
     public void fixElderlyAtChromosome(Map<Integer, List<Integer>> fixedAssignments, int[] employeesCapacityLeft,
