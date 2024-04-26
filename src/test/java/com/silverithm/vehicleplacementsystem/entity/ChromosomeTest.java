@@ -4,7 +4,9 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.CellRendererPane;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.annotation.Before;
@@ -107,6 +109,34 @@ public class ChromosomeTest {
         for (int i = 0; i < employees.size(); i++) {
             Assertions.assertThat(employeesCapacityLeft[i]).isEqualTo(employees.get(i).maximumCapacity());
         }
+    }
+
+    @Test
+    public void fixElderlyAtChromosome_EqualFixAssignments_Success() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>();
+        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
+        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+
+        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
+
+        List<Integer> randomElderlyIndexs = chromosome.createRandomElderlyIndexs(employees.size());
+
+        List<List<Integer>> initialChromosome = chromosome.initializeChromosomeWithMaximumCapacity(employees);
+
+        Map<Integer, List<Integer>> fixedAssignments = new HashMap<>();
+        fixedAssignments.put(0, new ArrayList<>(Arrays.asList(-1, -1, 0, 1)));
+        fixedAssignments.put(3, new ArrayList<>(Arrays.asList(-1, -1, 2, 3)));
+        //when
+        chromosome.fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, randomElderlyIndexs,
+                initialChromosome);
+        //then
+        log.info(initialChromosome.toString());
+        Assertions.assertThat(initialChromosome.get(0)).isEqualTo(Arrays.asList(-1,-1,0,1));
+        Assertions.assertThat(initialChromosome.get(3)).isEqualTo(Arrays.asList(-1,-1,2,3));
     }
 
 
