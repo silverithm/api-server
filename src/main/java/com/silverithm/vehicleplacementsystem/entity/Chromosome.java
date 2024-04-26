@@ -59,7 +59,9 @@ public class Chromosome {
         for (int i = 0; i < chromosome.size(); i++) {
             for (int j = 0; j < chromosome.get(i).size(); j++) {
                 if (chromosome.get(i).get(j) == -1) {
+                    log.info("before : " + chromosome.toString());
                     chromosome.get(i).remove(j);
+                    log.info("after : " + chromosome.toString());
                 }
             }
         }

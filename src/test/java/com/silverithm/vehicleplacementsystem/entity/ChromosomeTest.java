@@ -208,4 +208,33 @@ public class ChromosomeTest {
         Assertions.assertThat(randomElderlyIndexs.size()).isEqualTo(numCount);
     }
 
+
+    @Test
+    public void removeEmptyChromosome_IsAllEmptyValueRemove_Success() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>();
+        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
+        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+
+        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
+        List<Integer> randomElderlyIndexs = chromosome.createRandomElderlyIndexs(20);
+        List<List<Integer>> initialChromosome = chromosome.initializeChromosomeWithMaximumCapacity(employees);
+        chromosome.fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, randomElderlyIndexs, initialChromosome);
+
+        //when
+        chromosome.removeEmptyChromosome(initialChromosome);
+        //then
+        log.info(initialChromosome.toString());
+
+        for (int i = 0; i < initialChromosome.size(); i++) {
+            for (int j = 0; j < initialChromosome.get(i).size(); j++) {
+                Assertions.assertThat(initialChromosome.get(i).get(j)).isNotEqualTo(-1);
+            }
+        }
+
+    }
+
 }
