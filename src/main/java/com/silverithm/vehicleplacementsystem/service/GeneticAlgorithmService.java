@@ -413,6 +413,16 @@ public class GeneticAlgorithmService {
         Chromosome child1 = Chromosome.copy(parent1);
         Chromosome child2 = Chromosome.copy(parent2);
 
+        swapGeneticSegments(parent1, parent2, crossoverPoints, child1, child2);
+
+        fixDuplicateAssignments(child1, elderlys);
+        fixDuplicateAssignments(child2, elderlys);
+
+        return Arrays.asList(child1, child2);
+    }
+
+    private void swapGeneticSegments(Chromosome parent1, Chromosome parent2, int[] crossoverPoints, Chromosome child1,
+                                     Chromosome child2) {
         for (int i = 0; i < crossoverPoints.length; i++) {
             int start = i == 0 ? 0 : crossoverPoints[i - 1];
             int end = crossoverPoints[i];
@@ -431,11 +441,6 @@ public class GeneticAlgorithmService {
                 }
             }
         }
-
-        fixDuplicateAssignments(child1, elderlys);
-        fixDuplicateAssignments(child2, elderlys);
-
-        return Arrays.asList(child1, child2);
     }
 
     private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
