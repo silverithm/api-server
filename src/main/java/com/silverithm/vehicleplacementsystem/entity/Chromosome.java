@@ -45,7 +45,7 @@ public class Chromosome {
 
     }
 
-    private int[] initializeEmployeesCapacityLeft(List<EmployeeDTO> employees) {
+    public int[] initializeEmployeesCapacityLeft(List<EmployeeDTO> employees) {
 
         int[] employeesCapacityLeft = new int[employees.size()];
 
