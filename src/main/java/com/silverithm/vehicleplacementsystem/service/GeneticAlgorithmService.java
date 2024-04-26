@@ -51,7 +51,7 @@ public class GeneticAlgorithmService {
         try {
             for (int i = 0; i < MAX_ITERATIONS; i++) {
                 // 평가
-                evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
+                evaluatePopulation(chromosomes);
                 // 선택
                 List<Chromosome> selectedChromosomes = chromosomes;
 
@@ -126,9 +126,7 @@ public class GeneticAlgorithmService {
         return chromosomes;
     }
 
-    private void evaluatePopulation(List<Chromosome> chromosomes, List<EmployeeDTO> employee,
-                                    Map<String, Map<String, Integer>> distanceMatrix,
-                                    Map<Integer, List<Integer>> fixedAssignmentsMap) {
+    private void evaluatePopulation(List<Chromosome> chromosomes) {
         for (Chromosome chromosome : chromosomes) {
             chromosome.setFitness(calculateFitness(chromosome, employees, distanceMatrix, fixedAssignmentsMap));
         }
