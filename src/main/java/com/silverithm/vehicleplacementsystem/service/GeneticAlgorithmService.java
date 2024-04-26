@@ -443,13 +443,17 @@ public class GeneticAlgorithmService {
                     if (i % 2 == 0) {
                         child1.getGenes().get(j).set(k, parent1Gene.get(k));
                         child2.getGenes().get(j).set(k, parent2Gene.get(k));
-                    } else {
+                        continue;
+                    }
+                    if (i % 2 != 0) {
                         child1.getGenes().get(j).set(k, parent2Gene.get(k));
                         child2.getGenes().get(j).set(k, parent1Gene.get(k));
+                        continue;
                     }
                 }
             }
         }
+
     }
 
     private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
