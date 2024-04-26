@@ -20,10 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GeneticAlgorithmService {
 
-    private static int MAX_ITERATIONS = 300;
-    private static int POPULATION_SIZE = 20000;
-    private static double MUTATION_RATE = 0.9;
-    private static double CROSSOVER_RATE = 0.7;
+    private static final int MAX_ITERATIONS = 300;
+    private static final int POPULATION_SIZE = 20000;
+    private static final double MUTATION_RATE = 0.9;
+    private static final double CROSSOVER_RATE = 0.7;
 
 
     private final List<EmployeeDTO> employees;
@@ -51,21 +51,16 @@ public class GeneticAlgorithmService {
 
         try {
             for (int i = 0; i < MAX_ITERATIONS; i++) {
-                log.info("1");
                 // 평가
                 evaluatePopulation(chromosomes, employees, distanceMatrix, fixedAssignmentsMap);
-                log.info("2");
                 // 선택
                 List<Chromosome> selectedChromosomes = chromosomes;
-                log.info("3");
 
                 // 교차
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
-                log.info("4");
 
                 // 돌연변이
                 mutate(offspringChromosomes, elderlys.size());
-                log.info("5");
 
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);

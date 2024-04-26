@@ -68,7 +68,6 @@ public class ChromosomeTest {
         List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees);
         //then
         for (int i = 0; i < employees.size(); i++) {
-            log.info(genes.get(i).toString());
             Assertions.assertThat(genes.get(i).size()).isEqualTo(employees.get(i).maximumCapacity());
         }
     }
@@ -87,7 +86,6 @@ public class ChromosomeTest {
         List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees);
         //then
         for (int i = 0; i < genes.size(); i++) {
-            log.info(genes.get(i).toString());
             for (int j = 0; j < genes.get(i).size(); j++) {
                 Assertions.assertThat(genes.get(i).get(j)).isEqualTo(-1);
             }
@@ -134,7 +132,6 @@ public class ChromosomeTest {
         chromosome.fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, randomElderlyIndexs,
                 initialChromosome);
         //then
-        log.info(initialChromosome.toString());
         Assertions.assertThat(initialChromosome.get(0)).isEqualTo(Arrays.asList(-1, -1, 0, 1));
         Assertions.assertThat(initialChromosome.get(3)).isEqualTo(Arrays.asList(-1, -1, 2, 3));
     }
@@ -158,7 +155,6 @@ public class ChromosomeTest {
         //when
         chromosome.fixInitialChromosome(employees, employeesCapacityLeft, randomElderlyIndexs, initialChromosome);
         //then
-        log.info(initialChromosome.toString());
 
         for (int i = 0; i < employees.size(); i++) {
             for (int j = 0; j < initialChromosome.get(i).size(); j++) {
@@ -195,8 +191,6 @@ public class ChromosomeTest {
         chromosome.fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, randomElderlyIndexs, initialChromosome);
 
         //then
-        log.info(initialChromosome.toString());
-
         for (int i = 0; i < initialChromosome.size(); i++) {
             for (int j = 0; j < initialChromosome.get(i).size(); j++) {
                 if (initialChromosome.get(i).get(j) != -1) {
@@ -227,8 +221,6 @@ public class ChromosomeTest {
         //when
         chromosome.removeEmptyChromosome(initialChromosome);
         //then
-        log.info(initialChromosome.toString());
-
         for (int i = 0; i < initialChromosome.size(); i++) {
             for (int j = 0; j < initialChromosome.get(i).size(); j++) {
                 Assertions.assertThat(initialChromosome.get(i).get(j)).isNotEqualTo(-1);
