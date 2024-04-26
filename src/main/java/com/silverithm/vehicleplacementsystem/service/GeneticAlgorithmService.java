@@ -57,7 +57,7 @@ public class GeneticAlgorithmService {
                 // 교차
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes);
                 // 돌연변이
-                mutate(offspringChromosomes, elderlys.size());
+                mutate(offspringChromosomes);
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
 
@@ -475,7 +475,7 @@ public class GeneticAlgorithmService {
         }
     }
 
-    private void mutate(List<Chromosome> offspringChromosomes, int numElderly) {
+    private void mutate(List<Chromosome> offspringChromosomes) {
 
         Random rand = new Random();
 
