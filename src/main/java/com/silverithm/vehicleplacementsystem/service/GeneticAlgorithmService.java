@@ -346,40 +346,6 @@ public class GeneticAlgorithmService {
         return departureTimes;
     }
 
-    private List<Chromosome> selectParents(List<Chromosome> chromosomes) {
-        List<Chromosome> selectedChromosomes = new ArrayList<>();
-        for (int i = 0; i < POPULATION_SIZE; i++) {
-            // 룰렛 휠 선택
-            int selectedIndex = rouletteWheelSelection(chromosomes);
-            selectedChromosomes.add(Chromosome.copy(chromosomes.get(selectedIndex)));
-        }
-        return selectedChromosomes;
-    }
-
-    private int rouletteWheelSelection(List<Chromosome> chromosomes) {
-        // 전체 적합도 합계 계산
-        double totalFitness = chromosomes.stream().mapToDouble(Chromosome::getFitness).sum();
-
-        // 룰렛 휠 생성
-        List<Double> rouletteWheel = new ArrayList<>();
-        double cumulativeFitness = 0.0;
-        for (Chromosome chromosome : chromosomes) {
-            cumulativeFitness += chromosome.getFitness() / totalFitness;
-            rouletteWheel.add(cumulativeFitness);
-        }
-
-        // 랜덤 값 생성 (0과 cumulativeFitaness 사이)
-        double randomValue = Math.random() * cumulativeFitness;
-
-        // 선택된 인덱스 찾기
-        int selectedIndex = 0;
-
-        while (selectedIndex < chromosomes.size() - 1 && randomValue > rouletteWheel.get(selectedIndex)) {
-            selectedIndex++;
-        }
-
-        return selectedIndex;
-    }
 
     private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
         Random rand = new Random();
