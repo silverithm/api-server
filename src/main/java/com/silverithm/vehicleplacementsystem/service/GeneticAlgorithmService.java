@@ -403,12 +403,7 @@ public class GeneticAlgorithmService {
 
 
     private List<Chromosome> multiPointCrossover(Chromosome parent1, Chromosome parent2) {
-        Random rand = new Random();
-        int[] crossoverPoints = new int[2];
-        for (int i = 0; i < crossoverPoints.length; i++) {
-            crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
-        }
-        Arrays.sort(crossoverPoints);
+        int[] crossoverPoints = createSortedRandomCrossoverPoints(parent1);
 
         Chromosome child1 = Chromosome.copy(parent1);
         Chromosome child2 = Chromosome.copy(parent2);
@@ -419,6 +414,16 @@ public class GeneticAlgorithmService {
         fixDuplicateAssignments(child2, elderlys);
 
         return Arrays.asList(child1, child2);
+    }
+
+    private int[] createSortedRandomCrossoverPoints(Chromosome parent1) {
+        Random rand = new Random();
+        int[] crossoverPoints = new int[2];
+        for (int i = 0; i < crossoverPoints.length; i++) {
+            crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
+        }
+        Arrays.sort(crossoverPoints);
+        return crossoverPoints;
     }
 
     private void swapGeneticSegments(Chromosome parent1, Chromosome parent2, int[] crossoverPoints, Chromosome child1,
