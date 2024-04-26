@@ -54,19 +54,14 @@ public class GeneticAlgorithmService {
                 evaluatePopulation(chromosomes);
                 // 선택
                 List<Chromosome> selectedChromosomes = chromosomes;
-
                 // 교차
-                List<Chromosome> offspringChromosomes = crossover(selectedChromosomes, elderlys);
-
+                List<Chromosome> offspringChromosomes = crossover(selectedChromosomes);
                 // 돌연변이
                 mutate(offspringChromosomes, elderlys.size());
-
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
 
                 log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
-
-
             }
         } catch (Exception e) {
             throw new Exception("genetic algorithm run exception : " + e);
@@ -386,32 +381,16 @@ public class GeneticAlgorithmService {
         return selectedIndex;
     }
 
-    private List<Chromosome> crossover(List<Chromosome> selectedChromosomes, List<ElderlyDTO> elderlys) {
+    private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
         Random rand = new Random();
         List<Chromosome> offspring = new ArrayList<>();
 
         for (int i = 0; i < selectedChromosomes.size(); i += 2) {
-
             Chromosome parent1 = Chromosome.copy(selectedChromosomes.get(i));
             Chromosome parent2 = Chromosome.copy(selectedChromosomes.get(i + 1));
-
             // Crossover 확률에 따라 진행
             if (rand.nextDouble() < CROSSOVER_RATE) {
-
-                offspring.addAll(multiPointCrossover(parent1, parent2, elderlys));
-
-//                    int crossoverType = rand.nextInt(CROSSOVER_TYPES.length);
-//                    switch (CROSSOVER_TYPES[crossoverType]) {
-//                        case SINGLE_POINT:
-//                            offspring.addAll(singlePointCrossover(parent1, parent2, elderlys));
-//                            break;
-//                        case TWO_POINT:
-//                            offspring.addAll(twoPointCrossover(parent1, parent2, elderlys));
-//                            break;
-//                        case UNIFORM:
-//                            offspring.addAll(uniformCrossover(parent1, parent2, elderlys));
-//                            break;
-//                    }
+                offspring.addAll(multiPointCrossover(parent1, parent2));
             } else {
                 // Crossover가 일어나지 않으면 부모 복제
                 offspring.add(parent1);
@@ -423,8 +402,7 @@ public class GeneticAlgorithmService {
     }
 
 
-    private List<Chromosome> multiPointCrossover(Chromosome parent1, Chromosome parent2,
-                                                 List<ElderlyDTO> elderlys) {
+    private List<Chromosome> multiPointCrossover(Chromosome parent1, Chromosome parent2) {
         Random rand = new Random();
         int[] crossoverPoints = new int[2];
         for (int i = 0; i < crossoverPoints.length; i++) {
