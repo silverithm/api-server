@@ -25,7 +25,6 @@ public class GeneticAlgorithmService {
     private static final double MUTATION_RATE = 0.9;
     private static final double CROSSOVER_RATE = 0.7;
 
-
     private final List<EmployeeDTO> employees;
     private final List<ElderlyDTO> elderlys;
     private final Map<Integer, List<Integer>> fixedAssignmentsMap;
@@ -70,7 +69,7 @@ public class GeneticAlgorithmService {
 
             }
         } catch (Exception e) {
-            throw new Exception("run exception");
+            throw new Exception("genetic algorithm run exception : " + e);
         }
         // 반복
 
