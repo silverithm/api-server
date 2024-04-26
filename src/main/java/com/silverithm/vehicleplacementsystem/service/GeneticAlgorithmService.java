@@ -391,11 +391,15 @@ public class GeneticAlgorithmService {
             // Crossover 확률에 따라 진행
             if (rand.nextDouble() < CROSSOVER_RATE) {
                 offspring.addAll(multiPointCrossover(parent1, parent2));
-            } else {
-                // Crossover가 일어나지 않으면 부모 복제
+                continue;
+            }
+
+            if (rand.nextDouble() >= CROSSOVER_RATE) {
                 offspring.add(parent1);
                 offspring.add(parent2);
+                continue;
             }
+
         }
 
         return offspring;
