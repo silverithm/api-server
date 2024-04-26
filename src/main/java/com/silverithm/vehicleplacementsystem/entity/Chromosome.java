@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -56,12 +57,11 @@ public class Chromosome {
     }
 
     public void removeEmptyChromosome(List<List<Integer>> chromosome) {
-        for (int i = 0; i < chromosome.size(); i++) {
-            for (int j = 0; j < chromosome.get(i).size(); j++) {
-                if (chromosome.get(i).get(j) == -1) {
-                    log.info("before : " + chromosome.toString());
-                    chromosome.get(i).remove(j);
-                    log.info("after : " + chromosome.toString());
+        for (List<Integer> subList : chromosome) {
+            Iterator<Integer> it = subList.iterator();
+            while (it.hasNext()) {
+                if (it.next() == -1) {
+                    it.remove();
                 }
             }
         }

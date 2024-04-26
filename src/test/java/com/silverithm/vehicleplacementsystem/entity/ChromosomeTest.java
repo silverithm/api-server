@@ -213,11 +213,11 @@ public class ChromosomeTest {
     public void removeEmptyChromosome_IsAllEmptyValueRemove_Success() {
         //given
         List<EmployeeDTO> employees = new ArrayList<>();
-        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 5));
         employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
-        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
+        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 3));
         employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 6));
 
         int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
         List<Integer> randomElderlyIndexs = chromosome.createRandomElderlyIndexs(20);
