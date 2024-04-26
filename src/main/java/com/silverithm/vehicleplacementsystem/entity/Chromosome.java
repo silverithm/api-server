@@ -37,7 +37,7 @@ public class Chromosome {
 
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
-        fixRandomElderlyIndexAtChromosome(numEmployees, employeesCapacityLeft, elderlyIndexs, chromosome);
+        fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, elderlyIndexs, chromosome);
         removeEmptyChromosome(chromosome);
 
         genes = chromosome;
@@ -65,13 +65,13 @@ public class Chromosome {
         }
     }
 
-    public void fixRandomElderlyIndexAtChromosome(int numEmployees, int[] employeesCapacityLeft,
+    public void fixRandomElderlyIndexAtChromosome(int[] employeesCapacityLeft,
                                                   List<Integer> elderlyIndexs,
                                                   List<List<Integer>> chromosome) {
         int startIndex = 0;
         Random rand = new Random();
         while (startIndex < elderlyIndexs.size()) {
-            int randIndex = rand.nextInt(numEmployees);
+            int randIndex = rand.nextInt(employeesCapacityLeft.length);
             for (int i = 0; i < chromosome.get(randIndex).size(); i++) {
                 if (chromosome.get(randIndex).get(i) == -1 && employeesCapacityLeft[randIndex] > 0) {
                     chromosome.get(randIndex).set(i, Integer.valueOf(elderlyIndexs.get(startIndex)));
