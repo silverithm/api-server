@@ -133,7 +133,7 @@ public class GeneticAlgorithmService {
         double fitness = 0.0;
 
         fitness = calculateFitnessForDepartureTimes(chromosome);
-        fitness = calculateFitnessForProximity(chromosome, fitness);
+        fitness = addFitnessForProximity(chromosome, fitness);
         fitness = evaluateFrontSeatAssignments(chromosome, fitness);
         fitness = evaluateFixedAssignments(chromosome, fitness);
 
@@ -149,7 +149,7 @@ public class GeneticAlgorithmService {
         return fitness;
     }
 
-    private double calculateFitnessForProximity(Chromosome chromosome, double fitness) {
+    private double addFitnessForProximity(Chromosome chromosome, double fitness) {
         for (int i = 0; i < chromosome.getGenes().size(); i++) {
             for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                 int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
