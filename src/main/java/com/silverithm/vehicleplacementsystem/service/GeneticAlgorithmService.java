@@ -147,22 +147,8 @@ public class GeneticAlgorithmService {
 
                 fitness += calculateFitnessForElderlyProximity(elderlyIndex1, elderlyIndex2);
             }
-
-            if (dispatchType.equals(DispatchType.OUT)) {
-
-                fitness += calculateFitnessForElderlyAndEmployeeProximity(chromosome, i);
-
-            }
-            if (dispatchType.equals((DispatchType.IN))) {
-
-                fitness += calculateFitnessForEmployeeAndElderlyProximity(chromosome, i);
-                fitness += calculateFitnessForElderlyAndCompanyProximity(chromosome, i);
-
-            }
-
-
+            fitness = addFitnessForDispatchTypes(chromosome, fitness, i);
         }
-        // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
 
         for (int i = 0; i < employees.size(); i++) {
             boolean frontSeatAssigned = false;
@@ -185,10 +171,19 @@ public class GeneticAlgorithmService {
                     return fitness;
                 }
             }
+        }
+        return fitness;
+    }
 
-            employee_idx++;
+    private double addFitnessForDispatchTypes(Chromosome chromosome, double fitness, int i) {
+        if (dispatchType.equals(DispatchType.OUT)) {
+            fitness += calculateFitnessForElderlyAndEmployeeProximity(chromosome, i);
         }
 
+        if (dispatchType.equals((DispatchType.IN))) {
+            fitness += calculateFitnessForEmployeeAndElderlyProximity(chromosome, i);
+            fitness += calculateFitnessForElderlyAndCompanyProximity(chromosome, i);
+        }
         return fitness;
     }
 
