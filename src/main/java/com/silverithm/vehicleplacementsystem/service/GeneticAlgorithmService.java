@@ -123,13 +123,11 @@ public class GeneticAlgorithmService {
 
     private void evaluatePopulation(List<Chromosome> chromosomes) {
         for (Chromosome chromosome : chromosomes) {
-            chromosome.setFitness(calculateFitness(chromosome, employees, distanceMatrix, fixedAssignmentsMap));
+            chromosome.setFitness(calculateFitness(chromosome));
         }
     }
 
-    private double calculateFitness(Chromosome chromosome, List<EmployeeDTO> employees,
-                                    Map<String, Map<String, Integer>> distanceMatrix,
-                                    Map<Integer, List<Integer>> fixedAssignmentsMap) {
+    private double calculateFitness(Chromosome chromosome) {
 
         double fitness = 0.0;
 
@@ -472,10 +470,8 @@ public class GeneticAlgorithmService {
         List<Chromosome> combinedChromosomes = combineChromosome(
                 chromosomes, offspringChromosomes);
 
-        // 정렬
         Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
 
-        // 최상위 개체만 선택
         return combinedChromosomes.subList(0, POPULATION_SIZE);
     }
 
