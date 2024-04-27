@@ -469,15 +469,21 @@ public class GeneticAlgorithmService {
 
     private List<Chromosome> combinePopulations(List<Chromosome> chromosomes,
                                                 List<Chromosome> offspringChromosomes) {
-        List<Chromosome> combinedChromosomes = new ArrayList<>();
-        combinedChromosomes.addAll(chromosomes);
-        combinedChromosomes.addAll(offspringChromosomes);
+        List<Chromosome> combinedChromosomes = combineChromosome(
+                chromosomes, offspringChromosomes);
 
         // 정렬
         Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
 
         // 최상위 개체만 선택
         return combinedChromosomes.subList(0, POPULATION_SIZE);
+    }
+
+    private List<Chromosome> combineChromosome(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes) {
+        List<Chromosome> combinedChromosomes = new ArrayList<>();
+        combinedChromosomes.addAll(chromosomes);
+        combinedChromosomes.addAll(offspringChromosomes);
+        return combinedChromosomes;
     }
 
 
