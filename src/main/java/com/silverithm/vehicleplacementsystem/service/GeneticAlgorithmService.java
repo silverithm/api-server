@@ -144,12 +144,26 @@ public class GeneticAlgorithmService {
             for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                 int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
                 int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
-
                 fitness += calculateFitnessForElderlyProximity(elderlyIndex1, elderlyIndex2);
             }
             fitness = addFitnessForDispatchTypes(chromosome, fitness, i);
         }
 
+        fitness = evaluateFrontSeatAssignments(chromosome, fitness);
+//        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
+        for (int employee_idx : fixedAssignmentsMap.keySet()) {
+            for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
+                if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
+                        && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
+                    fitness = 0.0;
+                    return fitness;
+                }
+            }
+        }
+        return fitness;
+    }
+
+    private double evaluateFrontSeatAssignments(Chromosome chromosome, double fitness) {
         for (int i = 0; i < employees.size(); i++) {
             boolean frontSeatAssigned = false;
             for (int j = 0; j < chromosome.getGenes().get(i).size(); j++) {
@@ -159,16 +173,6 @@ public class GeneticAlgorithmService {
                         break;
                     }
                     frontSeatAssigned = true;
-                }
-            }
-        }
-//        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
-        for (int employee_idx : fixedAssignmentsMap.keySet()) {
-            for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
-                if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
-                        && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
-                    fitness = 0.0;
-                    return fitness;
                 }
             }
         }
@@ -188,22 +192,20 @@ public class GeneticAlgorithmService {
     }
 
     private double calculateFitnessForElderlyAndCompanyProximity(Chromosome chromosome, int i) {
-        return DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(
-                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                .get("Company"));
+        return DistanceScore.getScore(distanceMatrix.get(
+                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
+                        .id()).get("Company"));
     }
 
     private double calculateFitnessForEmployeeAndElderlyProximity(Chromosome chromosome, int i) {
         return DistanceScore.getScore(distanceMatrix.get("Employee_" + employees.get(i).id())
-                .get("Elderly_" + elderlys.get(
-                                chromosome.getGenes().get(i).get(0))
-                        .id()));
+                .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id()));
     }
 
     private double calculateFitnessForElderlyAndEmployeeProximity(Chromosome chromosome, int i) {
-        return DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(
-                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                .get("Employee_" + employees.get(i).id()));
+        return DistanceScore.getScore(distanceMatrix.get(
+                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
+                        .id()).get("Employee_" + employees.get(i).id()));
     }
 
     private double calculateFitnessForElderlyProximity(int elderlyIndex1, int elderlyIndex2) {
@@ -220,8 +222,7 @@ public class GeneticAlgorithmService {
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                     String company = "Company";
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
-                    String destinationNodeId =
-                            "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
+                    String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
                     if (j == 0) {
                         departureTime += distanceMatrix.get(company)
@@ -231,9 +232,8 @@ public class GeneticAlgorithmService {
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                departureTime += distanceMatrix.get(
-                                "Elderly_" + elderlys.get(
-                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
+                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                         .get("Employee_" + employees.get(i).id());
 
                 departureTimes.add(departureTime);
@@ -248,8 +248,7 @@ public class GeneticAlgorithmService {
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
 
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
-                    String destinationNodeId =
-                            "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
+                    String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
                     if (j == 0) {
                         departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
                                 .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
@@ -258,10 +257,8 @@ public class GeneticAlgorithmService {
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                departureTime += distanceMatrix.get(
-                                "Elderly_" + elderlys.get(
-                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                        .get(company);
+                departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
+                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id()).get(company);
 
                 departureTimes.add(departureTime);
             }
@@ -391,10 +388,8 @@ public class GeneticAlgorithmService {
         }
     }
 
-    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes,
-                                                List<Chromosome> offspringChromosomes) {
-        List<Chromosome> combinedChromosomes = combineChromosome(
-                chromosomes, offspringChromosomes);
+    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes) {
+        List<Chromosome> combinedChromosomes = combineChromosome(chromosomes, offspringChromosomes);
 
         Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
 
