@@ -164,6 +164,9 @@ public class GeneticAlgorithmService {
                     break;
                 }
             }
+            if (fitness == 0.0) {
+                break;
+            }
         }
         return fitness;
     }
