@@ -144,329 +144,258 @@ public class GeneticAlgorithmService {
                 int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
                 int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
 
-                fitness += DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
+                DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
                         .get("Elderly_" + elderlys.get(elderlyIndex2).id()));
-
-                if (dispatchType.equals(DispatchType.OUT)) {
-                    if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Employee_" + employees.get(i).id()) == 0) {
-                        fitness += 5;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Employee_" + employees.get(i).id()) <= 250) {
-                        fitness += 2;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Employee_" + employees.get(i).id()) <= 500) {
-                        fitness += 1.5;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Employee_" + employees.get(i).id()) <= 750) {
-                        fitness += 1.0;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Employee_" + employees.get(i).id()) <= 1000) {
-                        fitness += 0.5;
-                    }
-                }
-                if (dispatchType.equals((DispatchType.IN))) {
-
-                    if (
-                            distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(
-                                                    chromosome.getGenes().get(i).get(0))
-                                            .id()) == 0) {
-                        fitness += 5;
-                    } else if (
-                            distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(
-                                                    chromosome.getGenes().get(i).get(0))
-                                            .id()) <= 250) {
-                        fitness += 2;
-                    } else if (
-                            distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(
-                                                    chromosome.getGenes().get(i).get(0))
-                                            .id()) <= 500) {
-                        fitness += 1.5;
-                    } else if (
-                            distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(
-                                                    chromosome.getGenes().get(i).get(0))
-                                            .id()) <= 750) {
-                        fitness += 1.0;
-                    } else if (
-                            distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(
-                                                    chromosome.getGenes().get(i).get(0))
-                                            .id()) <= 1000) {
-                        fitness += 0.5;
-                    }
-
-                    if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Company") == 0) {
-                        fitness += 5;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Company") <= 250) {
-                        fitness += 2;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Company") <= 500) {
-                        fitness += 1.5;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Company") <= 750) {
-                        fitness += 1.0;
-                    } else if (
-                            distanceMatrix.get("Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                                    .get("Company") <= 1000) {
-                        fitness += 0.5;
-                    }
-
-
-                }
-
-
             }
-            // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
-
-            for (int i = 0; i < employees.size(); i++) {
-                boolean frontSeatAssigned = false;
-                for (int j = 0; j < chromosome.getGenes().get(i).size(); j++) {
-                    if (elderlys.get(j).requiredFrontSeat()) {
-                        if (frontSeatAssigned) {
-                            fitness = 0.0;
-                            break;
-                        }
-                        frontSeatAssigned = true;
-                    }
-                }
-            }
-//        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
-            for (int employee_idx : fixedAssignmentsMap.keySet()) {
-                for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
-                    if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
-                            && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
-                        fitness = 0.0;
-                        return fitness;
-                    }
-                }
-
-                employee_idx++;
-            }
-
-            return fitness;
-        }
-
-        private List<Double> calculateDepartureTimes (Chromosome chromosome){
-            List<Double> departureTimes = new ArrayList<>();
 
             if (dispatchType.equals(DispatchType.OUT)) {
-                for (int i = 0; i < chromosome.getGenes().size(); i++) {
-                    double departureTime = 0.0;
-                    for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
-                        String company = "Company";
-                        String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
-                        String destinationNodeId =
-                                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
-                        if (j == 0) {
-                            departureTime += distanceMatrix.get(company)
-                                    .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
-                        }
+                DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(
+                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                        .get("Employee_" + employees.get(i).id()));
 
-                        departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+            }
+            if (dispatchType.equals((DispatchType.IN))) {
+
+                DistanceScore.getScore(distanceMatrix.get("Employee_" + employees.get(i).id())
+                        .get("Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(0))
+                                .id()));
+
+                DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(
+                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                        .get("Company"));
+
+            }
+
+
+        }
+        // 앞자리에 필수로 타야 하는 노인이 실제로 앞자리에 배정되었는지 확인
+
+        for (int i = 0; i < employees.size(); i++) {
+            boolean frontSeatAssigned = false;
+            for (int j = 0; j < chromosome.getGenes().get(i).size(); j++) {
+                if (elderlys.get(j).requiredFrontSeat()) {
+                    if (frontSeatAssigned) {
+                        fitness = 0.0;
+                        break;
                     }
-
-                    departureTime += distanceMatrix.get(
-                                    "Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                            .get("Employee_" + employees.get(i).id());
-
-                    departureTimes.add(departureTime);
+                    frontSeatAssigned = true;
+                }
+            }
+        }
+//        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
+        for (int employee_idx : fixedAssignmentsMap.keySet()) {
+            for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
+                if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
+                        && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
+                    fitness = 0.0;
+                    return fitness;
                 }
             }
 
-            if (dispatchType.equals(DispatchType.IN)) {
-                for (int i = 0; i < chromosome.getGenes().size(); i++) {
+            employee_idx++;
+        }
+
+        return fitness;
+    }
+
+    private List<Double> calculateDepartureTimes(Chromosome chromosome) {
+        List<Double> departureTimes = new ArrayList<>();
+
+        if (dispatchType.equals(DispatchType.OUT)) {
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                double departureTime = 0.0;
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                     String company = "Company";
-                    double departureTime = 0.0;
+                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                    String destinationNodeId =
+                            "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
-                    for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
-
-                        String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
-                        String destinationNodeId =
-                                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
-                        if (j == 0) {
-                            departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
-                                    .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
-                        }
-
-                        departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
+                    if (j == 0) {
+                        departureTime += distanceMatrix.get(company)
+                                .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
                     }
 
-                    departureTime += distanceMatrix.get(
-                                    "Elderly_" + elderlys.get(
-                                            chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                            .get(company);
-
-                    departureTimes.add(departureTime);
-                }
-            }
-
-            return departureTimes;
-        }
-
-        private List<Chromosome> crossover (List < Chromosome > selectedChromosomes) {
-            Random rand = new Random();
-            List<Chromosome> offspring = new ArrayList<>();
-
-            for (int i = 0; i < selectedChromosomes.size(); i += 2) {
-                Chromosome parent1 = Chromosome.copy(selectedChromosomes.get(i));
-                Chromosome parent2 = Chromosome.copy(selectedChromosomes.get(i + 1));
-                // Crossover 확률에 따라 진행
-                if (rand.nextDouble() < CROSSOVER_RATE) {
-                    offspring.addAll(multiPointCrossover(parent1, parent2));
-                    continue;
+                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                if (rand.nextDouble() >= CROSSOVER_RATE) {
-                    offspring.add(parent1);
-                    offspring.add(parent2);
-                    continue;
+                departureTime += distanceMatrix.get(
+                                "Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                        .get("Employee_" + employees.get(i).id());
+
+                departureTimes.add(departureTime);
+            }
+        }
+
+        if (dispatchType.equals(DispatchType.IN)) {
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                String company = "Company";
+                double departureTime = 0.0;
+
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+
+                    String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
+                    String destinationNodeId =
+                            "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
+                    if (j == 0) {
+                        departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
+                                .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+                    }
+
+                    departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
+                departureTime += distanceMatrix.get(
+                                "Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                        .get(company);
+
+                departureTimes.add(departureTime);
+            }
+        }
+
+        return departureTimes;
+    }
+
+
+    private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
+        Random rand = new Random();
+        List<Chromosome> offspring = new ArrayList<>();
+
+        for (int i = 0; i < selectedChromosomes.size(); i += 2) {
+            Chromosome parent1 = Chromosome.copy(selectedChromosomes.get(i));
+            Chromosome parent2 = Chromosome.copy(selectedChromosomes.get(i + 1));
+            // Crossover 확률에 따라 진행
+            if (rand.nextDouble() < CROSSOVER_RATE) {
+                offspring.addAll(multiPointCrossover(parent1, parent2));
+                continue;
             }
 
-            return offspring;
-        }
-
-        private List<Chromosome> multiPointCrossover (Chromosome parent1, Chromosome parent2){
-            int[] crossoverPoints = createSortedRandomCrossoverPoints(parent1);
-
-            Chromosome child1 = Chromosome.copy(parent1);
-            Chromosome child2 = Chromosome.copy(parent2);
-
-            swapGeneticSegments(parent1, parent2, crossoverPoints, child1, child2);
-
-            fixDuplicateAssignments(child1, elderlys);
-            fixDuplicateAssignments(child2, elderlys);
-
-            return Arrays.asList(child1, child2);
-        }
-
-        private int[] createSortedRandomCrossoverPoints (Chromosome parent1){
-            Random rand = new Random();
-            int[] crossoverPoints = new int[2];
-            for (int i = 0; i < crossoverPoints.length; i++) {
-                crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
+            if (rand.nextDouble() >= CROSSOVER_RATE) {
+                offspring.add(parent1);
+                offspring.add(parent2);
+                continue;
             }
-            Arrays.sort(crossoverPoints);
-            return crossoverPoints;
+
         }
 
-        private void swapGeneticSegments (Chromosome parent1, Chromosome parent2,int[] crossoverPoints, Chromosome
-        child1,
-                Chromosome child2){
-            for (int i = 0; i < crossoverPoints.length; i++) {
-                int start = i == 0 ? 0 : crossoverPoints[i - 1];
-                int end = crossoverPoints[i];
-                for (int j = start; j < end; j++) {
-                    List<Integer> parent1Gene = parent1.getGenes().get(j);
-                    List<Integer> parent2Gene = parent2.getGenes().get(j);
-                    int minLength = Math.min(parent1Gene.size(), parent2Gene.size());
-                    for (int k = 0; k < minLength; k++) {
-                        if (i % 2 == 0) {
-                            child1.getGenes().get(j).set(k, parent1Gene.get(k));
-                            child2.getGenes().get(j).set(k, parent2Gene.get(k));
-                            continue;
-                        }
-                        if (i % 2 != 0) {
-                            child1.getGenes().get(j).set(k, parent2Gene.get(k));
-                            child2.getGenes().get(j).set(k, parent1Gene.get(k));
-                            continue;
-                        }
+        return offspring;
+    }
+
+
+    private List<Chromosome> multiPointCrossover(Chromosome parent1, Chromosome parent2) {
+        int[] crossoverPoints = createSortedRandomCrossoverPoints(parent1);
+
+        Chromosome child1 = Chromosome.copy(parent1);
+        Chromosome child2 = Chromosome.copy(parent2);
+
+        swapGeneticSegments(parent1, parent2, crossoverPoints, child1, child2);
+
+        fixDuplicateAssignments(child1, elderlys);
+        fixDuplicateAssignments(child2, elderlys);
+
+        return Arrays.asList(child1, child2);
+    }
+
+    private int[] createSortedRandomCrossoverPoints(Chromosome parent1) {
+        Random rand = new Random();
+        int[] crossoverPoints = new int[2];
+        for (int i = 0; i < crossoverPoints.length; i++) {
+            crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
+        }
+        Arrays.sort(crossoverPoints);
+        return crossoverPoints;
+    }
+
+    private void swapGeneticSegments(Chromosome parent1, Chromosome parent2, int[] crossoverPoints, Chromosome child1,
+                                     Chromosome child2) {
+        for (int i = 0; i < crossoverPoints.length; i++) {
+            int start = i == 0 ? 0 : crossoverPoints[i - 1];
+            int end = crossoverPoints[i];
+            for (int j = start; j < end; j++) {
+                List<Integer> parent1Gene = parent1.getGenes().get(j);
+                List<Integer> parent2Gene = parent2.getGenes().get(j);
+                int minLength = Math.min(parent1Gene.size(), parent2Gene.size());
+                for (int k = 0; k < minLength; k++) {
+                    if (i % 2 == 0) {
+                        child1.getGenes().get(j).set(k, parent1Gene.get(k));
+                        child2.getGenes().get(j).set(k, parent2Gene.get(k));
+                        continue;
+                    }
+                    if (i % 2 != 0) {
+                        child1.getGenes().get(j).set(k, parent2Gene.get(k));
+                        child2.getGenes().get(j).set(k, parent1Gene.get(k));
+                        continue;
                     }
                 }
             }
-
         }
-
-        private void fixDuplicateAssignments (Chromosome child, List < ElderlyDTO > elderlys){
-            Set<Integer> assignedElderly = new HashSet<>();
-            for (List<Integer> gene : child.getGenes()) {
-                for (int i = 0; i < gene.size(); i++) {
-                    int elderlyId = gene.get(i);
-                    if (!assignedElderly.add(elderlyId)) {
-                        // 중복 발생 시, 다른 노인으로 교체
-                        for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
-                            if (!assignedElderly.contains(newElderlyId)) {
-                                gene.set(i, newElderlyId);
-                                assignedElderly.add(newElderlyId);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private void mutate (List < Chromosome > offspringChromosomes) {
-
-            Random rand = new Random();
-
-            for (Chromosome chromosome : offspringChromosomes) {
-
-                if (rand.nextDouble() < MUTATION_RATE) {
-
-                    int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
-                    List<Integer> employeeAssignment = chromosome.getGenes().get(mutationPoint1);
-                    int mutationPoint2 = rand.nextInt(employeeAssignment.size());
-
-                    int mutationPoint3 = rand.nextInt(chromosome.getGenes().size());
-                    List<Integer> employeeAssignment2 = chromosome.getGenes().get(mutationPoint3);
-                    int mutationPoint4 = rand.nextInt(employeeAssignment2.size());
-
-                    int tempElderly = employeeAssignment2.get(mutationPoint4);
-
-                    employeeAssignment2.set(mutationPoint4, employeeAssignment.get(mutationPoint2));
-                    employeeAssignment.set(mutationPoint2, tempElderly);
-
-
-                }
-            }
-        }
-
-        private List<Chromosome> combinePopulations (List < Chromosome > chromosomes,
-                List < Chromosome > offspringChromosomes){
-            List<Chromosome> combinedChromosomes = combineChromosome(
-                    chromosomes, offspringChromosomes);
-
-            Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
-
-            return combinedChromosomes.subList(0, POPULATION_SIZE);
-        }
-
-        private List<Chromosome> combineChromosome
-        (List < Chromosome > chromosomes, List < Chromosome > offspringChromosomes){
-            List<Chromosome> combinedChromosomes = new ArrayList<>();
-            combinedChromosomes.addAll(chromosomes);
-            combinedChromosomes.addAll(offspringChromosomes);
-            return combinedChromosomes;
-        }
-
 
     }
+
+    private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
+        Set<Integer> assignedElderly = new HashSet<>();
+        for (List<Integer> gene : child.getGenes()) {
+            for (int i = 0; i < gene.size(); i++) {
+                int elderlyId = gene.get(i);
+                if (!assignedElderly.add(elderlyId)) {
+                    // 중복 발생 시, 다른 노인으로 교체
+                    for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
+                        if (!assignedElderly.contains(newElderlyId)) {
+                            gene.set(i, newElderlyId);
+                            assignedElderly.add(newElderlyId);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void mutate(List<Chromosome> offspringChromosomes) {
+
+        Random rand = new Random();
+
+        for (Chromosome chromosome : offspringChromosomes) {
+
+            if (rand.nextDouble() < MUTATION_RATE) {
+
+                int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
+                List<Integer> employeeAssignment = chromosome.getGenes().get(mutationPoint1);
+                int mutationPoint2 = rand.nextInt(employeeAssignment.size());
+
+                int mutationPoint3 = rand.nextInt(chromosome.getGenes().size());
+                List<Integer> employeeAssignment2 = chromosome.getGenes().get(mutationPoint3);
+                int mutationPoint4 = rand.nextInt(employeeAssignment2.size());
+
+                int tempElderly = employeeAssignment2.get(mutationPoint4);
+
+                employeeAssignment2.set(mutationPoint4, employeeAssignment.get(mutationPoint2));
+                employeeAssignment.set(mutationPoint2, tempElderly);
+
+
+            }
+        }
+    }
+
+    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes,
+                                                List<Chromosome> offspringChromosomes) {
+        List<Chromosome> combinedChromosomes = combineChromosome(
+                chromosomes, offspringChromosomes);
+
+        Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
+
+        return combinedChromosomes.subList(0, POPULATION_SIZE);
+    }
+
+    private List<Chromosome> combineChromosome(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes) {
+        List<Chromosome> combinedChromosomes = new ArrayList<>();
+        combinedChromosomes.addAll(chromosomes);
+        combinedChromosomes.addAll(offspringChromosomes);
+        return combinedChromosomes;
+    }
+
+
+}
