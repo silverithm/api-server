@@ -132,18 +132,20 @@ public class GeneticAlgorithmService {
 
         double fitness = 0.0;
 
-        List<Double> departureTimes = calculateDepartureTimes(chromosome);
-
-        chromosome.setDepartureTimes(departureTimes);
-
-        double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
-
-        fitness = 10000000 / (totalDepartureTime + 1.0);
-
+        fitness = calculateFitnessForDepartureTimes(chromosome);
         fitness = calculateFitnessForProximity(chromosome, fitness);
         fitness = evaluateFrontSeatAssignments(chromosome, fitness);
         fitness = evaluateFixedAssignments(chromosome, fitness);
 
+        return fitness;
+    }
+
+    private double calculateFitnessForDepartureTimes(Chromosome chromosome) {
+        double fitness;
+        List<Double> departureTimes = calculateDepartureTimes(chromosome);
+        chromosome.setDepartureTimes(departureTimes);
+        double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
+        fitness = 10000000 / (totalDepartureTime + 1.0);
         return fitness;
     }
 
