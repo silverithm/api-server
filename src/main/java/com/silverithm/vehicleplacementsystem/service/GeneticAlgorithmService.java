@@ -156,10 +156,7 @@ public class GeneticAlgorithmService {
             if (dispatchType.equals((DispatchType.IN))) {
 
                 fitness += calculateFitnessForEmployeeAndElderlyProximity(chromosome, i);
-
-                fitness += DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(
-                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
-                        .get("Company"));
+                fitness += calculateFitnessForElderlyAndCompanyProximity(chromosome, i);
 
             }
 
@@ -193,6 +190,12 @@ public class GeneticAlgorithmService {
         }
 
         return fitness;
+    }
+
+    private double calculateFitnessForElderlyAndCompanyProximity(Chromosome chromosome, int i) {
+        return DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(
+                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
+                .get("Company"));
     }
 
     private double calculateFitnessForEmployeeAndElderlyProximity(Chromosome chromosome, int i) {
