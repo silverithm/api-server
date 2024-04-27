@@ -154,7 +154,8 @@ public class GeneticAlgorithmService {
             for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                 int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
                 int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
-                fitness += calculateFitnessForElderlyProximity(elderlyIndex1, elderlyIndex2);
+                fitness += calculateFitnessForFromAndTo("Elderly_" + elderlys.get(elderlyIndex1).id(),
+                        "Elderly_" + elderlys.get(elderlyIndex2).id());
             }
             fitness = addFitnessForDispatchTypes(chromosome, fitness, i);
         }
@@ -195,37 +196,26 @@ public class GeneticAlgorithmService {
 
     private double addFitnessForDispatchTypes(Chromosome chromosome, double fitness, int i) {
         if (dispatchType.equals(DispatchType.OUT)) {
-            fitness += calculateFitnessForElderlyAndEmployeeProximity(chromosome, i);
+            fitness += calculateFitnessForFromAndTo(
+                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
+                            .id(), "Employee_" + employees.get(i).id());
         }
 
         if (dispatchType.equals((DispatchType.IN))) {
-            fitness += calculateFitnessForEmployeeAndElderlyProximity(chromosome, i);
-            fitness += calculateFitnessForElderlyAndCompanyProximity(chromosome, i);
+            fitness += calculateFitnessForFromAndTo("Employee_" + employees.get(i).id(),
+                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+            fitness += calculateFitnessForFromAndTo(
+                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
+                            .id(), "Company");
         }
         return fitness;
     }
 
-    private double calculateFitnessForElderlyAndCompanyProximity(Chromosome chromosome, int i) {
+    private double calculateFitnessForFromAndTo(String from, String to) {
         return DistanceScore.getScore(distanceMatrix.get(
-                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
-                        .id()).get("Company"));
+                from).get(to));
     }
 
-    private double calculateFitnessForEmployeeAndElderlyProximity(Chromosome chromosome, int i) {
-        return DistanceScore.getScore(distanceMatrix.get("Employee_" + employees.get(i).id())
-                .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id()));
-    }
-
-    private double calculateFitnessForElderlyAndEmployeeProximity(Chromosome chromosome, int i) {
-        return DistanceScore.getScore(distanceMatrix.get(
-                "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
-                        .id()).get("Employee_" + employees.get(i).id()));
-    }
-
-    private double calculateFitnessForElderlyProximity(int elderlyIndex1, int elderlyIndex2) {
-        return DistanceScore.getScore(distanceMatrix.get("Elderly_" + elderlys.get(elderlyIndex1).id())
-                .get("Elderly_" + elderlys.get(elderlyIndex2).id()));
-    }
 
     private List<Double> calculateDepartureTimes(Chromosome chromosome) {
         List<Double> departureTimes = new ArrayList<>();
