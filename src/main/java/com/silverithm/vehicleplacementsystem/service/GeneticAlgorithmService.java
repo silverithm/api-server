@@ -150,13 +150,18 @@ public class GeneticAlgorithmService {
         }
 
         fitness = evaluateFrontSeatAssignments(chromosome, fitness);
-//        log.info(chromosome.getGenes() + " " + fixedAssignmentsMap.toString());
+        fitness = evaluateFixedAssignments(chromosome, fitness);
+
+        return fitness;
+    }
+
+    private double evaluateFixedAssignments(Chromosome chromosome, double fitness) {
         for (int employee_idx : fixedAssignmentsMap.keySet()) {
             for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
                 if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
                         && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
                     fitness = 0.0;
-                    return fitness;
+                    break;
                 }
             }
         }
