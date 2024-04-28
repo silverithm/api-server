@@ -387,7 +387,6 @@ public class GeneticAlgorithmService {
                 employeeAssignment2.set(mutationPoint4, employeeAssignment.get(mutationPoint2));
                 employeeAssignment.set(mutationPoint2, tempElderly);
 
-
             }
         }
     }
