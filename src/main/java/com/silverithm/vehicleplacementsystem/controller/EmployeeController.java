@@ -9,8 +9,11 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ElderService;
 import com.silverithm.vehicleplacementsystem.service.EmployeeService;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,7 +29,7 @@ public class EmployeeController {
 
     @PostMapping("/api/v1/employee/{userId}")
     public String elderAdd(@PathVariable("userId") final Long userId,
-                           @RequestBody AddEmployeeRequest addEmployeeRequest) throws Exception{
+                           @RequestBody AddEmployeeRequest addEmployeeRequest) throws Exception {
         employeeService.addEmployee(userId, addEmployeeRequest);
         return "Success";
     }
@@ -48,4 +51,17 @@ public class EmployeeController {
         employeeService.updateEmployee(id, employeeUpdateRequestDTO);
         return "Success";
     }
+
+
+    @GetMapping("/api/v1/employees/downloadExcel")
+    public void downloadExcel(HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.ms-excel");
+        response.setHeader("Content-Disposition", "attachment;filename=employee.xlsx");
+
+        Workbook workbook = employeeService.downloadExcel();
+        workbook.write(response.getOutputStream());
+        workbook.close();
+    }
+
+
 }

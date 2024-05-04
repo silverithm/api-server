@@ -46,7 +46,6 @@ public class WebSecurityConfigure {
     private UserRepository userRepository;
 
 
-
     @Bean
     public AuthenticationManager authenticationManagerBean() throws Exception {
         return new AuthenticationManager() {
@@ -75,7 +74,6 @@ public class WebSecurityConfigure {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-
         http
                 .sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -102,6 +100,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/actuator/*").permitAll()
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
+                                .requestMatchers("/api/v1/employees/downloadExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
