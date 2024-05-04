@@ -152,10 +152,7 @@ public class EmployeeService {
                 }
                 log.info(homeAddressName);
 
-                String workPlaceName = "";
-                if (sheet.getRow(i).getCell(3) != null) {
-                    workPlaceName = "경상남도 진주시 주약약골길 86";
-                }
+                String workPlaceName = "경상남도 진주시 주약약골길 86";
                 log.info(workPlaceName);
 
                 int maximumCapacity = 0;
