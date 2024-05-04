@@ -139,10 +139,25 @@ public class EmployeeService {
 
                 double idCell = sheet.getRow(i).getCell(0).getNumericCellValue();
                 Long id = (long) idCell;
-                String name = sheet.getRow(i).getCell(1).getStringCellValue();
-                String homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
-                String workPlaceName = "경상남도 진주시 주약약골길 86";
-                int maximumCapacity = (int) sheet.getRow(i).getCell(3).getNumericCellValue();
+
+                String name = "";
+                if (sheet.getRow(i).getCell(1) != null) {
+                    name = sheet.getRow(i).getCell(1).getStringCellValue();
+                }
+                String homeAddressName = "";
+                if (sheet.getRow(i).getCell(2) != null) {
+                    homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
+                }
+
+                String workPlaceName = "";
+                if (sheet.getRow(i).getCell(3) != null) {
+                    workPlaceName = "경상남도 진주시 주약약골길 86";
+                }
+
+                int maximumCapacity = 0;
+                if (sheet.getRow(i).getCell(4) != null) {
+                    maximumCapacity = (int) sheet.getRow(i).getCell(4).getNumericCellValue();
+                }
 
                 if (id.equals(0)) {
                     // create
