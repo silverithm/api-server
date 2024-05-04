@@ -26,12 +26,16 @@ import org.xml.sax.helpers.LocatorImpl;
 public class Employee extends Node {
 
 
+    private String workPlaceAddressName;
+    private String homeAddressName;
+
     private String name;
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "latitude", column = @Column(name = "workplace_latitude")),
             @AttributeOverride(name = "longitude", column = @Column(name = "workplace_longitude"))
     })
+
     private Location workPlace;
 
     @Embedded
@@ -55,7 +59,10 @@ public class Employee extends Node {
     }
 
 
-    public void update(String name, Location homeAddress, Location workPlace, int maxCapacity) {
+    public void update(String homeAddressName, String workPlaceAddressName, String name, Location homeAddress,
+                       Location workPlace, int maxCapacity) {
+        this.homeAddressName = homeAddressName;
+        this.workPlaceAddressName = workPlaceAddressName;
         this.name = name;
         this.homeAddress = homeAddress;
         this.workPlace = workPlace;

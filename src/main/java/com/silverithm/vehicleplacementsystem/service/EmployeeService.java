@@ -34,11 +34,9 @@ public class EmployeeService {
         Location homeAddress = geocodingService.getAddressCoordinates(addEmployeeRequest.homeAddress());
         Location workPlace = geocodingService.getAddressCoordinates(addEmployeeRequest.workPlace());
 
-
-        if(homeAddress == null || workPlace ==null){
+        if (homeAddress == null || workPlace == null) {
             throw new Exception();
         }
-
 
         System.out.println(homeAddress + " " + addEmployeeRequest.homeAddress());
         System.out.println(workPlace + " " + addEmployeeRequest.workPlace());
@@ -73,8 +71,10 @@ public class EmployeeService {
         Location updatedWorkPlace = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.workPlace());
 
         Employee employee = employeeRepository.findById(id).orElseThrow();
-        employee.update(employeeUpdateRequestDTO.name(), updatedHomeAddress,
+        employee.update(employeeUpdateRequestDTO.homeAddress(), employeeUpdateRequestDTO.workPlace(),
+                employeeUpdateRequestDTO.name(), updatedHomeAddress,
                 updatedWorkPlace, employeeUpdateRequestDTO.maxCapacity());
     }
+
 
 }
