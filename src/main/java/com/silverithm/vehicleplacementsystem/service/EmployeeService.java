@@ -137,12 +137,12 @@ public class EmployeeService {
 
             for (int i = 1; i < sheet.getPhysicalNumberOfRows(); i++) {
 
-                double idCell = sheet.getRow(i).getCell(0).getNumericCellValue();
+                double idCell = Double.parseDouble(sheet.getRow(i).getCell(0).getStringCellValue());
                 Long id = (long) idCell;
                 String name = sheet.getRow(i).getCell(1).getStringCellValue();
                 String homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
                 String workPlaceName = "경상남도 진주시 주약약골길 86";
-                int maximumCapacity = (int) sheet.getRow(i).getCell(3).getNumericCellValue();
+                int maximumCapacity = Integer.parseInt(sheet.getRow(i).getCell(3).getStringCellValue());
 
                 if (id.equals(0)) {
                     // create
