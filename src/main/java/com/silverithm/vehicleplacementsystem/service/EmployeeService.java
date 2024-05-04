@@ -134,13 +134,15 @@ public class EmployeeService {
         Workbook workbook = new XSSFWorkbook(file);
 
         for (Sheet sheet : workbook) {
-            for (Row row : sheet) {
-                Long idCell = Long.valueOf(row.getCell(0).getStringCellValue());
+
+            for (int i = 1; i < sheet.getPhysicalNumberOfRows(); i++) {
+
+                double idCell = sheet.getRow(i).getCell(0).getNumericCellValue();
                 Long id = (long) idCell;
-                String name = row.getCell(1).getStringCellValue();
-                String homeAddressName = row.getCell(2).getStringCellValue();
+                String name = sheet.getRow(i).getCell(1).getStringCellValue();
+                String homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
                 String workPlaceName = "경상남도 진주시 주약약골길 86";
-                int maximumCapacity = Integer.parseInt(row.getCell(3).getStringCellValue());
+                int maximumCapacity = (int) sheet.getRow(i).getCell(3).getNumericCellValue();
 
                 if (id.equals(0)) {
                     // create
@@ -156,6 +158,29 @@ public class EmployeeService {
                 }
 
             }
+
+//            for (Row row : sheet) {
+//                double idCell = row.getCell(0).getNumericCellValue();
+//                Long id = (long) idCell;
+//                String name = row.getCell(1).getStringCellValue();
+//                String homeAddressName = row.getCell(2).getStringCellValue();
+//                String workPlaceName = "경상남도 진주시 주약약골길 86";
+//                int maximumCapacity = (int) row.getCell(3).getNumericCellValue();
+//
+//                if (id.equals(0)) {
+//                    // create
+//
+//                    this.addEmployee(1L, new AddEmployeeRequest(
+//                            name, workPlaceName, homeAddressName, maximumCapacity, id
+//                    ));
+//
+//                } else {
+//                    // update
+//                    this.updateEmployee(1L,
+//                            new EmployeeUpdateRequestDTO(name, homeAddressName, workPlaceName, maximumCapacity));
+//                }
+//
+//            }
         }
     }
 
