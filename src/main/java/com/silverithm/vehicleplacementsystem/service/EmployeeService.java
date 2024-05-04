@@ -89,29 +89,26 @@ public class EmployeeService {
 
     public Workbook downloadExcel() {
         Workbook workbook = new XSSFWorkbook();
-        Sheet employee = workbook.createSheet("직원");
+        Sheet employeeSheet = workbook.createSheet("직원");
         int rowNo = 0;
 
-        Row headerRow = employee.createRow(rowNo++);
+        Row headerRow = employeeSheet.createRow(rowNo++);
         headerRow.createCell(0).setCellValue("아이디");
         headerRow.createCell(1).setCellValue("이름");
         headerRow.createCell(2).setCellValue("집주소");
         headerRow.createCell(3).setCellValue("직장주소");
         headerRow.createCell(4).setCellValue("최대인원");
 
-        List<EmployeeDTO> employeeList = this.getEmployees();
+        List<Employee> employees = employeeRepository.findAll();
 
-        log.info(employeeList.toString());
-        log.info(String.valueOf(employeeList.size()));
+        for (Employee employee : employees) {
 
-        for (EmployeeDTO employeeDTO : employeeList) {
-
-            Row employeeRow = employee.createRow(rowNo++);
-            employeeRow.createCell(0).setCellValue(employeeDTO.id());
-            employeeRow.createCell(1).setCellValue(employeeDTO.name());
-            employeeRow.createCell(2).setCellValue(employeeDTO.homeAddressName());
-            employeeRow.createCell(3).setCellValue(employeeDTO.workPlaceName());
-            employeeRow.createCell(4).setCellValue(employeeDTO.maximumCapacity());
+            Row employeeRow = employeeSheet.createRow(rowNo++);
+            employeeRow.createCell(0).setCellValue(employee.getId());
+            employeeRow.createCell(1).setCellValue(employee.getName());
+            employeeRow.createCell(2).setCellValue(employee.getHomeAddressName());
+            employeeRow.createCell(3).setCellValue(employee.getWorkPlaceAddressName());
+            employeeRow.createCell(4).setCellValue(employee.getMaximumCapacity());
 
         }
 
