@@ -9,6 +9,7 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ElderService;
 import com.silverithm.vehicleplacementsystem.service.EmployeeService;
+import com.silverithm.vehicleplacementsystem.service.ExcelService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
@@ -28,6 +29,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class EmployeeController {
     private final EmployeeService employeeService;
+
+    private final ExcelService excelService;
 
     @PostMapping("/api/v1/employee/{userId}")
     public String elderAdd(@PathVariable("userId") final Long userId,
@@ -68,7 +71,7 @@ public class EmployeeController {
 
     @PostMapping("/api/v1/employee/uploadExcel")
     public void uploadExcel(@RequestParam("file") MultipartFile file) throws Exception {
-        employeeService.uploadExcel(file.getInputStream());
+        excelService.uploadExcel(file.getInputStream());
     }
 
 
