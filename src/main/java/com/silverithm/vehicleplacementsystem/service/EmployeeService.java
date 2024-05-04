@@ -47,7 +47,8 @@ public class EmployeeService {
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
-        Employee employee = new Employee(addEmployeeRequest.name(), workPlace, homeAddress,
+        Employee employee = new Employee(addEmployeeRequest.workPlace(), addEmployeeRequest.homeAddress(),
+                addEmployeeRequest.name(), workPlace, homeAddress,
                 addEmployeeRequest.maxCapacity(), user);
         employeeRepository.save(employee);
     }

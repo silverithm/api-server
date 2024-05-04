@@ -50,7 +50,11 @@ public class Employee extends Node {
     @JoinColumn(name = "user_id")
     private AppUser user;
 
-    public Employee(String name, Location workplace, Location homeAddress, int maximumCapacity, AppUser user) {
+    public Employee(String workPlaceAddressName, String homeAddressName, String name, Location workplace,
+                    Location homeAddress, int maximumCapacity, AppUser user) {
+
+        this.workPlaceAddressName = workPlaceAddressName;
+        this.homeAddressName = homeAddressName;
         this.name = name;
         this.workPlace = workplace;
         this.homeAddress = homeAddress;
