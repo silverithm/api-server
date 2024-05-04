@@ -168,7 +168,7 @@ public class EmployeeService {
                     this.addEmployee(1L, new AddEmployeeRequest(
                             name, workPlaceName, homeAddressName, maximumCapacity, id
                     ));
-                } else if (homeAddressName != "" && workPlaceName != "") {
+                } else if (homeAddressName != "") {
                     // update
                     this.updateEmployee(1L,
                             new EmployeeUpdateRequestDTO(name, homeAddressName, workPlaceName, maximumCapacity));
