@@ -166,7 +166,7 @@ public class EmployeeService {
                             name, workPlaceName, homeAddressName, maximumCapacity, id
                     ));
 
-                } else {
+                } else if (homeAddressName != "" && workPlaceName != "") {
                     // update
                     this.updateEmployee(1L,
                             new EmployeeUpdateRequestDTO(name, homeAddressName, workPlaceName, maximumCapacity));
