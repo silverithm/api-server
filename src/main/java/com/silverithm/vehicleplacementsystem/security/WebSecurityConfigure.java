@@ -101,6 +101,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
                                 .requestMatchers("/api/v1/employees/downloadExcel").permitAll()
+                                .requestMatchers("/api/v1/employees/uploadExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
