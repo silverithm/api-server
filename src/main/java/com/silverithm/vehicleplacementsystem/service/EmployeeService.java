@@ -144,10 +144,13 @@ public class EmployeeService {
                 if (sheet.getRow(i).getCell(1) != null) {
                     name = sheet.getRow(i).getCell(1).getStringCellValue();
                 }
+                log.info(name);
+
                 String homeAddressName = "";
                 if (sheet.getRow(i).getCell(2) != null) {
                     homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
                 }
+                log.info(homeAddressName);
 
                 String workPlaceName = "";
                 if (sheet.getRow(i).getCell(3) != null) {
@@ -158,14 +161,13 @@ public class EmployeeService {
                 if (sheet.getRow(i).getCell(4) != null) {
                     maximumCapacity = (int) sheet.getRow(i).getCell(4).getNumericCellValue();
                 }
+                log.info(String.valueOf(maximumCapacity));
 
                 if (id.equals(0)) {
                     // create
-
                     this.addEmployee(1L, new AddEmployeeRequest(
                             name, workPlaceName, homeAddressName, maximumCapacity, id
                     ));
-
                 } else if (homeAddressName != "" && workPlaceName != "") {
                     // update
                     this.updateEmployee(1L,
