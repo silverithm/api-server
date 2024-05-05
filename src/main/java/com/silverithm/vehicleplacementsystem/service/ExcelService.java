@@ -9,6 +9,7 @@ import java.io.InputStream;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.hibernate.jdbc.Work;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,7 +64,7 @@ public class ExcelService {
                             name, workPlaceName, homeAddressName, maximumCapacity, id
                     ));
                 } else {
-                    employeeService.updateEmployee(1L,
+                    employeeService.updateEmployee(id,
                             new EmployeeUpdateRequestDTO(name, homeAddressName, workPlaceName, maximumCapacity));
                 }
 
@@ -73,48 +74,61 @@ public class ExcelService {
     }
 
     public void uploadElderlyExcel(InputStream file) throws Exception {
-        Workbook workbook = new XSSFWorkbook(file);
+        try {
+            Workbook workbook = new XSSFWorkbook(file);
+            log.info(workbook.toString());
+            for (Sheet sheet : workbook) {
 
-        for (Sheet sheet : workbook) {
+                for (int i = 1; i < sheet.getPhysicalNumberOfRows(); i++) {
 
-            for (int i = 1; i < sheet.getPhysicalNumberOfRows(); i++) {
+                    double idCell = sheet.getRow(i).getCell(0).getNumericCellValue();
+                    Long id = (long) idCell;
 
-                double idCell = sheet.getRow(i).getCell(0).getNumericCellValue();
-                Long id = (long) idCell;
+                    log.info(id.toString());
+                    String name = "";
+                    if (sheet.getRow(i).getCell(1) != null) {
+                        name = sheet.getRow(i).getCell(1).getStringCellValue();
+                    }
+                    log.info(name);
 
-                String name = "";
-                if (sheet.getRow(i).getCell(1) != null) {
-                    name = sheet.getRow(i).getCell(1).getStringCellValue();
-                }
-                log.info(name);
+                    String homeAddressName = "";
+                    if (sheet.getRow(i).getCell(2) != null) {
+                        homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
+                    }
+                    log.info(homeAddressName);
 
-                String homeAddressName = "";
-                if (sheet.getRow(i).getCell(2) != null) {
-                    homeAddressName = sheet.getRow(i).getCell(2).getStringCellValue();
-                }
-                log.info(homeAddressName);
+                    Boolean requiredFrontSeat = false;
+                    if (sheet.getRow(i).getCell(3).getBooleanCellValue()) {
+                        requiredFrontSeat = sheet.getRow(i).getCell(3).getBooleanCellValue();
+                    }
+                    log.info(String.valueOf(requiredFrontSeat));
 
-                Boolean requiredFrontSeat = false;
-                if (sheet.getRow(i).getCell(3).getBooleanCellValue()) {
-                    requiredFrontSeat = sheet.getRow(i).getCell(3).getBooleanCellValue();
-                }
-                log.info(String.valueOf(requiredFrontSeat));
+                    if (id.equals(0)) {
+                        //create
+                        elderService.addElder(1L, new AddElderRequest(
+                                name, homeAddressName, requiredFrontSeat
+                        ));
+                    } else {
+                        //update
+                        log.info("update start");
+                        elderService.updateElder(id,
+                                new ElderUpdateRequestDTO(name, homeAddressName, requiredFrontSeat));
+                        log.info("update end");
+                    }
 
-                if (id.equals(0)) {
-                    // create
-                    elderService.addElder(1L, new AddElderRequest(
-                            name, homeAddressName, requiredFrontSeat, 1L
-                    ));
-                } else {
-                    elderService.updateElder(1L,
-                            new ElderUpdateRequestDTO(name, homeAddressName, requiredFrontSeat));
+                    log.info("end");
+
+
                 }
 
 
             }
-
-
+        } catch (Exception e) {
+            log.info("upload error");
+            log.info(e.toString());
         }
+
+
     }
 }
 
