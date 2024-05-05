@@ -71,7 +71,7 @@ public class EmployeeController {
     @GetMapping("/api/v1/employee/downloadElderlyExcel")
     public void downloadElderlyExcel(HttpServletResponse response) throws IOException {
         response.setContentType("application/vnd.ms-excel");
-        response.setHeader("Content-Disposition", "attachment;filename=employee.xlsx");
+        response.setHeader("Content-Disposition", "attachment;filename=elderly.xlsx");
 
         Workbook workbook = employeeService.downloadElderlyExcel();
         workbook.write(response.getOutputStream());

@@ -101,6 +101,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
                                 .requestMatchers("/api/v1/employee/downloadEmployeeExcel").permitAll()
+                                .requestMatchers("/api/v1/employee/downloadElderlyExcel").permitAll()
+                                .requestMatchers("/api/v1/employee/uploadElderlyExcel").permitAll()
                                 .requestMatchers("/api/v1/employee/uploadEmployeeExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
                                 .anyRequest().authenticated()

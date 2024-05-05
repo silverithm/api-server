@@ -45,7 +45,7 @@ public class ElderService {
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
-        Elderly elderly = new Elderly(addElderRequest.name(), homeAddress,
+        Elderly elderly = new Elderly(addElderRequest.name(), addElderRequest.homeAddress(), homeAddress,
                 addElderRequest.requiredFrontSeat(), user);
         elderRepository.save(elderly);
     }
@@ -70,7 +70,7 @@ public class ElderService {
     public void updateElder(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) throws Exception {
         Location updatedHomeAddress = geocodingService.getAddressCoordinates(elderUpdateRequestDTO.homeAddress());
         Elderly elderly = elderRepository.findById(id).orElseThrow();
-        elderly.update(elderUpdateRequestDTO.name(), updatedHomeAddress,
+        elderly.update(elderUpdateRequestDTO.name(), elderUpdateRequestDTO.homeAddress(), updatedHomeAddress,
                 elderUpdateRequestDTO.requiredFrontSeat());
     }
 }
