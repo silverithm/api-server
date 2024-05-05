@@ -58,10 +58,10 @@ public class ExcelService {
                 }
                 log.info(String.valueOf(maximumCapacity));
 
-                if (id.equals(0)) {
+                if (id.equals(0L)) {
                     // create
                     employeeService.addEmployee(1L, new AddEmployeeRequest(
-                            name, workPlaceName, homeAddressName, maximumCapacity, id
+                            name, workPlaceName, homeAddressName, maximumCapacity
                     ));
                 } else {
                     employeeService.updateEmployee(id,
