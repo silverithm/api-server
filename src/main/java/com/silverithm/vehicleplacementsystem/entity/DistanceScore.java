@@ -1,8 +1,8 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 public enum DistanceScore {
-    ZERO(0, 5),
-    SHORT(250, 2),
+    ZERO(0, 10),
+    SHORT(250, 5),
     MEDIUM(500, 1.5),
     LONG(750, 1.0),
     EXTRA_LONG(1000, 0.5),
