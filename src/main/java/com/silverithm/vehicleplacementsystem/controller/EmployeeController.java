@@ -58,20 +58,35 @@ public class EmployeeController {
     }
 
 
-    @GetMapping("/api/v1/employees/downloadExcel")
-    public void downloadExcel(HttpServletResponse response) throws IOException {
+    @GetMapping("/api/v1/employee/downloadEmployeeExcel")
+    public void downloadEmployeeExcel(HttpServletResponse response) throws IOException {
         response.setContentType("application/vnd.ms-excel");
         response.setHeader("Content-Disposition", "attachment;filename=employee.xlsx");
 
-        Workbook workbook = employeeService.downloadExcel();
+        Workbook workbook = employeeService.downloadEmployeeExcel();
+        workbook.write(response.getOutputStream());
+        workbook.close();
+    }
+
+    @GetMapping("/api/v1/employee/downloadElderlyExcel")
+    public void downloadElderlyExcel(HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.ms-excel");
+        response.setHeader("Content-Disposition", "attachment;filename=employee.xlsx");
+
+        Workbook workbook = employeeService.downloadElderlyExcel();
         workbook.write(response.getOutputStream());
         workbook.close();
     }
 
 
-    @PostMapping("/api/v1/employee/uploadExcel")
-    public void uploadExcel(@RequestParam("file") MultipartFile file) throws Exception {
-        excelService.uploadExcel(file.getInputStream());
+    @PostMapping("/api/v1/employee/uploadEmployeeExcel")
+    public void uploadEmployeeExcel(@RequestParam("file") MultipartFile file) throws Exception {
+        excelService.uploadEmployeeExcel(file.getInputStream());
+    }
+
+    @PostMapping("/api/v1/employee/uploadElderlyExcel")
+    public void uploadElderlyExcel(@RequestParam("file") MultipartFile file) throws Exception {
+        excelService.uploadElderlyExcel(file.getInputStream());
     }
 
 

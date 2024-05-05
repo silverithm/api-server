@@ -100,8 +100,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/actuator/*").permitAll()
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
-                                .requestMatchers("/api/v1/employees/downloadExcel").permitAll()
-                                .requestMatchers("/api/v1/employee/uploadExcel").permitAll()
+                                .requestMatchers("/api/v1/employee/downloadEmployeeExcel").permitAll()
+                                .requestMatchers("/api/v1/employee/uploadEmployeeExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),

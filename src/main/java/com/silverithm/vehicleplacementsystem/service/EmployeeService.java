@@ -5,7 +5,9 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
+import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.io.InputStream;
@@ -26,6 +28,8 @@ public class EmployeeService {
 
     @Autowired
     private EmployeeRepository employeeRepository;
+    @Autowired
+    private ElderRepository elderRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -87,7 +91,7 @@ public class EmployeeService {
         employeeRepository.deleteById(id);
     }
 
-    public Workbook downloadExcel() {
+    public Workbook downloadEmployeeExcel() {
         Workbook workbook = new XSSFWorkbook();
         Sheet employeeSheet = workbook.createSheet("직원");
         int rowNo = 0;
@@ -115,10 +119,32 @@ public class EmployeeService {
         return workbook;
     }
 
+    public Workbook downloadElderlyExcel() {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet elderlySheet = workbook.createSheet("어르신");
+        int rowNo = 0;
+
+        Row headerRow = elderlySheet.createRow(rowNo++);
+        headerRow.createCell(0).setCellValue("아이디");
+        headerRow.createCell(1).setCellValue("이름");
+        headerRow.createCell(2).setCellValue("집주소");
+        headerRow.createCell(3).setCellValue("앞자리여부");
+
+        List<Elderly> elderlys = elderRepository.findAll();
+
+        for (Elderly elderly : elderlys) {
+            Row elderlyRow = elderlySheet.createRow(rowNo++);
+            elderlyRow.createCell(0).setCellValue(elderly.getId());
+            elderlyRow.createCell(1).setCellValue(elderly.getName());
+            elderlyRow.createCell(2).setCellValue(elderly.getHomeAddressName());
+            elderlyRow.createCell(3).setCellValue(elderly.isRequiredFrontSeat());
+        }
+
+        return workbook;
+    }
 
     @Transactional
     public void updateEmployee(Long id, EmployeeUpdateRequestDTO employeeUpdateRequestDTO) throws Exception {
-
         Location updatedHomeAddress = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.homeAddress());
         Location updatedWorkPlace = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.workPlace());
 
