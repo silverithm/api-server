@@ -103,7 +103,7 @@ public class ExcelService {
                     }
                     log.info(String.valueOf(requiredFrontSeat));
 
-                    if (id.equals(0)) {
+                    if (id.equals(0L)) {
                         //create
                         elderService.addElder(1L, new AddElderRequest(
                                 name, homeAddressName, requiredFrontSeat
@@ -117,7 +117,6 @@ public class ExcelService {
                     }
 
                     log.info("end");
-
 
                 }
 
