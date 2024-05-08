@@ -58,16 +58,22 @@ public class ExcelService {
                 }
                 log.info(String.valueOf(maximumCapacity));
 
+                Boolean isDriver = false;
+                if (sheet.getRow(i).getCell(5) != null) {
+                    isDriver = sheet.getRow(i).getCell(5).getBooleanCellValue();
+                }
+                log.info(String.valueOf(isDriver));
+
                 if (id.equals(0L)) {
                     // create
                     employeeService.addEmployee(1L, new AddEmployeeRequest(
-                            name, workPlaceName, homeAddressName, maximumCapacity
+                            name, workPlaceName, homeAddressName, maximumCapacity, isDriver
                     ));
                 } else {
                     employeeService.updateEmployee(id,
-                            new EmployeeUpdateRequestDTO(name, homeAddressName, workPlaceName, maximumCapacity));
+                            new EmployeeUpdateRequestDTO(name, homeAddressName, workPlaceName, maximumCapacity,
+                                    isDriver));
                 }
-
 
             }
         }
