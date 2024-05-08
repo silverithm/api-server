@@ -10,7 +10,6 @@ import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
-import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +52,7 @@ public class EmployeeService {
 
         Employee employee = new Employee(addEmployeeRequest.workPlace(), addEmployeeRequest.homeAddress(),
                 addEmployeeRequest.name(), workPlace, homeAddress,
-                addEmployeeRequest.maxCapacity(), user);
+                addEmployeeRequest.maxCapacity(), addEmployeeRequest.isDriver(), user);
         employeeRepository.save(employee);
     }
 
@@ -68,7 +67,7 @@ public class EmployeeService {
                 .map(employee -> new EmployeeDTO(employee.getId(), employee.getName(), employee.getHomeAddressName(),
                         employee.getWorkPlaceAddressName(), employee.getHomeAddress(),
                         employee.getWorkPlace(),
-                        employee.getMaximumCapacity())).collect(Collectors.toList());
+                        employee.getMaximumCapacity(), employee.getIsDriver())).collect(Collectors.toList());
 
         return employeeDTOS;
 
@@ -81,7 +80,7 @@ public class EmployeeService {
                 .map(employee -> new EmployeeDTO(employee.getId(), employee.getHomeAddressName(),
                         employee.getWorkPlaceAddressName(), employee.getName(), employee.getHomeAddress(),
                         employee.getWorkPlace(),
-                        employee.getMaximumCapacity())).collect(Collectors.toList());
+                        employee.getMaximumCapacity(), employee.getIsDriver())).collect(Collectors.toList());
 
         return employeeDTOS;
 
@@ -152,7 +151,7 @@ public class EmployeeService {
 
         employee.update(employeeUpdateRequestDTO.homeAddress(), employeeUpdateRequestDTO.workPlace(),
                 employeeUpdateRequestDTO.name(), updatedHomeAddress,
-                updatedWorkPlace, employeeUpdateRequestDTO.maxCapacity());
+                updatedWorkPlace, employeeUpdateRequestDTO.maxCapacity(), employeeUpdateRequestDTO.isDriver());
     }
 
 }

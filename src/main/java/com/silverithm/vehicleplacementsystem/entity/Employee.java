@@ -28,7 +28,6 @@ public class Employee extends Node {
 
     private String workPlaceAddressName;
     private String homeAddressName;
-
     private String name;
     @Embedded
     @AttributeOverrides({
@@ -46,12 +45,15 @@ public class Employee extends Node {
     private Location homeAddress;
     private int maximumCapacity;
 
+    private Boolean isDriver;
+
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private AppUser user;
 
     public Employee(String workPlaceAddressName, String homeAddressName, String name, Location workplace,
-                    Location homeAddress, int maximumCapacity, AppUser user) {
+                    Location homeAddress, int maximumCapacity, Boolean isDriver, AppUser user) {
 
         this.workPlaceAddressName = workPlaceAddressName;
         this.homeAddressName = homeAddressName;
@@ -59,18 +61,20 @@ public class Employee extends Node {
         this.workPlace = workplace;
         this.homeAddress = homeAddress;
         this.maximumCapacity = maximumCapacity;
+        this.isDriver = isDriver;
         this.user = user;
     }
 
 
     public void update(String homeAddressName, String workPlaceAddressName, String name, Location homeAddress,
-                       Location workPlace, int maxCapacity) {
+                       Location workPlace, int maxCapacity, Boolean isDriver) {
         this.homeAddressName = homeAddressName;
         this.workPlaceAddressName = workPlaceAddressName;
         this.name = name;
         this.homeAddress = homeAddress;
         this.workPlace = workPlace;
         this.maximumCapacity = maxCapacity;
+        this.isDriver = isDriver;
     }
 }
 
