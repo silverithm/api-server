@@ -196,14 +196,30 @@ public class GeneticAlgorithmService {
 
     private double addFitnessForDispatchTypes(Chromosome chromosome, double fitness, int i) {
         if (dispatchType.equals(DispatchType.OUT)) {
-            fitness += calculateFitnessForFromAndTo(
-                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
-                            .id(), "Employee_" + employees.get(i).id());
+            if (employees.get(i).isDriver()) {
+                fitness += calculateFitnessForFromAndTo(
+                        "Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
+                                .id(), "Company");
+            }
+
+            if (!employees.get(i).isDriver()) {
+                fitness += calculateFitnessForFromAndTo(
+                        "Elderly_" + elderlys.get(
+                                        chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
+                                .id(), "Employee_" + employees.get(i).id());
+            }
         }
 
         if (dispatchType.equals((DispatchType.IN))) {
-            fitness += calculateFitnessForFromAndTo("Employee_" + employees.get(i).id(),
-                    "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+            if (employees.get(i).isDriver()) {
+                fitness += calculateFitnessForFromAndTo("Company",
+                        "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+            }
+            if (!employees.get(i).isDriver()) {
+                fitness += calculateFitnessForFromAndTo("Employee_" + employees.get(i).id(),
+                        "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+            }
             fitness += calculateFitnessForFromAndTo(
                     "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1))
                             .id(), "Company");
