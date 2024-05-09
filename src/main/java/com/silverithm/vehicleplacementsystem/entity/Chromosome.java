@@ -35,7 +35,6 @@ public class Chromosome {
         List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees);
-
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, elderlyIndexs, chromosome);
@@ -72,6 +71,7 @@ public class Chromosome {
                                                   List<List<Integer>> chromosome) {
         int startIndex = 0;
         Random rand = new Random();
+
         while (startIndex < elderlyIndexs.size()) {
             int randIndex = rand.nextInt(employeesCapacityLeft.length);
             for (int i = 0; i < chromosome.get(randIndex).size(); i++) {
@@ -87,18 +87,17 @@ public class Chromosome {
 
     public void fixInitialChromosome(List<EmployeeDTO> employees, int[] employeesCapacityLeft,
                                      List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
-        for (int k = 0; k < 2; k++) {
-            for (int i = 0; i < employees.size(); i++) {
-                for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
-                    if (employeesCapacityLeft[i] > 0 && elderlyIndexs.size() > 0 && chromosome.get(i).get(j) == -1) {
-                        chromosome.get(i).set(j, elderlyIndexs.get(0));
-                        employeesCapacityLeft[i]--;
-                        elderlyIndexs.remove(0);
-                        break;
-                    }
+        for (int i = 0; i < employees.size(); i++) {
+            for (int j = 0; j < employees.get(i).maximumCapacity(); j++) {
+                if (employeesCapacityLeft[i] > 0 && elderlyIndexs.size() > 0 && chromosome.get(i).get(j) == -1) {
+                    chromosome.get(i).set(j, elderlyIndexs.get(0));
+                    employeesCapacityLeft[i]--;
+                    elderlyIndexs.remove(0);
+                    break;
                 }
             }
         }
+
     }
 
     public void fixElderlyAtChromosome(Map<Integer, List<Integer>> fixedAssignments, int[] employeesCapacityLeft,

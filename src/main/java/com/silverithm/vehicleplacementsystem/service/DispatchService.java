@@ -99,7 +99,6 @@ public class DispatchService {
                 requestDispatchDTO.dispatchType());
 
         List<Chromosome> chromosomes = geneticAlgorithm.run();
-
         // 최적의 솔루션 추출
         Chromosome bestChromosome = chromosomes.get(0);
 

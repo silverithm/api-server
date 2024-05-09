@@ -51,6 +51,7 @@ public class GeneticAlgorithmService {
 
         try {
             for (int i = 0; i < MAX_ITERATIONS; i++) {
+
                 // 평가
                 evaluatePopulation(chromosomes);
                 // 선택
