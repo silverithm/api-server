@@ -57,11 +57,11 @@
 //    public void initializeChromosomeWithMaximumCapacity_SizeEqualCapacity_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 5));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 3));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 2));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //        int numEmployee = 5;
 //        int[] employeesCapacityLeft = new int[5];
 //        //when
@@ -76,11 +76,11 @@
 //    public void initializeChromosomeWithMaximumCapacity_IsAllValueEqualMinus1_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //
 //        //when
 //        List<List<Integer>> genes = chromosome.initializeChromosomeWithMaximumCapacity(employees);
@@ -96,11 +96,11 @@
 //    public void initializeEmployeesCapacityLeft_IsAllValueEqualCapacity_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //        //when
 //        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
 //        //then
@@ -113,11 +113,11 @@
 //    public void fixElderlyAtChromosome_EqualFixAssignments_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //
 //        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
 //
@@ -140,11 +140,11 @@
 //    public void fixInitialChromosome_FirstAndSecondValueIsNotMinus1_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //
 //        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
 //
@@ -173,11 +173,11 @@
 //    public void fixRandomElderlyIndexAtChromosome_EqualRandomElderlyIndexsSize_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 5));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //
 //        int numCount = 0;
 //
@@ -207,11 +207,11 @@
 //    public void removeEmptyChromosome_IsAllEmptyValueRemove_Success() {
 //        //given
 //        List<EmployeeDTO> employees = new ArrayList<>();
-//        employees.add(new EmployeeDTO(1L, "TEST1", new Location(), new Location(), 5));
-//        employees.add(new EmployeeDTO(2L, "TEST2", new Location(), new Location(), 6));
-//        employees.add(new EmployeeDTO(3L, "TEST3", new Location(), new Location(), 3));
-//        employees.add(new EmployeeDTO(4L, "TEST4", new Location(), new Location(), 4));
-//        employees.add(new EmployeeDTO(5L, "TEST5", new Location(), new Location(), 6));
+//        employees.add(new EmployeeDTO(1L, "TEST1", "", "", new Location(), new Location(), 5, false));
+//        employees.add(new EmployeeDTO(2L, "TEST2", "", "", new Location(), new Location(), 3, false));
+//        employees.add(new EmployeeDTO(3L, "TEST3", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(4L, "TEST4", "", "", new Location(), new Location(), 4, false));
+//        employees.add(new EmployeeDTO(5L, "TEST5", "", "", new Location(), new Location(), 2, false));
 //
 //        int[] employeesCapacityLeft = chromosome.initializeEmployeesCapacityLeft(employees);
 //        List<Integer> randomElderlyIndexs = chromosome.createRandomElderlyIndexs(20);
