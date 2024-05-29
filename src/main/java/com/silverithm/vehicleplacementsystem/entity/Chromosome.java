@@ -36,7 +36,7 @@ public class Chromosome {
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees);
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
-//        fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
+        fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, elderlyIndexs, chromosome);
         removeEmptyChromosome(chromosome);
 

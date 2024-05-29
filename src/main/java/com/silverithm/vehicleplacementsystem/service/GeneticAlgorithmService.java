@@ -280,6 +280,7 @@ public class GeneticAlgorithmService {
                     if (j == 0) {
                         departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
                                 .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+                        continue;
                     }
 
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
