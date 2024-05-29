@@ -45,3 +45,5 @@ application-prod.yaml
 src/main/generated
 
 build/generated
+
+.env
