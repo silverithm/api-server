@@ -29,7 +29,7 @@ public class GeneticAlgorithmService {
 
     private final List<EmployeeDTO> employees;
     private final List<ElderlyDTO> elderlys;
-    private final Map<Integer, List<Integer>> fixedAssignmentsMap;
+    private final FixedAssignments fixedAssignments;
     private final Map<String, Map<String, Integer>> distanceMatrix;
     private final DispatchType dispatchType;
 
@@ -40,7 +40,7 @@ public class GeneticAlgorithmService {
         this.employees = employees;
         this.elderlys = elderly;
         this.distanceMatrix = distanceMatrix;
-        this.fixedAssignmentsMap = generateFixedAssignmentMap(fixedAssignments, elderlys, employees);
+        this.fixedAssignments = generateFixedAssignmentMap(fixedAssignments, elderlys, employees);
         this.dispatchType = dispatchType;
     }
 
@@ -48,7 +48,7 @@ public class GeneticAlgorithmService {
     public List<Chromosome> run() throws Exception {
 
         // 초기 솔루션 생성
-        List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignmentsMap);
+        List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignments);
 
         try {
             for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -76,19 +76,17 @@ public class GeneticAlgorithmService {
 
     }
 
-    private Map<Integer, List<Integer>> generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignmentDtos,
-                                                                   List<ElderlyDTO> elderlys,
-                                                                   List<EmployeeDTO> employees) {
-
+    private FixedAssignments generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignmentDtos,
+                                                        List<ElderlyDTO> elderlys,
+                                                        List<EmployeeDTO> employees) {
         FixedAssignments fixedAssignments = new FixedAssignments(fixedAssignmentDtos, employees, elderlys);
-
-        return fixedAssignments.getFixedAssignments();
+        return fixedAssignments;
     }
 
-    private List<Chromosome> generateInitialPopulation(Map<Integer, List<Integer>> fixedAssignmentMap) {
+    private List<Chromosome> generateInitialPopulation(FixedAssignments fixedAssignments) {
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
-            chromosomes.add(new Chromosome(employees, elderlys, fixedAssignmentMap));
+            chromosomes.add(new Chromosome(employees, elderlys, fixedAssignments.getFixedAssignments()));
 
         }
         return chromosomes;
@@ -135,19 +133,7 @@ public class GeneticAlgorithmService {
     }
 
     private double evaluateFixedAssignments(Chromosome chromosome, double fitness) {
-        for (int employee_idx : fixedAssignmentsMap.keySet()) {
-            for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
-                if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignmentsMap.get(employee_idx).get(i)
-                        && fixedAssignmentsMap.get(employee_idx).get(i) != -1) {
-                    fitness = 0.0;
-                    break;
-                }
-            }
-            if (fitness == 0.0) {
-                break;
-            }
-        }
-        return fitness;
+        return fixedAssignments.evaluateFitness(chromosome, fitness);
     }
 
     private double evaluateFrontSeatAssignments(Chromosome chromosome, double fitness) {

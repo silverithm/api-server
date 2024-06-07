@@ -60,4 +60,21 @@ public class FixedAssignments {
     }
 
 
+    public double evaluateFitness(Chromosome chromosome, double fitness) {
+
+        for (int employee_idx : fixedAssignments.keySet()) {
+            for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
+                if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignments.get(employee_idx).get(i)
+                        && fixedAssignments.get(employee_idx).get(i) != -1) {
+                    fitness = 0.0;
+                    break;
+                }
+            }
+            if (fitness == 0.0) {
+                break;
+            }
+        }
+
+        return fitness;
+    }
 }
