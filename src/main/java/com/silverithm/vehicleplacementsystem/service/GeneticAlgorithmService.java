@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 import com.silverithm.vehicleplacementsystem.entity.DistanceScore;
+import com.silverithm.vehicleplacementsystem.entity.FixedAssignments;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,7 +40,7 @@ public class GeneticAlgorithmService {
         this.employees = employees;
         this.elderlys = elderly;
         this.distanceMatrix = distanceMatrix;
-        this.fixedAssignmentsMap = generateFixedAssignmentMap(fixedAssignments);
+        this.fixedAssignmentsMap = generateFixedAssignmentMap(fixedAssignments, elderlys, employees);
         this.dispatchType = dispatchType;
     }
 
@@ -51,7 +52,6 @@ public class GeneticAlgorithmService {
 
         try {
             for (int i = 0; i < MAX_ITERATIONS; i++) {
-
                 // 평가
                 evaluatePopulation(chromosomes);
                 // 선택
@@ -76,42 +76,13 @@ public class GeneticAlgorithmService {
 
     }
 
-    private Map<Integer, List<Integer>> generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignments) {
+    private Map<Integer, List<Integer>> generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignmentDtos,
+                                                                   List<ElderlyDTO> elderlys,
+                                                                   List<EmployeeDTO> employees) {
 
-        Map<Integer, List<Integer>> fixedAssignmentMap = new HashMap<>();
-        if (fixedAssignments == null) {
-            return fixedAssignmentMap;
-        }
+        FixedAssignments fixedAssignments = new FixedAssignments(fixedAssignmentDtos, employees, elderlys);
 
-        for (FixedAssignmentsDTO fixedAssignment : fixedAssignments) {
-            long employeeId = fixedAssignment.employee_id();
-            long elderlyId = fixedAssignment.elderly_id();
-            int sequence = fixedAssignment.sequence();
-
-            int employee_idx = employees.stream().map((employee) -> employee.id()).collect(Collectors.toList())
-                    .indexOf(employeeId);
-            int elderly_idx = elderlys.stream().map((elderly) -> elderly.id()).collect(Collectors.toList())
-                    .indexOf(elderlyId);
-
-            if (fixedAssignmentMap.get(employee_idx) == null && sequence > 0) {
-                List<Integer> createdList = new ArrayList<>();
-
-                for (int i = 0; i < employees.get(employee_idx).maximumCapacity(); i++) {
-                    createdList.add(-1);
-                }
-
-                createdList.set(sequence - 1, (int) elderly_idx);
-                fixedAssignmentMap.put(employee_idx, createdList);
-            } else if (sequence > 0) {
-                List<Integer> prevList = fixedAssignmentMap.get(employee_idx);
-                prevList.set(sequence - 1, (int) elderly_idx);
-                fixedAssignmentMap.put(employee_idx, prevList);
-            }
-
-//                fixedAssignmentMap.computeIfAbsent(employeeIdx, k -> new ArrayList<>()).add(elderlyIdx);
-        }
-
-        return fixedAssignmentMap;
+        return fixedAssignments.getFixedAssignments();
     }
 
     private List<Chromosome> generateInitialPopulation(Map<Integer, List<Integer>> fixedAssignmentMap) {
