@@ -29,7 +29,7 @@ public class GeneticAlgorithmServiceTest {
     private GeneticAlgorithmService geneticAlgorithmService;
 
     @Test
-    public void generateInitialPopulation_EmployeesNull_ThrowsIllegalArgumentException() {
+    public void generateInitialPopulation_IfEmployeesNull_ThrowsIllegalArgumentException() {
         //given
         List<EmployeeDTO> employees = new ArrayList<>();
         List<ElderlyDTO> elderlys = new ArrayList<>(List.of(new ElderlyDTO(2L, "", new Location(), false)));
@@ -47,7 +47,25 @@ public class GeneticAlgorithmServiceTest {
 
     }
 
+    @Test
+    public void generateInitialPopulation_IfElderlysNull_ThrowsIllegalArgumentException() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>(
+                List.of(new EmployeeDTO(1L, "", "", "", new Location(), new Location(), 4, false)));
+        List<ElderlyDTO> elderlys = new ArrayList<>();
+        Map<String, Map<String, Integer>> distanceMatrix = generateTestDistanceMatrix(employees, elderlys,
+                new CompanyDTO(new Location()));
+        List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
+        DispatchType distanceType = DispatchType.IN;
 
+        //when
+        geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
+                distanceType);
+
+        //then
+        Assertions.assertThrows(Exception.class, () -> geneticAlgorithmService.run());
+
+    }
 
 
     Map<String, Map<String, Integer>> generateTestDistanceMatrix(List<EmployeeDTO> employees,
