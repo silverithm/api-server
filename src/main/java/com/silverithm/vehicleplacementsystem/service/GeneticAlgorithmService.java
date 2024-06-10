@@ -50,6 +50,7 @@ public class GeneticAlgorithmService {
         // 초기 솔루션 생성
         List<Chromosome> chromosomes;
         try {
+
             chromosomes = generateInitialPopulation(fixedAssignments);
 
             for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -65,6 +66,7 @@ public class GeneticAlgorithmService {
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
 
                 log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
+
             }
 
         } catch (Exception e) {
@@ -86,12 +88,11 @@ public class GeneticAlgorithmService {
         return fixedAssignments;
     }
 
-    private List<Chromosome> generateInitialPopulation(FixedAssignments fixedAssignments)  {
+    private List<Chromosome> generateInitialPopulation(FixedAssignments fixedAssignments) throws Exception {
 
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
             chromosomes.add(new Chromosome(employees, elderlys, fixedAssignments.getFixedAssignments()));
-
         }
         return chromosomes;
     }

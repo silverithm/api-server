@@ -27,10 +27,16 @@ public class Chromosome {
     private int totalElderly;
 
     public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
-                      Map<Integer, List<Integer>> fixedAssignments) {
+                      Map<Integer, List<Integer>> fixedAssignments) throws Exception {
 
         int numEmployees = employees.size();
         int totalElderly = elderly.size();
+
+        int maximumCapacity = employees.stream().mapToInt(employee -> employee.maximumCapacity()).sum();
+
+        if (maximumCapacity < totalElderly) {
+            throw new Exception("[ERROR] 배치 가능 인원을 초과하였습니다.");
+        }
 
         List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
