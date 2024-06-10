@@ -47,3 +47,6 @@ src/main/generated
 build/generated
 
 .env
+
+
+./logs/*

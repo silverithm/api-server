@@ -1,5 +1,22 @@
 version: '3.8'
 services:
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - silverithm_network
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - ./logs:/logs
+      - ./cfg/promtail.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - silverithm_network
+
   prometheus:
     image: prom/prometheus
     container_name: prometheus
@@ -58,9 +75,12 @@ services:
   app:
     container_name: silverithm-backend
     build: .
+    volumes:
+      - ./logs:/logs
     ports:
       - "8080:8080"
     environment:
+      LOG_PATH: /logs
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
