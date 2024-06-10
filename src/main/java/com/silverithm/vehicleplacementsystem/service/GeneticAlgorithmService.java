@@ -48,9 +48,10 @@ public class GeneticAlgorithmService {
     public List<Chromosome> run() throws Exception {
 
         // 초기 솔루션 생성
-        List<Chromosome> chromosomes = generateInitialPopulation(fixedAssignments);
-
+        List<Chromosome> chromosomes;
         try {
+            chromosomes = generateInitialPopulation(fixedAssignments);
+
             for (int i = 0; i < MAX_ITERATIONS; i++) {
                 // 평가
                 evaluatePopulation(chromosomes);
@@ -65,7 +66,9 @@ public class GeneticAlgorithmService {
 
                 log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
             }
+
         } catch (Exception e) {
+            e.printStackTrace();
             throw new Exception("genetic algorithm run exception : " + e);
         }
         // 반복
@@ -83,7 +86,8 @@ public class GeneticAlgorithmService {
         return fixedAssignments;
     }
 
-    private List<Chromosome> generateInitialPopulation(FixedAssignments fixedAssignments) {
+    private List<Chromosome> generateInitialPopulation(FixedAssignments fixedAssignments)  {
+
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
             chromosomes.add(new Chromosome(employees, elderlys, fixedAssignments.getFixedAssignments()));
@@ -92,7 +96,7 @@ public class GeneticAlgorithmService {
         return chromosomes;
     }
 
-    private void evaluatePopulation(List<Chromosome> chromosomes) {
+    private void evaluatePopulation(List<Chromosome> chromosomes)  {
         for (Chromosome chromosome : chromosomes) {
             chromosome.setFitness(calculateFitness(chromosome));
         }
@@ -358,7 +362,7 @@ public class GeneticAlgorithmService {
         }
     }
 
-    private void mutate(List<Chromosome> offspringChromosomes) {
+    private void mutate(List<Chromosome> offspringChromosomes) throws Exception {
 
         Random rand = new Random();
 
@@ -383,7 +387,8 @@ public class GeneticAlgorithmService {
         }
     }
 
-    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes) {
+    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes)
+            throws Exception {
         List<Chromosome> combinedChromosomes = combineChromosome(chromosomes, offspringChromosomes);
 
         Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
