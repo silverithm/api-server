@@ -68,6 +68,26 @@ public class GeneticAlgorithmServiceTest {
     }
 
 
+    @Test
+    public void generateInitialPopulation_IfElderlysAndEmployeesNull_ThrowsIllegalArgumentException() {
+        //given
+        List<EmployeeDTO> employees = new ArrayList<>();
+        List<ElderlyDTO> elderlys = new ArrayList<>();
+        Map<String, Map<String, Integer>> distanceMatrix = generateTestDistanceMatrix(employees, elderlys,
+                new CompanyDTO(new Location()));
+        List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
+        DispatchType distanceType = DispatchType.IN;
+
+        //when
+        geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
+                distanceType);
+
+        //then
+        Assertions.assertThrows(Exception.class, () -> geneticAlgorithmService.run());
+
+    }
+
+
     Map<String, Map<String, Integer>> generateTestDistanceMatrix(List<EmployeeDTO> employees,
                                                                  List<ElderlyDTO> elderlys,
                                                                  CompanyDTO company) {
