@@ -75,4 +75,10 @@ public class ElderService {
         elderly.update(elderUpdateRequestDTO.name(), elderUpdateRequestDTO.homeAddress(), updatedHomeAddress,
                 elderUpdateRequestDTO.requiredFrontSeat());
     }
+
+    @Transactional
+    public void updateElderRequiredFrontSeat(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) {
+        Elderly elderly = elderRepository.findById(id).orElseThrow();
+        elderly.update(elderUpdateRequestDTO.requiredFrontSeat());
+    }
 }

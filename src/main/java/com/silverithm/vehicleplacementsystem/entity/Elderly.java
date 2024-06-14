@@ -44,5 +44,7 @@ public class Elderly extends Node {
         this.requiredFrontSeat = requiredFrontSeat;
     }
 
-
+    public void update(boolean requiredFrontSeat) {
+        this.requiredFrontSeat = requiredFrontSeat;
+    }
 }

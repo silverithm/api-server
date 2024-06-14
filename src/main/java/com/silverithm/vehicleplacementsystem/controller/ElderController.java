@@ -21,7 +21,8 @@ public class ElderController {
     private final ElderService elderService;
 
     @PostMapping("/api/v1/elder/{userId}")
-    public String elderAdd(@PathVariable("userId") final Long userId, @RequestBody AddElderRequest addElderRequest) throws Exception {
+    public String elderAdd(@PathVariable("userId") final Long userId, @RequestBody AddElderRequest addElderRequest)
+            throws Exception {
         elderService.addElder(userId, addElderRequest);
         return "Success";
     }
@@ -44,5 +45,11 @@ public class ElderController {
         return "Success";
     }
 
-
+    @PutMapping("/api/v1/elder/frontseat/{id}")
+    public String updateElderRequiredFrontSeat(@PathVariable("id") final Long id,
+                                               @RequestBody ElderUpdateRequestDTO elderUpdateRequestDTO)
+            throws Exception {
+        elderService.updateElderRequiredFrontSeat(id, elderUpdateRequestDTO);
+        return "Success";
+    }
 }
