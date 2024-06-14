@@ -49,12 +49,12 @@ build/generated
 .env
 
 
-./logs/*
+# Ignore all files in logs directory
+logs/
 
-logs
-
+# Ignore specific files in logs/info and logs/error directories
 logs/info/*
 logs/error/*
 
+# Ignore redis dump file
 src/main/resources/binary/redis/dump.rdb
-

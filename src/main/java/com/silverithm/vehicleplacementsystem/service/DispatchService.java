@@ -111,16 +111,22 @@ public class DispatchService {
         // 최적의 솔루션 추출
         Chromosome bestChromosome = chromosomes.get(0);
 
-        double sum = 0;
-        for (double value : bestChromosome.getDepartureTimes()) {
-            sum += value;
-        }
+        List<Double> departureTimes = bestChromosome.getDepartureTimes();
+
+        List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
+                employees, elderlys, bestChromosome, departureTimes);
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
+        log.info(assignmentResponseDTOS.toString());
 
+        return assignmentResponseDTOS;
+    }
+
+    private List<AssignmentResponseDTO> createResult(List<EmployeeDTO> employees,
+                                                     List<ElderlyDTO> elderlys, Chromosome bestChromosome,
+                                                     List<Double> departureTimes) {
         List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
-        List<Double> departureTimes = bestChromosome.getDepartureTimes();
         for (int i = 0; i < employees.size(); i++) {
             List<String> assignmentElderNames = new ArrayList<>();
 
