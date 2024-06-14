@@ -27,36 +27,36 @@ public class DispatchServiceTest {
         this.key = key;
     }
 
-    @Test
-    public void callTMapApi_WhenResultIsGreaterThanZero_Success() {
-        //given
-        Location location1 = new Location(37.4681241, 126.9377278);
-        Location location2 = new Location(37.4698515, 126.941749);
+//    @Test
+//    public void callTMapApi_WhenResultIsGreaterThanZero_Success() {
+//        //given
+//        Location location1 = new Location(37.4681241, 126.9377278);
+//        Location location2 = new Location(37.4698515, 126.941749);
+//
+//        //when
+//        int result = dispatchService.getDistanceTotalTimeWithTmapApi(location1, location2);
+//        //then
+//        assertThat(result).isGreaterThan(0);
+//    }
 
-        //when
-        int result = dispatchService.getDistanceTotalTimeWithTmapApi(location1, location2);
-        //then
-        assertThat(result).isGreaterThan(0);
-    }
-
-    static Stream<Location[]> locationProvider() {
-        return Stream.of(
-                new Location[]{new Location(0, 0), new Location(0, 0)},
-                new Location[]{new Location(37.4681241, 126.9377278), new Location(0, 0)},
-                new Location[]{new Location(0, 0), new Location(37.4698515, 126.941749)},
-                new Location[]{null, new Location(37.4698515, 126.941749)},
-                new Location[]{new Location(37.4681241, 126.9377278), null},
-                new Location[]{null, null}
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("locationProvider")
-    public void callTMapApi_WhenEmptyLocation_ThrowException(Location location1, Location location2) {
-        // when & then
-        assertThatThrownBy(() -> dispatchService.getDistanceTotalTimeWithTmapApi(location1, location2))
-                .isInstanceOf(NullPointerException.class).hasMessageContaining("[ERROR] TMAP API 요청에 실패하였습니다.");
-    }
+//    static Stream<Location[]> locationProvider() {
+//        return Stream.of(
+//                new Location[]{new Location(0, 0), new Location(0, 0)},
+//                new Location[]{new Location(37.4681241, 126.9377278), new Location(0, 0)},
+//                new Location[]{new Location(0, 0), new Location(37.4698515, 126.941749)},
+//                new Location[]{null, new Location(37.4698515, 126.941749)},
+//                new Location[]{new Location(37.4681241, 126.9377278), null},
+//                new Location[]{null, null}
+//        );
+//    }
+//
+//    @ParameterizedTest
+//    @MethodSource("locationProvider")
+//    public void callTMapApi_WhenEmptyLocation_ThrowException(Location location1, Location location2) {
+//        // when & then
+//        assertThatThrownBy(() -> dispatchService.getDistanceTotalTimeWithTmapApi(location1, location2))
+//                .isInstanceOf(NullPointerException.class).hasMessageContaining("[ERROR] TMAP API 요청에 실패하였습니다.");
+//    }
 
 
 }

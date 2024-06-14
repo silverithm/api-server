@@ -58,7 +58,6 @@ public class EmployeeService {
     }
 
     public List<EmployeeDTO> getEmployees(Long userId) {
-        log.info(String.valueOf(userRepository.findAll().size()));
         for (AppUser user : userRepository.findAll()) {
             log.info(user.getId().toString() + " " + user.getUsername().toString());
         }
@@ -75,18 +74,6 @@ public class EmployeeService {
 
     }
 
-    public List<EmployeeDTO> getEmployees() {
-        List<Employee> employees = employeeRepository.findAll();
-
-        List<EmployeeDTO> employeeDTOS = employees.stream()
-                .map(employee -> new EmployeeDTO(employee.getId(), employee.getHomeAddressName(),
-                        employee.getWorkPlaceAddressName(), employee.getName(), employee.getHomeAddress(),
-                        employee.getWorkPlace(),
-                        employee.getMaximumCapacity(), employee.getIsDriver())).collect(Collectors.toList());
-
-        return employeeDTOS;
-
-    }
 
     public void deleteEmployee(Long id) {
         employeeRepository.deleteById(id);
