@@ -12,6 +12,7 @@ import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -57,7 +58,8 @@ public class ElderService {
 
         List<ElderlyDTO> elderlyDTOS = elderlys.stream()
                 .map(elderly -> new ElderlyDTO(elderly.getId(), elderly.getName(), elderly.getHomeAddress(),
-                        elderly.isRequiredFrontSeat())).collect(Collectors.toList());
+                        elderly.isRequiredFrontSeat())).sorted(Comparator.comparing(ElderlyDTO::name))
+                .collect(Collectors.toList());
 
         return elderlyDTOS;
     }
