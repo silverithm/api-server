@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +68,8 @@ public class EmployeeService {
                 .map(employee -> new EmployeeDTO(employee.getId(), employee.getName(), employee.getHomeAddressName(),
                         employee.getWorkPlaceAddressName(), employee.getHomeAddress(),
                         employee.getWorkPlace(),
-                        employee.getMaximumCapacity(), employee.getIsDriver())).collect(Collectors.toList());
+                        employee.getMaximumCapacity(), employee.getIsDriver()))
+                .sorted(Comparator.comparing(EmployeeDTO::name)).collect(Collectors.toList());
 
         return employeeDTOS;
 
