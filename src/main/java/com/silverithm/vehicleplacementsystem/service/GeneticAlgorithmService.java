@@ -65,9 +65,8 @@ public class GeneticAlgorithmService {
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
 
-                log.info(chromosomes.get(0).getGenes() + " / " + chromosomes.get(0).getFitness());
-
             }
+
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -97,7 +96,7 @@ public class GeneticAlgorithmService {
         return chromosomes;
     }
 
-    private void evaluatePopulation(List<Chromosome> chromosomes)  {
+    private void evaluatePopulation(List<Chromosome> chromosomes) {
         for (Chromosome chromosome : chromosomes) {
             chromosome.setFitness(calculateFitness(chromosome));
         }
