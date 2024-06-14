@@ -34,7 +34,7 @@ public class GeocodingService {
             return new Location(latitude, longitude);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception(); // 오류 처리는 상황에 맞게 조정
+            throw new Exception();
         }
     }
 }

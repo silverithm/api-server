@@ -47,41 +47,50 @@ public class DispatchService {
         this.key = key;
     }
 
-    public int callTMapAPI(Location startAddress,
-                           Location destAddress) {
+    public int getDistanceTotalTimeWithTmapApi(Location startAddress,
+                                               Location destAddress) throws NullPointerException {
 
-        String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
+        int totalTime = 0;
+        try {
 
-        // 요청 헤더 설정
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Accept", "application/json");
-        headers.set("Content-Type", "application/json");
-        headers.set("appKey", key);
+            String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
 
-        // 요청 데이터 설정
-        String requestBody = String.format(
-                "{\"roadType\":32, \"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
-                startAddress.getLongitude(), startAddress.getLatitude(), destAddress.getLongitude(),
-                destAddress.getLatitude());
+            // 요청 헤더 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Accept", "application/json");
+            headers.set("Content-Type", "application/json");
+            headers.set("appKey", key);
 
-        // HTTP 요청 엔티티 생성
-        HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
+            // 요청 데이터 설정
+            String requestBody = String.format(
+                    "{\"roadType\":32, \"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
+                    startAddress.getLongitude(), startAddress.getLatitude(), destAddress.getLongitude(),
+                    destAddress.getLatitude());
 
-        // RestTemplate 생성
-        RestTemplate restTemplate = new RestTemplate();
+            // HTTP 요청 엔티티 생성
+            HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
 
-        // API 호출
-        ResponseEntity<String> responseEntity = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                requestEntity,
-                String.class
-        );
+            // RestTemplate 생성
+            RestTemplate restTemplate = new RestTemplate();
 
-        int totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalTime\":")[1].split(",")[0].trim());
+            // API 호출
+            ResponseEntity<String> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    String.class
+            );
+
+            totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalTime\":")[1].split(",")[0].trim());
+
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            throw new NullPointerException("[ERROR] TMAP API 요청에 실패하였습니다.");
+        }
+
         log.info("Tmap API :  " + totalTime);
-        return totalTime;
 
+        return totalTime;
     }
 
     public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
@@ -162,7 +171,8 @@ public class DispatchService {
             }
 
             if (totalTime.isEmpty()) {
-                int callTotalTime = callTMapAPI(company.companyAddress(), elderlys.get(i).homeAddress());
+                int callTotalTime = getDistanceTotalTimeWithTmapApi(company.companyAddress(),
+                        elderlys.get(i).homeAddress());
                 distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
                 distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
                 linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
@@ -191,7 +201,8 @@ public class DispatchService {
                 }
 
                 if (totalTime.isEmpty()) {
-                    int callTotalTime = callTMapAPI(elderlys.get(i).homeAddress(), elderlys.get(j).homeAddress());
+                    int callTotalTime = getDistanceTotalTimeWithTmapApi(elderlys.get(i).homeAddress(),
+                            elderlys.get(j).homeAddress());
                     distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
                     distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
                     linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
@@ -218,7 +229,7 @@ public class DispatchService {
                 }
 
                 if (totalTime.isEmpty()) {
-                    int callTotalTime = callTMapAPI(employees.get(i).homeAddress(),
+                    int callTotalTime = getDistanceTotalTimeWithTmapApi(employees.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());
                     distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
                     distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
