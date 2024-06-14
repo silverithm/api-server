@@ -50,3 +50,11 @@ build/generated
 
 
 ./logs/*
+
+logs
+
+logs/info/*
+logs/error/*
+
+src/main/resources/binary/redis/dump.rdb
+
