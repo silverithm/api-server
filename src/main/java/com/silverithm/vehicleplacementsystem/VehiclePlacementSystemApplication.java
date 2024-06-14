@@ -22,5 +22,4 @@ public class VehiclePlacementSystemApplication {
     public static void main(String[] args) throws Exception {
         SpringApplication.run(VehiclePlacementSystemApplication.class, args);
     }
-
 }

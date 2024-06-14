@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @Slf4j
@@ -30,27 +33,28 @@ public class GeneticAlgorithmServiceTest {
 
     private GeneticAlgorithmService geneticAlgorithmService;
 
-    @Test
-    public void generateInitialPopulation_IfEmployeesNull_ThrowsIllegalArgumentException() {
+    @ParameterizedTest
+    @EnumSource(DispatchType.class)
+    public void generateInitialPopulation_IfEmployeesNull_ThrowsIllegalArgumentException(DispatchType dispatchType) {
         //given
         List<EmployeeDTO> employees = new ArrayList<>();
         List<ElderlyDTO> elderlys = new ArrayList<>(List.of(new ElderlyDTO(2L, "", new Location(), false)));
         Map<String, Map<String, Integer>> distanceMatrix = generateTestDistanceMatrix(employees, elderlys,
                 new CompanyDTO(new Location()));
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
-        DispatchType distanceType = DispatchType.IN;
 
         //when
         geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
-                distanceType);
+                dispatchType);
 
         //then
         Assertions.assertThrows(Exception.class, () -> geneticAlgorithmService.run());
 
     }
 
-    @Test
-    public void generateInitialPopulation_IfElderlysNull_ThrowsIllegalArgumentException() {
+    @ParameterizedTest
+    @EnumSource(DispatchType.class)
+    public void generateInitialPopulation_IfElderlysNull_ThrowsIllegalArgumentException(DispatchType dispatchType) {
         //given
         List<EmployeeDTO> employees = new ArrayList<>(
                 List.of(new EmployeeDTO(1L, "", "", "", new Location(), new Location(), 4, false)));
@@ -58,11 +62,10 @@ public class GeneticAlgorithmServiceTest {
         Map<String, Map<String, Integer>> distanceMatrix = generateTestDistanceMatrix(employees, elderlys,
                 new CompanyDTO(new Location()));
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
-        DispatchType distanceType = DispatchType.IN;
 
         //when
         geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
-                distanceType);
+                dispatchType);
 
         //then
         Assertions.assertThrows(Exception.class, () -> geneticAlgorithmService.run());
@@ -70,19 +73,19 @@ public class GeneticAlgorithmServiceTest {
     }
 
 
-    @Test
-    public void generateInitialPopulation_IfElderlysAndEmployeesNull_ThrowsIllegalArgumentException() {
+    @ParameterizedTest
+    @EnumSource(DispatchType.class)
+    public void generateInitialPopulation_IfElderlysAndEmployeesNull_ThrowsIllegalArgumentException(DispatchType dispatchType) {
         //given
         List<EmployeeDTO> employees = new ArrayList<>();
         List<ElderlyDTO> elderlys = new ArrayList<>();
         Map<String, Map<String, Integer>> distanceMatrix = generateTestDistanceMatrix(employees, elderlys,
                 new CompanyDTO(new Location()));
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
-        DispatchType distanceType = DispatchType.IN;
 
         //when
         geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
-                distanceType);
+                dispatchType);
 
         //then
         Assertions.assertThrows(Exception.class, () -> geneticAlgorithmService.run());
@@ -90,8 +93,9 @@ public class GeneticAlgorithmServiceTest {
     }
 
 
-    @Test
-    public void generateInitialPopulation_IfElderlysMoreThanEmployeeMaximumCapacity_ThrowsIllegalArgumentException() {
+    @ParameterizedTest
+    @EnumSource(DispatchType.class)
+    public void generateInitialPopulation_IfElderlysMoreThanEmployeeMaximumCapacity_ThrowsIllegalArgumentException(DispatchType dispatchType) {
         //given
         List<EmployeeDTO> employees = new ArrayList<>(
                 List.of(new EmployeeDTO(1L, "", "", "", new Location(), new Location(), 1, false)));
@@ -100,11 +104,10 @@ public class GeneticAlgorithmServiceTest {
         Map<String, Map<String, Integer>> distanceMatrix = generateTestDistanceMatrix(employees, elderlys,
                 new CompanyDTO(new Location()));
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
-        DispatchType distanceType = DispatchType.IN;
 
         //when
         geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
-                distanceType);
+                dispatchType);
 
         //then
         Assertions.assertThrows(Exception.class, () -> geneticAlgorithmService.run());
