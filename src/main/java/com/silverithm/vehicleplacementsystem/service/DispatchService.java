@@ -103,7 +103,7 @@ public class DispatchService {
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
         // 유전 알고리즘 실행
-        GeneticAlgorithmService geneticAlgorithm = new GeneticAlgorithmService(employees, elderlys, distanceMatrix,
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix,
                 fixedAssignments,
                 requestDispatchDTO.dispatchType());
 

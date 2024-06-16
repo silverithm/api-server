@@ -10,17 +10,15 @@ import com.silverithm.vehicleplacementsystem.entity.FixedAssignments;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class GeneticAlgorithmService {
+public class GeneticAlgorithm {
 
     private static final int MAX_ITERATIONS = 300;
     private static final int POPULATION_SIZE = 20000;
@@ -34,9 +32,9 @@ public class GeneticAlgorithmService {
     private final DispatchType dispatchType;
 
 
-    public GeneticAlgorithmService(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
-                                   Map<String, Map<String, Integer>> distanceMatrix,
-                                   List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType) {
+    public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+                            Map<String, Map<String, Integer>> distanceMatrix,
+                            List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType) {
         this.employees = employees;
         this.elderlys = elderly;
         this.distanceMatrix = distanceMatrix;

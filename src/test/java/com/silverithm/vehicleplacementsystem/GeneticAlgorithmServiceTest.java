@@ -5,33 +5,23 @@ import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
-import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
-import com.silverithm.vehicleplacementsystem.entity.Employee;
-import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
-import com.silverithm.vehicleplacementsystem.service.DispatchService;
-import com.silverithm.vehicleplacementsystem.service.GeneticAlgorithmService;
+import com.silverithm.vehicleplacementsystem.service.GeneticAlgorithm;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.aspectj.lang.annotation.Before;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @Slf4j
 @SpringBootTest
 public class GeneticAlgorithmServiceTest {
 
-    private GeneticAlgorithmService geneticAlgorithmService;
+    private GeneticAlgorithm geneticAlgorithmService;
 
     @ParameterizedTest
     @EnumSource(DispatchType.class)
@@ -44,7 +34,7 @@ public class GeneticAlgorithmServiceTest {
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
 
         //when
-        geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
+        geneticAlgorithmService = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 dispatchType);
 
         //then
@@ -64,7 +54,7 @@ public class GeneticAlgorithmServiceTest {
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
 
         //when
-        geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
+        geneticAlgorithmService = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 dispatchType);
 
         //then
@@ -84,7 +74,7 @@ public class GeneticAlgorithmServiceTest {
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
 
         //when
-        geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
+        geneticAlgorithmService = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 dispatchType);
 
         //then
@@ -106,7 +96,7 @@ public class GeneticAlgorithmServiceTest {
         List<FixedAssignmentsDTO> fixedAssignments = new ArrayList<>();
 
         //when
-        geneticAlgorithmService = new GeneticAlgorithmService(employees, elderlys, distanceMatrix, fixedAssignments,
+        geneticAlgorithmService = new GeneticAlgorithm(employees, elderlys, distanceMatrix, fixedAssignments,
                 dispatchType);
 
         //then
