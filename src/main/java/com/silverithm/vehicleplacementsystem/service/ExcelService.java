@@ -4,8 +4,14 @@ import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
+import com.silverithm.vehicleplacementsystem.entity.Elderly;
+import com.silverithm.vehicleplacementsystem.entity.Employee;
+import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
+import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -19,11 +25,19 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ExcelService {
 
-    @Autowired
-    private EmployeeService employeeService;
+    private final EmployeeService employeeService;
+    private final ElderService elderService;
+    private final ElderRepository elderRepository;
+    private final EmployeeRepository employeeRepository;
 
-    @Autowired
-    private ElderService elderService;
+
+    public ExcelService(EmployeeService employeeService, ElderService elderService, ElderRepository elderRepository,
+                        EmployeeRepository employeeRepository) {
+        this.employeeService = employeeService;
+        this.elderService = elderService;
+        this.elderRepository = elderRepository;
+        this.employeeRepository = employeeRepository;
+    }
 
     @Transactional
     public void uploadEmployeeExcel(InputStream file) throws Exception {
@@ -134,6 +148,58 @@ public class ExcelService {
         }
 
 
+    }
+
+    public Workbook downloadElderlyExcel() {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet elderlySheet = workbook.createSheet("어르신");
+        int rowNo = 0;
+
+        Row headerRow = elderlySheet.createRow(rowNo++);
+        headerRow.createCell(0).setCellValue("아이디");
+        headerRow.createCell(1).setCellValue("이름");
+        headerRow.createCell(2).setCellValue("집주소");
+        headerRow.createCell(3).setCellValue("앞자리여부");
+
+        List<Elderly> elderlys = elderRepository.findAll();
+
+        for (Elderly elderly : elderlys) {
+            Row elderlyRow = elderlySheet.createRow(rowNo++);
+            elderlyRow.createCell(0).setCellValue(elderly.getId());
+            elderlyRow.createCell(1).setCellValue(elderly.getName());
+            elderlyRow.createCell(2).setCellValue(elderly.getHomeAddressName());
+            elderlyRow.createCell(3).setCellValue(elderly.isRequiredFrontSeat());
+        }
+
+        return workbook;
+    }
+
+    public Workbook downloadEmployeeExcel() {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet employeeSheet = workbook.createSheet("직원");
+        int rowNo = 0;
+
+        Row headerRow = employeeSheet.createRow(rowNo++);
+        headerRow.createCell(0).setCellValue("아이디");
+        headerRow.createCell(1).setCellValue("이름");
+        headerRow.createCell(2).setCellValue("집주소");
+        headerRow.createCell(3).setCellValue("직장주소");
+        headerRow.createCell(4).setCellValue("최대인원");
+
+        List<Employee> employees = employeeRepository.findAll();
+
+        for (Employee employee : employees) {
+
+            Row employeeRow = employeeSheet.createRow(rowNo++);
+            employeeRow.createCell(0).setCellValue(employee.getId());
+            employeeRow.createCell(1).setCellValue(employee.getName());
+            employeeRow.createCell(2).setCellValue(employee.getHomeAddressName());
+            employeeRow.createCell(3).setCellValue(employee.getWorkPlaceAddressName());
+            employeeRow.createCell(4).setCellValue(employee.getMaximumCapacity());
+
+        }
+
+        return workbook;
     }
 }
 

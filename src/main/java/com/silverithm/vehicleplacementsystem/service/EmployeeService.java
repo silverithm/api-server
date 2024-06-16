@@ -79,57 +79,9 @@ public class EmployeeService {
         employeeRepository.deleteById(id);
     }
 
-    public Workbook downloadEmployeeExcel() {
-        Workbook workbook = new XSSFWorkbook();
-        Sheet employeeSheet = workbook.createSheet("직원");
-        int rowNo = 0;
 
-        Row headerRow = employeeSheet.createRow(rowNo++);
-        headerRow.createCell(0).setCellValue("아이디");
-        headerRow.createCell(1).setCellValue("이름");
-        headerRow.createCell(2).setCellValue("집주소");
-        headerRow.createCell(3).setCellValue("직장주소");
-        headerRow.createCell(4).setCellValue("최대인원");
 
-        List<Employee> employees = employeeRepository.findAll();
 
-        for (Employee employee : employees) {
-
-            Row employeeRow = employeeSheet.createRow(rowNo++);
-            employeeRow.createCell(0).setCellValue(employee.getId());
-            employeeRow.createCell(1).setCellValue(employee.getName());
-            employeeRow.createCell(2).setCellValue(employee.getHomeAddressName());
-            employeeRow.createCell(3).setCellValue(employee.getWorkPlaceAddressName());
-            employeeRow.createCell(4).setCellValue(employee.getMaximumCapacity());
-
-        }
-
-        return workbook;
-    }
-
-    public Workbook downloadElderlyExcel() {
-        Workbook workbook = new XSSFWorkbook();
-        Sheet elderlySheet = workbook.createSheet("어르신");
-        int rowNo = 0;
-
-        Row headerRow = elderlySheet.createRow(rowNo++);
-        headerRow.createCell(0).setCellValue("아이디");
-        headerRow.createCell(1).setCellValue("이름");
-        headerRow.createCell(2).setCellValue("집주소");
-        headerRow.createCell(3).setCellValue("앞자리여부");
-
-        List<Elderly> elderlys = elderRepository.findAll();
-
-        for (Elderly elderly : elderlys) {
-            Row elderlyRow = elderlySheet.createRow(rowNo++);
-            elderlyRow.createCell(0).setCellValue(elderly.getId());
-            elderlyRow.createCell(1).setCellValue(elderly.getName());
-            elderlyRow.createCell(2).setCellValue(elderly.getHomeAddressName());
-            elderlyRow.createCell(3).setCellValue(elderly.isRequiredFrontSeat());
-        }
-
-        return workbook;
-    }
 
     @Transactional
     public void updateEmployee(Long id, EmployeeUpdateRequestDTO employeeUpdateRequestDTO) throws Exception {
