@@ -16,8 +16,8 @@ public class ExcelController {
 
     private final ExcelService excelService;
 
-    public ExcelController() {
-        excelService = new ExcelService();
+    public ExcelController(ExcelService excelService) {
+        this.excelService = excelService;
     }
 
     @GetMapping("/api/v1/employee/downloadEmployeeExcel")
