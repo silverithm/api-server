@@ -9,6 +9,7 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
+import com.silverithm.vehicleplacementsystem.repository.EmitterRepository;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 @Slf4j
@@ -38,12 +40,15 @@ public class DispatchService {
     private static double CROSSOVER_RATE = 0.7;
 
 
-    @Autowired
-    private LinkDistanceRepository linkDistanceRepository;
+    private final LinkDistanceRepository linkDistanceRepository;
+    private final SSEService sseService;
 
     private String key;
 
-    public DispatchService(@Value("${tmap.key}") String key) {
+    public DispatchService(@Value("${tmap.key}") String key, LinkDistanceRepository linkDistanceRepository,
+                           SSEService sseService) {
+        this.linkDistanceRepository = linkDistanceRepository;
+        this.sseService = sseService;
         this.key = key;
     }
 
@@ -100,24 +105,30 @@ public class DispatchService {
         CompanyDTO company = requestDispatchDTO.company();
         List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
 
+        sseService.notify(requestDispatchDTO.userName(), 5);
+
         // 거리 행렬 계산
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
+        sseService.notify(requestDispatchDTO.userName(), 15);
         // 유전 알고리즘 실행
         GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix,
                 fixedAssignments,
-                requestDispatchDTO.dispatchType());
+                requestDispatchDTO.dispatchType(), requestDispatchDTO.userName(),
+                sseService);
 
         List<Chromosome> chromosomes = geneticAlgorithm.run();
         // 최적의 솔루션 추출
         Chromosome bestChromosome = chromosomes.get(0);
 
         List<Double> departureTimes = bestChromosome.getDepartureTimes();
+        sseService.notify(requestDispatchDTO.userName(), 95);
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes);
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
         log.info(assignmentResponseDTOS.toString());
+        sseService.notify(requestDispatchDTO.userName(), 100);
 
         return assignmentResponseDTOS;
     }

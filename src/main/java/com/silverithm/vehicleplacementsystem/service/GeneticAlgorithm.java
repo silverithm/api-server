@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 public class GeneticAlgorithm {
@@ -30,16 +31,22 @@ public class GeneticAlgorithm {
     private final FixedAssignments fixedAssignments;
     private final Map<String, Map<String, Integer>> distanceMatrix;
     private final DispatchType dispatchType;
+    private final String userName;
 
+    private final SSEService sseService;
 
     public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                             Map<String, Map<String, Integer>> distanceMatrix,
-                            List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType) {
+                            List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType, String userName,
+                            SSEService sseService
+    ) {
         this.employees = employees;
         this.elderlys = elderly;
         this.distanceMatrix = distanceMatrix;
         this.fixedAssignments = generateFixedAssignmentMap(fixedAssignments, elderlys, employees);
         this.dispatchType = dispatchType;
+        this.sseService = sseService;
+        this.userName = userName;
     }
 
 
@@ -50,8 +57,14 @@ public class GeneticAlgorithm {
         try {
 
             chromosomes = generateInitialPopulation(fixedAssignments);
+            sseService.notify(userName, 20);
 
             for (int i = 0; i < MAX_ITERATIONS; i++) {
+
+                if (i % 10 == 0) {
+                    sseService.notify(userName, 20 + (int) ((i / (double) MAX_ITERATIONS) * 60));
+                }
+
                 // 평가
                 evaluatePopulation(chromosomes);
                 // 선택

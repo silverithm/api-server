@@ -26,7 +26,7 @@ public class FixedAssignments {
 
         Map<Integer, List<Integer>> fixedAssignments = new HashMap<>();
 
-        if (fixedAssignments == null) {
+        if (fixedAssignmentsDtos == null) {
             return fixedAssignments;
         }
 
