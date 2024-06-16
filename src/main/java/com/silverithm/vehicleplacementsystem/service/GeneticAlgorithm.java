@@ -61,7 +61,7 @@ public class GeneticAlgorithm {
 
             for (int i = 0; i < MAX_ITERATIONS; i++) {
 
-                sseService.notify(userName, 20 + (int) ((i / (double) MAX_ITERATIONS) * 60));
+                sseService.notify(userName, String.format("%.1f", 20 + ((i / (double) MAX_ITERATIONS) * 60)));
 
                 // 평가
                 evaluatePopulation(chromosomes);
