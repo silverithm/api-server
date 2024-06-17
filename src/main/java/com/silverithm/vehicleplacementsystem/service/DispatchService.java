@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.AssignmentElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
@@ -139,13 +140,15 @@ public class DispatchService {
         List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
         for (int i = 0; i < employees.size(); i++) {
-            List<String> assignmentElderNames = new ArrayList<>();
+            List<AssignmentElderRequest> assignmentElders = new ArrayList<>();
 
             for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
-                assignmentElderNames.add(elderlys.get(bestChromosome.getGenes().get(i).get(j)).name());
+                assignmentElders.add(
+                        new AssignmentElderRequest(elderlys.get(bestChromosome.getGenes().get(i).get(j)).id(),
+                                elderlys.get(bestChromosome.getGenes().get(i).get(j)).name()));
             }
-            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).name(),
-                    (int) (departureTimes.get(i) / 60), assignmentElderNames));
+            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).id(), employees.get(i).name(),
+                    (int) (departureTimes.get(i) / 60), assignmentElders));
         }
         return assignmentResponseDTOS;
     }
