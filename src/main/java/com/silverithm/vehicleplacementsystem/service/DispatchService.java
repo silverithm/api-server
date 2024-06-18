@@ -9,6 +9,7 @@ import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
+import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
 import com.silverithm.vehicleplacementsystem.repository.EmitterRepository;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
@@ -125,7 +126,7 @@ public class DispatchService {
         sseService.notify(requestDispatchDTO.userName(), 95);
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
-                employees, elderlys, bestChromosome, departureTimes);
+                employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
         log.info(assignmentResponseDTOS.toString());
@@ -136,7 +137,7 @@ public class DispatchService {
 
     private List<AssignmentResponseDTO> createResult(List<EmployeeDTO> employees,
                                                      List<ElderlyDTO> elderlys, Chromosome bestChromosome,
-                                                     List<Double> departureTimes) {
+                                                     List<Double> departureTimes, DispatchType dispatchType) {
         List<AssignmentResponseDTO> assignmentResponseDTOS = new ArrayList<>();
 
         for (int i = 0; i < employees.size(); i++) {
@@ -148,10 +149,11 @@ public class DispatchService {
                                 elderlys.get(bestChromosome.getGenes().get(i).get(j)).homeAddress(),
                                 elderlys.get(bestChromosome.getGenes().get(i).get(j)).name()));
             }
-            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).id(), employees.get(i).homeAddress(),
-                    employees.get(i).workplace(),
-                    employees.get(i).name(),
-                    (int) (departureTimes.get(i) / 60), assignmentElders));
+            assignmentResponseDTOS.add(
+                    new AssignmentResponseDTO(dispatchType, employees.get(i).id(), employees.get(i).homeAddress(),
+                            employees.get(i).workplace(),
+                            employees.get(i).name(),
+                            (int) (departureTimes.get(i) / 60), assignmentElders));
         }
         return assignmentResponseDTOS;
     }
