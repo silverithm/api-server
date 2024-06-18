@@ -145,9 +145,12 @@ public class DispatchService {
             for (int j = 0; j < bestChromosome.getGenes().get(i).size(); j++) {
                 assignmentElders.add(
                         new AssignmentElderRequest(elderlys.get(bestChromosome.getGenes().get(i).get(j)).id(),
+                                elderlys.get(bestChromosome.getGenes().get(i).get(j)).homeAddress(),
                                 elderlys.get(bestChromosome.getGenes().get(i).get(j)).name()));
             }
-            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).id(), employees.get(i).name(),
+            assignmentResponseDTOS.add(new AssignmentResponseDTO(employees.get(i).id(), employees.get(i).homeAddress(),
+                    employees.get(i).workplace(),
+                    employees.get(i).name(),
                     (int) (departureTimes.get(i) / 60), assignmentElders));
         }
         return assignmentResponseDTOS;
