@@ -166,18 +166,4 @@ public class Chromosome {
         return copyObject;
     }
 
-
-    public int getGeneLength() {
-        return genes.size();
-    }
-
-//    public int getGene(int index) {
-//        return genes.get(index);
-//    }
-//
-//    public void setGene(int index, int value) {
-//        genes.set(index, value);
-//    }
-
-
 }

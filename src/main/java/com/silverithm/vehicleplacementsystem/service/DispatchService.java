@@ -11,13 +11,11 @@ import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
-import com.silverithm.vehicleplacementsystem.repository.EmitterRepository;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +25,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Service
 @Slf4j
@@ -162,14 +159,6 @@ public class DispatchService {
                                                                       List<ElderlyDTO> elderlys,
                                                                       CompanyDTO company) {
         Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>();
-
-        //사용전
-        //처음에 디비에서 모든 정보를 가져와서 1차로 매트릭스를 만듬
-        //모든 노드들을 돌면서 비어있는 정보가 있으면 calltmapapi를 호출해서 매트릭스를 채워주고 디비에 값을 저장함
-
-        //사용시
-        //geneticAlgorithm에 company, employee, elderly가 있다.
-        //만들어져있는 calltmapapi를 그냥 위 값들을 이용하여 map에서 꺼내쓰면 된다.
 
         distanceMatrix.put("Company", new HashMap<>());
 

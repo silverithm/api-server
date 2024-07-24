@@ -49,7 +49,6 @@ public class GeneticAlgorithm {
         this.userName = userName;
     }
 
-
     public List<Chromosome> run() throws Exception {
 
         // 초기 솔루션 생성
@@ -201,6 +200,7 @@ public class GeneticAlgorithm {
 
 
     private List<Double> calculateDepartureTimes(Chromosome chromosome) {
+
         List<Double> departureTimes = new ArrayList<>();
 
         if (dispatchType.equals(DispatchType.OUT)) {

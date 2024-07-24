@@ -1,12 +1,12 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 public enum DistanceScore {
-    ZERO(0, 100),
-    EXTRA_SHORT(100, 8),
-    SHORT(250, 5),
-    MEDIUM(500, 1.5),
-    LONG(750, 1.0),
-    EXTRA_LONG(1000, 0.5),
+    ZERO(0, 1000),
+    EXTRA_SHORT(100, 80),
+    SHORT(250, 50),
+    MEDIUM(500, 15),
+    LONG(750, 10),
+    EXTRA_LONG(1000, 5),
     OUT_OF_RANGE(Integer.MAX_VALUE, 0);
 
     private final int maxDistance;
