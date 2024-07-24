@@ -46,7 +46,7 @@ src/main/generated
 
 build/generated
 
-.env
+../../campride/.env
 
 
 # Ignore all files in logs directory
@@ -58,3 +58,6 @@ logs/error/*
 
 # Ignore redis dump file
 src/main/resources/binary/redis/dump.rdb
+
+.env
+
