@@ -58,7 +58,8 @@ public class ElderService {
 
         List<ElderlyDTO> elderlyDTOS = elderlys.stream()
                 .map(elderly -> new ElderlyDTO(elderly.getId(), elderly.getName(), elderly.getHomeAddress(),
-                        elderly.isRequiredFrontSeat())).sorted(Comparator.comparing(ElderlyDTO::name))
+                        elderly.isRequiredFrontSeat(), elderly.getHomeAddressName()))
+                .sorted(Comparator.comparing(ElderlyDTO::name))
                 .collect(Collectors.toList());
 
         return elderlyDTOS;
