@@ -80,7 +80,7 @@ public class UserService {
 
             findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
 
-            return new SigninResponseDTO(findUser.getId(), findUser.getCompanyName(), findUser.getCompanyAddress(),
+            return new SigninResponseDTO(findUser.getId(), findUser.getCompanyName(), findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
                     tokenInfo);
 
 
@@ -101,7 +101,7 @@ public class UserService {
             AppUser user = new AppUser(userDataDTO.getName(), userDataDTO.getEmail(),
                     passwordEncoder.encode(userDataDTO.getPassword()), userDataDTO.getRole(),
                     tokenInfo.getAccessToken(), tokenInfo.getRefreshToken(),
-                    userDataDTO.getCompanyName(), companyLocation);
+                    userDataDTO.getCompanyName(), companyLocation, userDataDTO.getCompanyAddress());
 
             userRepository.save(user);
 

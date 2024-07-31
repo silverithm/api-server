@@ -37,6 +37,7 @@ public class AppUser {
     private String accessToken;
     private String refreshToken;
     private String companyName;
+    private String companyAddressName;
 
 
     @Embedded
@@ -47,7 +48,7 @@ public class AppUser {
     private Location companyAddress;
 
     public AppUser(String name, String email, String encode, UserRole role, String accessToken, String refreshToken,
-                   String companyName, Location companyLocation) {
+                   String companyName, Location companyLocation, String companyAddressName) {
         this.username = name;
         this.email = email;
         this.password = encode;
@@ -56,6 +57,7 @@ public class AppUser {
         this.refreshToken = refreshToken;
         this.companyName = companyName;
         this.companyAddress = companyLocation;
+        this.companyAddressName = companyAddressName;
     }
 
     public void update(String accessToken, String refreshToken) {

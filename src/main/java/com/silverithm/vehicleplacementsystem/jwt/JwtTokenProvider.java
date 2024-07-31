@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider {
 
-    public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L;               //30분
+        public static final long ACCESS_TOKEN_EXPIRE_TIME = 3 * 24 * 60 * 60 * 1000L;               //3일, 수정필요
     public static final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;     //7일
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String AUTHORITIES_KEY = "auth";
@@ -57,7 +57,8 @@ public class JwtTokenProvider {
     }
 
     //name, authorities 를 가지고 AccessToken, RefreshToken 을 생성하는 메서드
-    public UserResponseDTO.TokenInfo generateToken(String name, Collection<? extends GrantedAuthority> inputAuthorities) {
+    public UserResponseDTO.TokenInfo generateToken(String name,
+                                                   Collection<? extends GrantedAuthority> inputAuthorities) {
         //권한 가져오기
         String authorities = inputAuthorities.stream()
                 .map(GrantedAuthority::getAuthority)
@@ -122,13 +123,13 @@ public class JwtTokenProvider {
             log.info("Invalid JWT Token", e);
         } catch (ExpiredJwtException e) {
             log.info("Expired JWT Token", e);
+            throw e;
         } catch (UnsupportedJwtException e) {
             log.info("Unsupported JWT Token", e);
         } catch (IllegalArgumentException e) {
             System.out.println("empty!!!");
             log.info("JWT claims string is empty.", e);
         }
-        System.out.println("what?");
         return false;
     }
 

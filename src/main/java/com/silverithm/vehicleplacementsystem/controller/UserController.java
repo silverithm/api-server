@@ -63,10 +63,10 @@ public class UserController {
 //        return new UserResponseDTO(req.getRemoteUser());
 //    }
 //
-//    @GetMapping("/refresh")
-//    public String refresh(HttpServletRequest req) {
-//        return userService.refresh(req.getRemoteUser());
-//    }
+    @GetMapping("/refresh")
+    public String refresh(HttpServletRequest req) {
+        return userService.refresh(req.getRemoteUser());
+    }
 
 
 }
