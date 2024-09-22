@@ -38,4 +38,9 @@ public class Couple {
         this.elder1 = elder1;
         this.elder2 = elder2;
     }
+
+    public void update(Elderly elder1, Elderly elder2) {
+        this.elder1 = elder1;
+        this.elder2 = elder2;
+    }
 }
