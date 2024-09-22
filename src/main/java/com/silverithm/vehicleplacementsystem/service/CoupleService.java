@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.repository.CoupleRepository;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.ResponseEntity;
@@ -52,14 +53,18 @@ public class CoupleService {
         return ResponseEntity.ok().body(id);
     }
 
+    @Transactional
     public Long updateCouple(Long id, CoupleUpdateRequestDTO coupleUpdateRequestDTO) throws NotFoundException {
         Couple couple = coupleRepository.findById(id).orElseThrow(() -> new NotFoundException());
 
         Elderly elder1 = elderRepository.findById(coupleUpdateRequestDTO.elderId1())
                 .orElseThrow(() -> new NotFoundException());
         Elderly elder2 = elderRepository.findById(coupleUpdateRequestDTO.elderId2())
+                .orElseThrow(() -> new NotFoundException());
 
         couple.update(elder1, elder2);
+
+        System.out.println(couple.getElder1().getId() + " " + couple.getElder2().getId());
 
         return couple.getId();
     }

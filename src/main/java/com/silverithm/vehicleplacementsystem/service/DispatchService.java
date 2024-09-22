@@ -248,7 +248,7 @@ public class DispatchService {
             Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
             Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
 
-            if (totalTime.isPresent()) {
+            if (totalTime.isPresent() && totalDistance.isPresent()) {
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
                     distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
@@ -262,7 +262,7 @@ public class DispatchService {
 
             }
 
-            if (totalTime.isEmpty()) {
+            if (totalTime.isEmpty() || totalDistance.isEmpty()) {
                 KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(company.companyAddress(),
                         elderlys.get(i).homeAddress());
 
@@ -304,7 +304,7 @@ public class DispatchService {
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
                 Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
 
-                if (totalTime.isPresent()) {
+                if (totalTime.isPresent() && totalDistance.isPresent()) {
 
                     if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
                         distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
@@ -318,7 +318,7 @@ public class DispatchService {
 
                 }
 
-                if (totalTime.isEmpty()) {
+                if (totalTime.isEmpty() || totalDistance.isEmpty()) {
                     KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(
                             elderlys.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());

@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class Chromosome {
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees);
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
-        fixCoupleElderlyAtChromosome(couples, employeesCapacityLeft, elderlyIndexs, chromosome);
+        fixCoupleElderlyAtChromosome(elderly, couples, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, elderlyIndexs, chromosome);
         removeEmptyChromosome(chromosome);
@@ -129,26 +130,53 @@ public class Chromosome {
         }
     }
 
-    private void fixCoupleElderlyAtChromosome(List<CoupleRequestDTO> coupleElderlyList, int[] employeesCapacityLeft,
+    private void fixCoupleElderlyAtChromosome(List<ElderlyDTO> elderly, List<CoupleRequestDTO> coupleElderlyList,
+                                              int[] employeesCapacityLeft,
                                               List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
         Random rand = new Random();
+        Map<Long, Integer> elderlyIdToIndex = new HashMap<>();
+        for (int i = 0; i < elderly.size(); i++) {
+            elderlyIdToIndex.put(elderly.get(i).id(), i);
+        }
+
+        List<Integer> availableEmployees = new ArrayList<>();
+        for (int i = 0; i < employeesCapacityLeft.length; i++) {
+            if (employeesCapacityLeft[i] >= 2) {
+                availableEmployees.add(i);
+            }
+        }
 
         for (CoupleRequestDTO couple : coupleElderlyList) {
-            int employee = -1;
-            while (employee == -1 || employeesCapacityLeft[employee] < 2) {
-                employee = rand.nextInt(chromosome.size());
+            if (availableEmployees.isEmpty()) {
+                throw new RuntimeException("No available employees to assign couple");
             }
 
+            int employeeIndex = rand.nextInt(availableEmployees.size());
+            int employee = availableEmployees.get(employeeIndex);
             List<Integer> employeeChromosome = chromosome.get(employee);
+
+            int elderIdx1 = elderlyIdToIndex.get(couple.elderId1());
+            int elderIdx2 = elderlyIdToIndex.get(couple.elderId2());
+
+            boolean assigned = false;
             for (int i = 0; i < employeeChromosome.size() - 1; i++) {
                 if (employeeChromosome.get(i) == -1 && employeeChromosome.get(i + 1) == -1) {
-                    employeeChromosome.set(i, Math.toIntExact(couple.elderId1()));
-                    employeeChromosome.set(i + 1, Math.toIntExact(couple.elderId2()));
-                    elderlyIndexs.remove(couple.elderId1());
-                    elderlyIndexs.remove(couple.elderId2());
+                    employeeChromosome.set(i, elderIdx1);
+                    employeeChromosome.set(i + 1, elderIdx2);
+                    elderlyIndexs.remove(Integer.valueOf(elderIdx1));
+                    elderlyIndexs.remove(Integer.valueOf(elderIdx2));
                     employeesCapacityLeft[employee] -= 2;
+                    assigned = true;
                     break;
                 }
+            }
+
+            if (!assigned) {
+                throw new RuntimeException("Could not assign couple to selected employee");
+            }
+
+            if (employeesCapacityLeft[employee] < 2) {
+                availableEmployees.remove(employeeIndex);
             }
         }
     }

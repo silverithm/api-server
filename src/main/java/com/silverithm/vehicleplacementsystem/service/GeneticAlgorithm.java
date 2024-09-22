@@ -104,6 +104,7 @@ public class GeneticAlgorithm {
 
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
+            log.info(i + "");
             chromosomes.add(new Chromosome(couples, employees, elderlys, fixedAssignments.getFixedAssignments()));
         }
         return chromosomes;
@@ -255,6 +256,9 @@ public class GeneticAlgorithm {
                 double departureTime = 0.0;
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                     String company = "Company";
+//                    log.info("calculateDepartureTimes : " + chromosome.getGenes().get(i).get(j) + " "
+//                            + chromosome.getGenes().get(i).get(j + 1));
+
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
                     String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
 
@@ -291,6 +295,9 @@ public class GeneticAlgorithm {
                 double departureTime = 0.0;
 
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+//                    log.info("calculateDepartureTimes : " + chromosome.getGenes().get(i).get(j) + " "
+//                            + chromosome.getGenes().get(i).get(j + 1));
+//                    log.info(chromosome.getGenes().toString());
 
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
                     String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();

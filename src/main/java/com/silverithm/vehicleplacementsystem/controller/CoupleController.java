@@ -34,7 +34,7 @@ public class CoupleController {
     }
 
     @GetMapping("/api/v1/couple/{userId}")
-    public ResponseEntity<List<CoupleResponseDTO>> getElders(@PathVariable("userId") final Long userId) {
+    public ResponseEntity<List<CoupleResponseDTO>> getCouples(@PathVariable("userId") final Long userId) {
         return ResponseEntity.ok().body(coupleService.getCouples(userId));
     }
 
@@ -44,7 +44,7 @@ public class CoupleController {
     }
 
     @PutMapping("/api/v1/couple/{id}")
-    public ResponseEntity<Long> updateElder(@PathVariable("id") final Long id,
+    public ResponseEntity<Long> updateCouple(@PathVariable("id") final Long id,
                                             @RequestBody CoupleUpdateRequestDTO coupleUpdateRequestDTO)
             throws Exception {
         return ResponseEntity.ok().body(coupleService.updateCouple(id, coupleUpdateRequestDTO));
