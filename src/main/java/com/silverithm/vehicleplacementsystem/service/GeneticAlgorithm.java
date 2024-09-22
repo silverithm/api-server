@@ -24,7 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class GeneticAlgorithm {
 
     private static final int MAX_ITERATIONS = 300;
-    private static final int POPULATION_SIZE = 20000;
+    private static final int POPULATION_SIZE = 30000;
     private static final double MUTATION_RATE = 0.9;
     private static final double CROSSOVER_RATE = 0.7;
 
@@ -104,7 +104,6 @@ public class GeneticAlgorithm {
 
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
-            log.info(i + "");
             chromosomes.add(new Chromosome(couples, employees, elderlys, fixedAssignments.getFixedAssignments()));
         }
         return chromosomes;
@@ -135,7 +134,7 @@ public class GeneticAlgorithm {
         double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
 
         if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-            fitness = 10000000 / ((totalDepartureTime + 1.0));
+            fitness = 10000000 / ((totalDepartureTime + 1.0/100));
             return fitness;
         }
 
