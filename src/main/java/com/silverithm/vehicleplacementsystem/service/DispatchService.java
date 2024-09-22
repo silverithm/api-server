@@ -3,9 +3,11 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
+import com.silverithm.vehicleplacementsystem.dto.CoupleRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
+import com.silverithm.vehicleplacementsystem.dto.KakaoMapApiResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
@@ -43,74 +45,134 @@ public class DispatchService {
     private final SSEService sseService;
 
     private String key;
+    private String kakaoKey;
 
-    public DispatchService(@Value("${tmap.key}") String key, LinkDistanceRepository linkDistanceRepository,
+
+    public DispatchService(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
+                           LinkDistanceRepository linkDistanceRepository,
                            SSEService sseService) {
         this.linkDistanceRepository = linkDistanceRepository;
         this.sseService = sseService;
         this.key = key;
+        this.kakaoKey = kakaoKey;
     }
 
-    public int getDistanceTotalTimeWithTmapApi(Location startAddress,
-                                               Location destAddress) throws NullPointerException {
+//    public int getDistanceTotalTimeWithTmapApi(Location startAddress,
+//                                               Location destAddress) throws NullPointerException {
+//
+//        int totalTime = 0;
+//        try {
+//
+//            String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
+//
+//            // 요청 헤더 설정
+//            HttpHeaders headers = new HttpHeaders();
+//            headers.set("Accept", "application/json");
+//            headers.set("Content-Type", "application/json");
+//            headers.set("appKey", key);
+//
+//            // 요청 데이터 설정
+//            String requestBody = String.format(
+//                    "{\"roadType\":32, \"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
+//                    startAddress.getLongitude(), startAddress.getLatitude(), destAddress.getLongitude(),
+//                    destAddress.getLatitude());
+//
+//            // HTTP 요청 엔티티 생성
+//            HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
+//
+//            // RestTemplate 생성
+//            RestTemplate restTemplate = new RestTemplate();
+//
+//            // API 호출
+//            ResponseEntity<String> responseEntity = restTemplate.exchange(
+//                    url,
+//                    HttpMethod.POST,
+//                    requestEntity,
+//                    String.class
+//            );
+//
+//            totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalDistance\":")[1].split(",")[0].trim());
+//
+//        } catch (NullPointerException e) {
+//            e.printStackTrace();
+//            throw new NullPointerException("[ERROR] TMAP API 요청에 실패하였습니다.");
+//        }
+//
+//        log.info("Tmap API distance :  " + totalTime);
+//
+//        return totalTime;
+//    }
 
-        int totalTime = 0;
+
+    public KakaoMapApiResponseDTO getDistanceTotalTimeWithTmapApi(Location startAddress,
+                                                                  Location destAddress) throws NullPointerException {
+
+        String distanceString = "0";
+        String durationString = "0";
         try {
-
-            String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
-
-            // 요청 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Accept", "application/json");
-            headers.set("Content-Type", "application/json");
-            headers.set("appKey", key);
-
-            // 요청 데이터 설정
-            String requestBody = String.format(
-                    "{\"roadType\":32, \"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
-                    startAddress.getLongitude(), startAddress.getLatitude(), destAddress.getLongitude(),
-                    destAddress.getLatitude());
-
-            // HTTP 요청 엔티티 생성
-            HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
-
-            // RestTemplate 생성
             RestTemplate restTemplate = new RestTemplate();
 
-            // API 호출
-            ResponseEntity<String> responseEntity = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    requestEntity,
-                    String.class
-            );
+            // HTTP 헤더 설정
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "KakaoAK " + kakaoKey);
 
-            totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalTime\":")[1].split(",")[0].trim());
+            // HTTP 엔터티 생성 (헤더 포함)
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            // 파라미터 설정
+            String origin = startAddress.getLongitude() + "," + startAddress.getLatitude();
+            String destination = destAddress.getLongitude() + "," + destAddress.getLatitude();
+            String waypoints = "";
+            String priority = "DISTANCE";
+            String carFuel = "GASOLINE";
+            boolean carHipass = false;
+            boolean alternatives = false;
+            boolean roadDetails = false;
+
+            // URL에 파라미터 추가
+            String url = "https://apis-navi.kakaomobility.com/v1/directions" + "?origin=" + origin + "&destination="
+                    + destination
+                    + "&waypoints=" + waypoints + "&priority=" + priority + "&car_fuel=" + carFuel
+                    + "&car_hipass=" + carHipass + "&alternatives=" + alternatives + "&road_details=" + roadDetails;
+
+            // GET 요청 보내기
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            // result_code가 104이면 0 반환
+            if (response.getBody().contains("\"result_code\":104")) {
+                return new KakaoMapApiResponseDTO(0, 0); // 출발지와 도착지가 너무 가까운 경우 0 반환
+            }
+
+            distanceString = response.getBody().split("\"duration\":")[1].split("}")[0].trim();
+            durationString = response.getBody().split("\"distance\":")[1].split(",")[0].trim();
 
         } catch (NullPointerException e) {
-            e.printStackTrace();
-            throw new NullPointerException("[ERROR] TMAP API 요청에 실패하였습니다.");
+            throw new NullPointerException("[ERROR] KAKAOMAP API 요청에 실패하였습니다.");
         }
 
-        log.info("Tmap API :  " + totalTime);
+        log.info("Tmap API distance :  " + distanceString);
 
-        return totalTime;
+        return new KakaoMapApiResponseDTO(Integer.parseInt(durationString),
+                Integer.parseInt(distanceString)); // 문자열을 정수형으로 변환
+
     }
 
     public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
+        List<CoupleRequestDTO> couples = requestDispatchDTO.couples();
         CompanyDTO company = requestDispatchDTO.company();
         List<FixedAssignmentsDTO> fixedAssignments = requestDispatchDTO.fixedAssignments();
 
         sseService.notify(requestDispatchDTO.userName(), 5);
 
         // 거리 행렬 계산
-        Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company);
+        Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company,
+                requestDispatchDTO.dispatchType());
         sseService.notify(requestDispatchDTO.userName(), 15);
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, distanceMatrix,
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, couples, distanceMatrix,
                 fixedAssignments,
                 requestDispatchDTO.dispatchType(), requestDispatchDTO.userName(),
                 sseService);
@@ -125,7 +187,9 @@ public class DispatchService {
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
 
-        log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness());
+        log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
+                + bestChromosome.getDepartureTimes());
+
         log.info(assignmentResponseDTOS.toString());
         sseService.notify(requestDispatchDTO.userName(), 100);
 
@@ -157,7 +221,7 @@ public class DispatchService {
 
     private Map<String, Map<String, Integer>> calculateDistanceMatrix(List<EmployeeDTO> employees,
                                                                       List<ElderlyDTO> elderlys,
-                                                                      CompanyDTO company) {
+                                                                      CompanyDTO company, DispatchType dispatchType) {
         Map<String, Map<String, Integer>> distanceMatrix = new HashMap<>();
 
         distanceMatrix.put("Company", new HashMap<>());
@@ -177,20 +241,47 @@ public class DispatchService {
 
             Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
                     destinationNodeId);
+            Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
+                    startNodeId,
+                    destinationNodeId);
+
             Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
+            Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
 
             if (totalTime.isPresent()) {
-                distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
-                distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+
+                if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                }
+
+                if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                }
+
             }
 
             if (totalTime.isEmpty()) {
-                int callTotalTime = getDistanceTotalTimeWithTmapApi(company.companyAddress(),
+                KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(company.companyAddress(),
                         elderlys.get(i).homeAddress());
-                distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
-                distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
-                linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
-                linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
+
+                if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                }
+
+                if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                }
+
+                linkDistanceRepository.save(
+                        new LinkDistance(startNodeId, destinationNodeId, kakaoMapApiResponse.duration(),
+                                kakaoMapApiResponse.distance()));
+                linkDistanceRepository.save(
+                        new LinkDistance(destinationNodeId, startNodeId, kakaoMapApiResponse.duration(),
+                                kakaoMapApiResponse.distance()));
             }
 
         }
@@ -204,23 +295,50 @@ public class DispatchService {
                 String startNodeId = "Elderly_" + elderlys.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(
+                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                        destinationNodeId);
+                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
                         startNodeId,
                         destinationNodeId);
+
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
+                Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
 
                 if (totalTime.isPresent()) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+
+                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                    }
+
+                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                    }
+
                 }
 
                 if (totalTime.isEmpty()) {
-                    int callTotalTime = getDistanceTotalTimeWithTmapApi(elderlys.get(i).homeAddress(),
+                    KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(
+                            elderlys.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
-                    linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
-                    linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
+
+                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                    }
+
+                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                    }
+
+                    linkDistanceRepository.save(
+                            new LinkDistance(startNodeId, destinationNodeId, kakaoMapApiResponse.duration(),
+                                    kakaoMapApiResponse.distance()));
+                    linkDistanceRepository.save(
+                            new LinkDistance(destinationNodeId, startNodeId, kakaoMapApiResponse.duration(),
+                                    kakaoMapApiResponse.distance()));
                 }
             }
 
@@ -232,23 +350,50 @@ public class DispatchService {
                 String startNodeId = "Employee_" + employees.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(
+                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+                        destinationNodeId);
+                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
                         startNodeId,
                         destinationNodeId);
+
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
+                Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
 
                 if (totalTime.isPresent()) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+
+                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                    }
+
+                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                    }
+
                 }
 
                 if (totalTime.isEmpty()) {
-                    int callTotalTime = getDistanceTotalTimeWithTmapApi(employees.get(i).homeAddress(),
+                    KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(
+                            employees.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, callTotalTime);
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, callTotalTime);
-                    linkDistanceRepository.save(new LinkDistance(startNodeId, destinationNodeId, callTotalTime));
-                    linkDistanceRepository.save(new LinkDistance(destinationNodeId, startNodeId, callTotalTime));
+
+                    if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                    }
+
+                    if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                    }
+
+                    linkDistanceRepository.save(
+                            new LinkDistance(startNodeId, destinationNodeId, kakaoMapApiResponse.duration(),
+                                    kakaoMapApiResponse.distance()));
+                    linkDistanceRepository.save(
+                            new LinkDistance(destinationNodeId, startNodeId, kakaoMapApiResponse.duration(),
+                                    kakaoMapApiResponse.distance()));
                 }
             }
 

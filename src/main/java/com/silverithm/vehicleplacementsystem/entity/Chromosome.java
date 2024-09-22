@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 
+import com.silverithm.vehicleplacementsystem.dto.CoupleRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import java.util.ArrayList;
@@ -26,7 +27,7 @@ public class Chromosome {
     private List<Double> departureTimes;
     private int totalElderly;
 
-    public Chromosome(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+    public Chromosome(List<CoupleRequestDTO> couples, List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
                       Map<Integer, List<Integer>> fixedAssignments) throws Exception {
 
         int numEmployees = employees.size();
@@ -42,6 +43,7 @@ public class Chromosome {
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees);
         fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
+        fixCoupleElderlyAtChromosome(couples, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, elderlyIndexs, chromosome);
         removeEmptyChromosome(chromosome);
@@ -127,6 +129,30 @@ public class Chromosome {
         }
     }
 
+    private void fixCoupleElderlyAtChromosome(List<CoupleRequestDTO> coupleElderlyList, int[] employeesCapacityLeft,
+                                              List<Integer> elderlyIndexs, List<List<Integer>> chromosome) {
+        Random rand = new Random();
+
+        for (CoupleRequestDTO couple : coupleElderlyList) {
+            int employee = -1;
+            while (employee == -1 || employeesCapacityLeft[employee] < 2) {
+                employee = rand.nextInt(chromosome.size());
+            }
+
+            List<Integer> employeeChromosome = chromosome.get(employee);
+            for (int i = 0; i < employeeChromosome.size() - 1; i++) {
+                if (employeeChromosome.get(i) == -1 && employeeChromosome.get(i + 1) == -1) {
+                    employeeChromosome.set(i, couple.elderlyId1());
+                    employeeChromosome.set(i + 1, couple.elderlyId2());
+                    elderlyIndexs.remove(Integer.valueOf(couple.elderlyId1()));
+                    elderlyIndexs.remove(Integer.valueOf(couple.elderlyId2()));
+                    employeesCapacityLeft[employee] -= 2;
+                    break;
+                }
+            }
+        }
+    }
+
     public List<List<Integer>> initializeChromosomeWithMaximumCapacity(List<EmployeeDTO> employees) {
         List<List<Integer>> initializeChromosome = new ArrayList<>();
         for (int e = 0; e < employees.size(); e++) {
@@ -152,7 +178,6 @@ public class Chromosome {
     public static Chromosome copy(Chromosome original) {
         Chromosome copyObject = new Chromosome();
 
-        // 깊은 복사를 위한 새로운 리스트 생성
         List<List<Integer>> newGenes = new ArrayList<>();
         for (List<Integer> gene : original.getGenes()) {
             newGenes.add(new ArrayList<>(gene));

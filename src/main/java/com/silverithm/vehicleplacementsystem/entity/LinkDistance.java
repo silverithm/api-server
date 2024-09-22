@@ -25,10 +25,12 @@ public class LinkDistance {
     private String destinationNodeId;
 
     private int totalTime;
+    private int totalDistance;
 
-    public LinkDistance(String startNodeId, String destinationNodeId, int totalTime) {
+    public LinkDistance(String startNodeId, String destinationNodeId, int totalTime, int totalDistance) {
         this.startNodeId = startNodeId;
         this.destinationNodeId = destinationNodeId;
         this.totalTime = totalTime;
+        this.totalDistance = totalDistance;
     }
 }

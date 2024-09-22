@@ -1,11 +1,13 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.CoupleRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 import com.silverithm.vehicleplacementsystem.entity.DistanceScore;
+import com.silverithm.vehicleplacementsystem.entity.DurationScore;
 import com.silverithm.vehicleplacementsystem.entity.FixedAssignments;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +30,7 @@ public class GeneticAlgorithm {
 
     private final List<EmployeeDTO> employees;
     private final List<ElderlyDTO> elderlys;
+    private final List<CoupleRequestDTO> couples;
     private final FixedAssignments fixedAssignments;
     private final Map<String, Map<String, Integer>> distanceMatrix;
     private final DispatchType dispatchType;
@@ -35,13 +38,14 @@ public class GeneticAlgorithm {
 
     private final SSEService sseService;
 
-    public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+    public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly, List<CoupleRequestDTO> couples,
                             Map<String, Map<String, Integer>> distanceMatrix,
                             List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType, String userName,
                             SSEService sseService
     ) {
         this.employees = employees;
         this.elderlys = elderly;
+        this.couples = couples;
         this.distanceMatrix = distanceMatrix;
         this.fixedAssignments = generateFixedAssignmentMap(fixedAssignments, elderlys, employees);
         this.dispatchType = dispatchType;
@@ -72,6 +76,7 @@ public class GeneticAlgorithm {
                 mutate(offspringChromosomes);
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
+//                log.info(chromosomes.get(0).getFitness() + " " + chromosomes.get(0).getGenes());
 
             }
 
@@ -99,7 +104,7 @@ public class GeneticAlgorithm {
 
         List<Chromosome> chromosomes = new ArrayList<>();
         for (int i = 0; i < POPULATION_SIZE; i++) {
-            chromosomes.add(new Chromosome(employees, elderlys, fixedAssignments.getFixedAssignments()));
+            chromosomes.add(new Chromosome(couples, employees, elderlys, fixedAssignments.getFixedAssignments()));
         }
         return chromosomes;
     }
@@ -127,20 +132,51 @@ public class GeneticAlgorithm {
         List<Double> departureTimes = calculateDepartureTimes(chromosome);
         chromosome.setDepartureTimes(departureTimes);
         double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
-        fitness = 10000000 / (totalDepartureTime + 1.0);
+
+        if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+            fitness = 10000000 / ((totalDepartureTime + 1.0));
+            return fitness;
+        }
+
+        fitness = 10000000 / ((totalDepartureTime + 1.0) / 1000);
+//        log.info("total departure time : " + totalDepartureTime + ", fitness : " + fitness);
         return fitness;
     }
 
     private double addFitnessForProximity(Chromosome chromosome, double fitness) {
-        for (int i = 0; i < chromosome.getGenes().size(); i++) {
-            for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
-                int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
-                int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
-                fitness += calculateFitnessForFromAndTo("Elderly_" + elderlys.get(elderlyIndex1).id(),
-                        "Elderly_" + elderlys.get(elderlyIndex2).id());
+
+        if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                    int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
+                    int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
+                    fitness += calculateFitnessForFromAndTo("Elderly_" + elderlys.get(elderlyIndex1).id(),
+                            "Elderly_" + elderlys.get(elderlyIndex2).id());
+                }
+                fitness = addFitnessForDispatchTypes(chromosome, fitness, i);
             }
-            fitness = addFitnessForDispatchTypes(chromosome, fitness, i);
         }
+
+        if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
+            for (int i = 0; i < chromosome.getGenes().size(); i++) {
+                for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
+                    int elderlyIndex1 = chromosome.getGenes().get(i).get(j);
+                    int elderlyIndex2 = chromosome.getGenes().get(i).get(j + 1);
+
+                    if (calculateFitnessForFromAndTo("Elderly_" + elderlys.get(elderlyIndex1).id(),
+                            "Elderly_" + elderlys.get(elderlyIndex2).id()) == 10000) {
+                        fitness += 10000;
+                    } else {
+
+                        fitness += calculateFitnessForFromAndTo("Employee_" + employees.get(i).id(),
+                                "Elderly_" + elderlys.get(elderlyIndex1).id());
+                    }
+
+                }
+                fitness = addFitnessForDispatchTypes(chromosome, fitness, i);
+            }
+        }
+
         return fitness;
     }
 
@@ -165,7 +201,7 @@ public class GeneticAlgorithm {
     }
 
     private double addFitnessForDispatchTypes(Chromosome chromosome, double fitness, int i) {
-        if (dispatchType.equals(DispatchType.OUT)) {
+        if (dispatchType.equals(DispatchType.DISTANCE_OUT) || dispatchType.equals(DispatchType.DURATION_OUT)) {
             if (employees.get(i).isDriver()) {
                 fitness += calculateFitnessForFromAndTo("Elderly_" + elderlys.get(
                         chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id(), "Company");
@@ -178,7 +214,7 @@ public class GeneticAlgorithm {
             }
         }
 
-        if (dispatchType.equals((DispatchType.IN))) {
+        if (dispatchType.equals(DispatchType.DURATION_IN) || dispatchType.equals(DispatchType.DISTANCE_IN)) {
             if (employees.get(i).isDriver()) {
                 fitness += calculateFitnessForFromAndTo("Company",
                         "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
@@ -195,7 +231,18 @@ public class GeneticAlgorithm {
     }
 
     private double calculateFitnessForFromAndTo(String from, String to) {
-        return DistanceScore.getScore(distanceMatrix.get(from).get(to));
+
+        double score = 0;
+
+        if (dispatchType == DispatchType.DURATION_OUT || dispatchType == DispatchType.DURATION_IN) {
+            score = DurationScore.getScore(distanceMatrix.get(from).get(to));
+        }
+
+        if (dispatchType == DispatchType.DISTANCE_OUT || dispatchType == DispatchType.DISTANCE_IN) {
+            score = DistanceScore.getScore(distanceMatrix.get(from).get(to));
+        }
+
+        return score;
     }
 
 
@@ -203,7 +250,7 @@ public class GeneticAlgorithm {
 
         List<Double> departureTimes = new ArrayList<>();
 
-        if (dispatchType.equals(DispatchType.OUT)) {
+        if (dispatchType.equals(DispatchType.DISTANCE_OUT) || dispatchType.equals(DispatchType.DURATION_OUT)) {
             for (int i = 0; i < chromosome.getGenes().size(); i++) {
                 double departureTime = 0.0;
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
@@ -238,7 +285,7 @@ public class GeneticAlgorithm {
             }
         }
 
-        if (dispatchType.equals(DispatchType.IN)) {
+        if (dispatchType.equals(DispatchType.DURATION_IN) || dispatchType.equals(DispatchType.DISTANCE_IN)) {
             for (int i = 0; i < chromosome.getGenes().size(); i++) {
                 String company = "Company";
                 double departureTime = 0.0;
