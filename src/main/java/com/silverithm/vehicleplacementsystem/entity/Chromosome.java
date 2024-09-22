@@ -142,10 +142,10 @@ public class Chromosome {
             List<Integer> employeeChromosome = chromosome.get(employee);
             for (int i = 0; i < employeeChromosome.size() - 1; i++) {
                 if (employeeChromosome.get(i) == -1 && employeeChromosome.get(i + 1) == -1) {
-                    employeeChromosome.set(i, couple.elderlyId1());
-                    employeeChromosome.set(i + 1, couple.elderlyId2());
-                    elderlyIndexs.remove(Integer.valueOf(couple.elderlyId1()));
-                    elderlyIndexs.remove(Integer.valueOf(couple.elderlyId2()));
+                    employeeChromosome.set(i, Math.toIntExact(couple.elderId1()));
+                    employeeChromosome.set(i + 1, Math.toIntExact(couple.elderId2()));
+                    elderlyIndexs.remove(couple.elderId1());
+                    elderlyIndexs.remove(couple.elderId2());
                     employeesCapacityLeft[employee] -= 2;
                     break;
                 }
