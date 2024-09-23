@@ -77,7 +77,7 @@ public class GeneticAlgorithm {
 
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes, mutatedChromosomes);
-                log.info(chromosomes.get(0).getFitness() + " " + chromosomes.get(0).getGenes());
+//                log.info(chromosomes.get(0).getFitness() + " " + chromosomes.get(0).getGenes());
 
             }
 
