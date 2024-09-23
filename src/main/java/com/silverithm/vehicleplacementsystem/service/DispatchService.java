@@ -267,13 +267,13 @@ public class DispatchService {
                         elderlys.get(i).homeAddress());
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.distance());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.distance());
                 }
 
                 if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.duration());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.duration());
                 }
 
                 linkDistanceRepository.save(
@@ -324,13 +324,13 @@ public class DispatchService {
                             elderlys.get(j).homeAddress());
 
                     if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.distance());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.distance());
                     }
 
                     if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.duration());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.duration());
                     }
 
                     linkDistanceRepository.save(
@@ -379,13 +379,13 @@ public class DispatchService {
                             elderlys.get(j).homeAddress());
 
                     if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalDistanceValue);
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.distance());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.distance());
                     }
 
                     if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, totalTimeValue);
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, totalTimeValue);
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.duration());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.duration());
                     }
 
                     linkDistanceRepository.save(

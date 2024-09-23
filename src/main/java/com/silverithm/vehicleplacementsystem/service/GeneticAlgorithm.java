@@ -12,19 +12,19 @@ import com.silverithm.vehicleplacementsystem.entity.FixedAssignments;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
 public class GeneticAlgorithm {
 
     private static final int MAX_ITERATIONS = 300;
-    private static final int POPULATION_SIZE = 30000;
+    private static final int POPULATION_SIZE = 20000;
     private static final double MUTATION_RATE = 0.9;
     private static final double CROSSOVER_RATE = 0.7;
 
@@ -69,14 +69,15 @@ public class GeneticAlgorithm {
                 // 평가
                 evaluatePopulation(chromosomes);
                 // 선택
-                List<Chromosome> selectedChromosomes = chromosomes;
+                List<Chromosome> selectedChromosomes = selectChromosomes(chromosomes);
                 // 교차
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes);
                 // 돌연변이
-                mutate(offspringChromosomes);
+                List<Chromosome> mutatedChromosomes = mutate(offspringChromosomes);
+
                 // 다음 세대 생성
-                chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes);
-//                log.info(chromosomes.get(0).getFitness() + " " + chromosomes.get(0).getGenes());
+                chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes, mutatedChromosomes);
+                log.info(chromosomes.get(0).getFitness() + " " + chromosomes.get(0).getGenes());
 
             }
 
@@ -91,6 +92,10 @@ public class GeneticAlgorithm {
         // 최적의 솔루션 추출
         return chromosomes;
 
+    }
+
+    private List<Chromosome> selectChromosomes(List<Chromosome> chromosomes) {
+        return chromosomes.subList(0, POPULATION_SIZE);
     }
 
     private FixedAssignments generateFixedAssignmentMap(List<FixedAssignmentsDTO> fixedAssignmentDtos,
@@ -119,12 +124,57 @@ public class GeneticAlgorithm {
 
         double fitness = 0.0;
 
-        fitness = calculateFitnessForDepartureTimes(chromosome);
-        fitness = addFitnessForProximity(chromosome, fitness);
-        fitness = evaluateFrontSeatAssignments(chromosome, fitness);
-        fitness = evaluateFixedAssignments(chromosome, fitness);
+        fitness += calculateFitnessForDepartureTimes(chromosome);
+
+        if (evaluateFrontSeatAssignments(chromosome, fitness) == 0 || evaluateFixedAssignments(chromosome, fitness) == 0
+                || evaluateCoupleAssignments(chromosome, fitness) == 0) {
+            return 0.0;
+        }
+
+        fitness += addFitnessForProximity(chromosome);
 
         return fitness;
+    }
+
+    private double evaluateCoupleAssignments(Chromosome chromosome, double fitness) {
+        // Elderly ID를 인덱스로 매핑하는 맵 생성
+        Map<Long, Integer> elderlyIdToIndex = new HashMap<>();
+        for (int i = 0; i < elderlys.size(); i++) {
+            elderlyIdToIndex.put(elderlys.get(i).id(), i);
+        }
+
+        // 각 부부 어르신에 대해 평가
+        for (CoupleRequestDTO couple : couples) {
+            long elderly1Id = couple.elderId1();
+            long elderly2Id = couple.elderId2();
+
+            // 실제 ID를 인덱스로 변환
+            Integer elderly1Index = elderlyIdToIndex.get(elderly1Id);
+            Integer elderly2Index = elderlyIdToIndex.get(elderly2Id);
+
+            if (elderly1Index == null || elderly2Index == null) {
+                // 만약 부부 어르신 중 하나라도 인덱스 변환에 실패하면 (즉, elderly 리스트에 존재하지 않으면)
+                // 평가를 건너뜁니다.
+                continue;
+            }
+
+            boolean found = false;
+
+            // 염색체의 각 직원의 유전자를 확인하여 부부 어르신이 같은 유전자에 있는지 확인
+            for (List<Integer> gene : chromosome.getGenes()) {
+                if (gene.contains(elderly1Index) && gene.contains(elderly2Index)) {
+                    // 부부가 같은 유전자에 배치된 경우, 평가를 통과했으므로 루프 탈출
+                    found = true;
+                    break;
+                }
+            }
+
+            // 부부 어르신이 서로 다른 유전자에 배치된 경우, fitness를 0으로 설정
+            if (!found) {
+                fitness = 0.0;
+            }
+        }
+        return fitness; // 최종적으로 수정된 fitness 값을 반환
     }
 
     private double calculateFitnessForDepartureTimes(Chromosome chromosome) {
@@ -134,7 +184,7 @@ public class GeneticAlgorithm {
         double totalDepartureTime = departureTimes.stream().mapToDouble(Double::doubleValue).sum();
 
         if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-            fitness = 10000000 / ((totalDepartureTime + 1.0/100));
+            fitness = 10000000 / ((totalDepartureTime + 1.0));
             return fitness;
         }
 
@@ -143,7 +193,9 @@ public class GeneticAlgorithm {
         return fitness;
     }
 
-    private double addFitnessForProximity(Chromosome chromosome, double fitness) {
+    private double addFitnessForProximity(Chromosome chromosome) {
+
+        double fitness = 0.0;
 
         if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
             for (int i = 0; i < chromosome.getGenes().size(); i++) {
@@ -424,44 +476,52 @@ public class GeneticAlgorithm {
         }
     }
 
-    private void mutate(List<Chromosome> offspringChromosomes) throws Exception {
-
+    private List<Chromosome> mutate(List<Chromosome> offspringChromosomes) throws Exception {
         Random rand = new Random();
+        List<Chromosome> mutatedChromosomes = new ArrayList<>();
 
         for (Chromosome chromosome : offspringChromosomes) {
+            // 염색체 깊은 복사
+            Chromosome newChromosome = Chromosome.copy(chromosome);
 
             if (rand.nextDouble() < MUTATION_RATE) {
-
-                int mutationPoint1 = rand.nextInt(chromosome.getGenes().size());
-                List<Integer> employeeAssignment = chromosome.getGenes().get(mutationPoint1);
+                int mutationPoint1 = rand.nextInt(newChromosome.getGenes().size());
+                List<Integer> employeeAssignment = newChromosome.getGenes().get(mutationPoint1);
                 int mutationPoint2 = rand.nextInt(employeeAssignment.size());
 
-                int mutationPoint3 = rand.nextInt(chromosome.getGenes().size());
-                List<Integer> employeeAssignment2 = chromosome.getGenes().get(mutationPoint3);
+                int mutationPoint3 = rand.nextInt(newChromosome.getGenes().size());
+                List<Integer> employeeAssignment2 = newChromosome.getGenes().get(mutationPoint3);
                 int mutationPoint4 = rand.nextInt(employeeAssignment2.size());
 
+                // 염색
                 int tempElderly = employeeAssignment2.get(mutationPoint4);
-
                 employeeAssignment2.set(mutationPoint4, employeeAssignment.get(mutationPoint2));
                 employeeAssignment.set(mutationPoint2, tempElderly);
-
             }
+
+            mutatedChromosomes.add(newChromosome); // 변이된 염색체를 리스트에 추가
         }
+
+        return mutatedChromosomes; // 변이된 새로운 염색체 리스트 반환
     }
 
-    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes)
+    private List<Chromosome> combinePopulations(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes,
+                                                List<Chromosome> mutatedChromosomes)
             throws Exception {
-        List<Chromosome> combinedChromosomes = combineChromosome(chromosomes, offspringChromosomes);
+        List<Chromosome> combinedChromosomes = combineChromosome(chromosomes, offspringChromosomes, mutatedChromosomes);
 
         Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
 
-        return combinedChromosomes.subList(0, POPULATION_SIZE);
+        return combinedChromosomes;
     }
 
-    private List<Chromosome> combineChromosome(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes) {
+
+    private List<Chromosome> combineChromosome(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes,
+                                               List<Chromosome> mutatedChromosomes) {
         List<Chromosome> combinedChromosomes = new ArrayList<>();
         combinedChromosomes.addAll(chromosomes);
         combinedChromosomes.addAll(offspringChromosomes);
+        combinedChromosomes.addAll(mutatedChromosomes);
         return combinedChromosomes;
     }
 

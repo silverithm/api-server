@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -43,8 +45,8 @@ public class Chromosome {
         List<Integer> elderlyIndexs = createRandomElderlyIndexs(totalElderly);
         int[] employeesCapacityLeft = initializeEmployeesCapacityLeft(employees);
         List<List<Integer>> chromosome = initializeChromosomeWithMaximumCapacity(employees);
-        fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixCoupleElderlyAtChromosome(elderly, couples, employeesCapacityLeft, elderlyIndexs, chromosome);
+        fixElderlyAtChromosome(fixedAssignments, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixInitialChromosome(employees, employeesCapacityLeft, elderlyIndexs, chromosome);
         fixRandomElderlyIndexAtChromosome(employeesCapacityLeft, elderlyIndexs, chromosome);
         removeEmptyChromosome(chromosome);
@@ -139,44 +141,49 @@ public class Chromosome {
             elderlyIdToIndex.put(elderly.get(i).id(), i);
         }
 
-        List<Integer> availableEmployees = new ArrayList<>();
-        for (int i = 0; i < employeesCapacityLeft.length; i++) {
-            if (employeesCapacityLeft[i] >= 2) {
-                availableEmployees.add(i);
-            }
-        }
-
         for (CoupleRequestDTO couple : coupleElderlyList) {
-            if (availableEmployees.isEmpty()) {
-                throw new RuntimeException("No available employees to assign couple");
-            }
-
-            int employeeIndex = rand.nextInt(availableEmployees.size());
-            int employee = availableEmployees.get(employeeIndex);
-            List<Integer> employeeChromosome = chromosome.get(employee);
-
-            int elderIdx1 = elderlyIdToIndex.get(couple.elderId1());
-            int elderIdx2 = elderlyIdToIndex.get(couple.elderId2());
-
             boolean assigned = false;
-            for (int i = 0; i < employeeChromosome.size() - 1; i++) {
-                if (employeeChromosome.get(i) == -1 && employeeChromosome.get(i + 1) == -1) {
-                    employeeChromosome.set(i, elderIdx1);
-                    employeeChromosome.set(i + 1, elderIdx2);
+
+            List<Integer> employees = IntStream.range(0, employeesCapacityLeft.length)
+                    .boxed()
+                    .filter(i -> employeesCapacityLeft[i] >= 2)
+                    .collect(Collectors.toList());
+
+            Collections.shuffle(employees, new Random());
+
+            for (int employee : employees) {
+                List<Integer> employeeChromosome = chromosome.get(employee);
+                List<Integer> availablePositions = new ArrayList<>();
+
+                for (int i = 0; i < employeeChromosome.size() - 1; i++) {
+                    if (employeeChromosome.get(i) == -1 && employeeChromosome.get(i + 1) == -1) {
+                        availablePositions.add(i);
+                    }
+                }
+
+                // 자리가 있는지 확인
+                if (!availablePositions.isEmpty()) {
+                    // 가능한 위치 중 무작위 선택
+                    int positionIndex = rand.nextInt(availablePositions.size());
+                    int position = availablePositions.get(positionIndex);
+
+                    int elderIdx1 = elderlyIdToIndex.get(couple.elderId1());
+                    int elderIdx2 = elderlyIdToIndex.get(couple.elderId2());
+
+                    employeeChromosome.set(position, elderIdx1);
+                    employeeChromosome.set(position + 1, elderIdx2);
                     elderlyIndexs.remove(Integer.valueOf(elderIdx1));
                     elderlyIndexs.remove(Integer.valueOf(elderIdx2));
                     employeesCapacityLeft[employee] -= 2;
+
                     assigned = true;
-                    break;
+                    break;  // 성공적으로 배정했으면 다음 부부로 이동
                 }
             }
 
             if (!assigned) {
-                throw new RuntimeException("Could not assign couple to selected employee");
-            }
-
-            if (employeesCapacityLeft[employee] < 2) {
-                availableEmployees.remove(employeeIndex);
+                throw new RuntimeException(
+                        "No available employees to assign couple or no available positions for this couple.");
             }
         }
     }
