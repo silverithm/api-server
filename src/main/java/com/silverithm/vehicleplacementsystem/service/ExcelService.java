@@ -80,7 +80,7 @@ public class ExcelService {
 
                 if (id.equals(0L)) {
                     // create
-                    employeeService.addEmployee(1L, new AddEmployeeRequest(
+                    employeeService.addEmployee(2L, new AddEmployeeRequest(
                             name, workPlaceName, homeAddressName, maximumCapacity, isDriver
                     ));
                 } else {
@@ -125,7 +125,7 @@ public class ExcelService {
 
                     if (id.equals(0L)) {
                         //create
-                        elderService.addElder(1L, new AddElderRequest(
+                        elderService.addElder(2L, new AddElderRequest(
                                 name, homeAddressName, requiredFrontSeat
                         ));
                     } else {

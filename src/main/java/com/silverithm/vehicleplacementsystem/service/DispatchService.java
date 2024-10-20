@@ -187,10 +187,29 @@ public class DispatchService {
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
 
+
+
+
+
+
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
                 + bestChromosome.getDepartureTimes());
 
         log.info(assignmentResponseDTOS.toString());
+
+//        for (Map.Entry<String, Map<String, Integer>> outerEntry : distanceMatrix.entrySet()) {
+//            String outerKey = outerEntry.getKey();
+//            Map<String, Integer> innerMap = outerEntry.getValue();
+//
+//            for (Map.Entry<String, Integer> innerEntry : innerMap.entrySet()) {
+//                String innerKey = innerEntry.getKey();
+//                Integer value = innerEntry.getValue();
+//
+//                log.info("Outer Key: " + outerKey + ", Inner Key: " + innerKey + ", Value: " + value);
+//            }
+//        }
+
+
         sseService.notify(requestDispatchDTO.userName(), 100);
 
         return assignmentResponseDTOS;
