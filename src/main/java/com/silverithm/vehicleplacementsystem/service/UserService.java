@@ -82,7 +82,7 @@ public class UserService {
 
             findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
 
-            return new SigninResponseDTO(findUser.getId(), findUser.getCompanyName(), findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
+            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(), findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
                     tokenInfo);
 
 
