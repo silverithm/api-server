@@ -63,13 +63,13 @@ public class WebSecurityConfigure {
         return new AuthenticationManager() {
             @Override
             public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-                String username = authentication.getName();
+                String email = authentication.getName();
                 String password = authentication.getCredentials().toString();
 
-                AppUser user = userRepository.findByUsername(username);
+                AppUser user = userRepository.findByEmail(email);
 
                 if (passwordEncoder().matches(password, user.getPassword())) {
-                    return new UsernamePasswordAuthenticationToken(username, password);
+                    return new UsernamePasswordAuthenticationToken(email, password);
                 } else {
                     throw new AuthenticationException("Invalid username/password supplied") {
                     };

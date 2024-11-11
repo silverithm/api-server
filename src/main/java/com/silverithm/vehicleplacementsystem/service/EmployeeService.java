@@ -58,9 +58,7 @@ public class EmployeeService {
     }
 
     public List<EmployeeDTO> getEmployees(Long userId) {
-        for (AppUser user : userRepository.findAll()) {
-            log.info(user.getId().toString() + " " + user.getUsername().toString());
-        }
+
         List<Employee> employees = employeeRepository.findByUserId(userId);
 
         List<EmployeeDTO> employeeDTOS = employees.stream()

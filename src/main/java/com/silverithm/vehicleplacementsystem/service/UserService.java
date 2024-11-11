@@ -70,10 +70,12 @@ public class UserService {
     @Transactional
     public SigninResponseDTO signin(UserSigninDTO userSigninDTO) {
         try {
+
+            AppUser findUser = userRepository.findByEmail(userSigninDTO.getEmail());
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
 
-            AppUser findUser = userRepository.findByEmail(userSigninDTO.getEmail());
 
             TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
                     Collections.singleton(findUser.getUserRole()));
