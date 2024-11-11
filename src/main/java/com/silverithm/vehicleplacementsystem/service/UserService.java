@@ -73,7 +73,7 @@ public class UserService {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
 
-            AppUser findUser = userRepository.findByUsername(userSigninDTO.getEmail());
+            AppUser findUser = userRepository.findByEmail(userSigninDTO.getEmail());
 
             TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
                     Collections.singleton(findUser.getUserRole()));
