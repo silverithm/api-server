@@ -61,3 +61,7 @@ src/main/resources/binary/redis/dump.rdb
 
 .env
 
+osrm-data/*
+osrm-data/
+
+
