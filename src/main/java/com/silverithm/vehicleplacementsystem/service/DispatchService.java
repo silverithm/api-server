@@ -1,5 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
@@ -9,6 +11,7 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.FixedAssignmentsDTO;
 import com.silverithm.vehicleplacementsystem.dto.KakaoMapApiResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.dto.OsrmApiResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
@@ -157,6 +160,58 @@ public class DispatchService {
 
     }
 
+    public OsrmApiResponseDTO getDistanceTotalTimeWithOsrmApi(Location startAddress,
+                                                              Location destAddress) throws NullPointerException {
+        String distanceString = "0";
+        String durationString = "0";
+
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+
+            String coordinates = startAddress.getLongitude() + "," + startAddress.getLatitude() + ";"
+                    + destAddress.getLongitude() + "," + destAddress.getLatitude();
+
+            // table 대신 route 서비스 사용
+            String url = "http://osrm-server:5000/route/v1/driving/" + coordinates;
+
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response.getBody());
+
+            if (!"Ok".equals(root.get("code").asText())) {
+                throw new RuntimeException("OSRM API returned non-OK status: " + root.get("code").asText());
+            }
+
+            JsonNode routesNode = root.get("routes");
+
+            if (routesNode != null && routesNode.size() > 0) {
+                JsonNode firstRoute = routesNode.get(0);
+
+                // 전체 경로의 distance와 duration 추출
+                double distance = firstRoute.get("distance").asDouble();
+                double duration = firstRoute.get("duration").asDouble();
+
+                durationString = String.valueOf((int) duration);  // 초 단위
+                distanceString = String.valueOf((int) distance);  // 미터 단위
+
+                log.info("Parsed values - Distance: {} meters, Duration: {} seconds", distance, duration);
+            } else {
+                log.warn("No routes found in OSRM response: {}", response.getBody());
+                throw new RuntimeException("No routes found in OSRM response");
+            }
+
+        } catch (Exception e) {
+            log.error("OSRM API 요청 실패 - Error: {}", e.getMessage(), e);
+            throw new NullPointerException("[ERROR] OSRM API 요청에 실패하였습니다. - " + e.getMessage());
+        }
+
+        log.info("OSRM API distance: " + distanceString);
+        log.info("OSRM API duration: " + durationString);
+
+        return new OsrmApiResponseDTO(Integer.parseInt(durationString),
+                Integer.parseInt(distanceString));
+    }
     public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
@@ -187,11 +242,6 @@ public class DispatchService {
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
 
-
-
-
-
-
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
                 + bestChromosome.getDepartureTimes());
 
@@ -208,7 +258,6 @@ public class DispatchService {
 //                log.info("Outer Key: " + outerKey + ", Inner Key: " + innerKey + ", Value: " + value);
 //            }
 //        }
-
 
         sseService.notify(requestDispatchDTO.userName(), 100);
 
@@ -282,25 +331,26 @@ public class DispatchService {
             }
 
             if (totalTime.isEmpty() || totalDistance.isEmpty()) {
-                KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(company.companyAddress(),
+
+                OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(company.companyAddress(),
                         elderlys.get(i).homeAddress());
 
                 if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.distance());
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.distance());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.distance());
                 }
 
                 if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                    distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.duration());
-                    distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.duration());
+                    distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.duration());
+                    distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.duration());
                 }
 
                 linkDistanceRepository.save(
-                        new LinkDistance(startNodeId, destinationNodeId, kakaoMapApiResponse.duration(),
-                                kakaoMapApiResponse.distance()));
+                        new LinkDistance(startNodeId, destinationNodeId, osrmApiResponseDTO.duration(),
+                                osrmApiResponseDTO.distance()));
                 linkDistanceRepository.save(
-                        new LinkDistance(destinationNodeId, startNodeId, kakaoMapApiResponse.duration(),
-                                kakaoMapApiResponse.distance()));
+                        new LinkDistance(destinationNodeId, startNodeId, osrmApiResponseDTO.duration(),
+                                osrmApiResponseDTO.distance()));
             }
 
         }
@@ -338,26 +388,27 @@ public class DispatchService {
                 }
 
                 if (totalTime.isEmpty() || totalDistance.isEmpty()) {
-                    KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(
+
+                    OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(
                             elderlys.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());
 
                     if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.distance());
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.distance());
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.distance());
                     }
 
                     if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.duration());
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.duration());
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.duration());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.duration());
                     }
 
                     linkDistanceRepository.save(
-                            new LinkDistance(startNodeId, destinationNodeId, kakaoMapApiResponse.duration(),
-                                    kakaoMapApiResponse.distance()));
+                            new LinkDistance(startNodeId, destinationNodeId, osrmApiResponseDTO.duration(),
+                                    osrmApiResponseDTO.distance()));
                     linkDistanceRepository.save(
-                            new LinkDistance(destinationNodeId, startNodeId, kakaoMapApiResponse.duration(),
-                                    kakaoMapApiResponse.distance()));
+                            new LinkDistance(destinationNodeId, startNodeId, osrmApiResponseDTO.duration(),
+                                    osrmApiResponseDTO.distance()));
                 }
             }
 
@@ -393,26 +444,27 @@ public class DispatchService {
                 }
 
                 if (totalTime.isEmpty()) {
-                    KakaoMapApiResponseDTO kakaoMapApiResponse = getDistanceTotalTimeWithTmapApi(
+
+                    OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(
                             employees.get(i).homeAddress(),
                             elderlys.get(j).homeAddress());
 
                     if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.distance());
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.distance());
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.distance());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.distance());
                     }
 
                     if (dispatchType == DispatchType.DURATION_IN || dispatchType == DispatchType.DURATION_OUT) {
-                        distanceMatrix.get(startNodeId).put(destinationNodeId, kakaoMapApiResponse.duration());
-                        distanceMatrix.get(destinationNodeId).put(startNodeId, kakaoMapApiResponse.duration());
+                        distanceMatrix.get(startNodeId).put(destinationNodeId, osrmApiResponseDTO.duration());
+                        distanceMatrix.get(destinationNodeId).put(startNodeId, osrmApiResponseDTO.duration());
                     }
 
                     linkDistanceRepository.save(
-                            new LinkDistance(startNodeId, destinationNodeId, kakaoMapApiResponse.duration(),
-                                    kakaoMapApiResponse.distance()));
+                            new LinkDistance(startNodeId, destinationNodeId, osrmApiResponseDTO.duration(),
+                                    osrmApiResponseDTO.distance()));
                     linkDistanceRepository.save(
-                            new LinkDistance(destinationNodeId, startNodeId, kakaoMapApiResponse.duration(),
-                                    kakaoMapApiResponse.distance()));
+                            new LinkDistance(destinationNodeId, startNodeId, osrmApiResponseDTO.duration(),
+                                    osrmApiResponseDTO.distance()));
                 }
             }
 

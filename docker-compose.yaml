@@ -48,7 +48,7 @@ services:
       - silverithm_network
   db:
     container_name: silverithm_db
-    image: mysql
+    image: mysql:8.0
     environment:
       MYSQL_DATABASE: ${MYSQL_NAME}
       MYSQL_USER: ${MYSQL_USER}
