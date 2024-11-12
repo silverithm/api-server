@@ -46,6 +46,7 @@ public class DispatchService {
 
     private final LinkDistanceRepository linkDistanceRepository;
     private final SSEService sseService;
+    private final DispatchHistoryService dispatchHistoryService;
 
     private String key;
     private String kakaoKey;
@@ -53,11 +54,12 @@ public class DispatchService {
 
     public DispatchService(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
                            LinkDistanceRepository linkDistanceRepository,
-                           SSEService sseService) {
+                           SSEService sseService, DispatchHistoryService dispatchHistoryService) {
         this.linkDistanceRepository = linkDistanceRepository;
         this.sseService = sseService;
         this.key = key;
         this.kakaoKey = kakaoKey;
+        this.dispatchHistoryService = dispatchHistoryService;
     }
 
 //    public int getDistanceTotalTimeWithTmapApi(Location startAddress,
@@ -212,6 +214,7 @@ public class DispatchService {
         return new OsrmApiResponseDTO(Integer.parseInt(durationString),
                 Integer.parseInt(distanceString));
     }
+
     public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
@@ -241,6 +244,8 @@ public class DispatchService {
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
+
+        dispatchHistoryService.saveDispatchResult(assignmentResponseDTOS);
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
                 + bestChromosome.getDepartureTimes());
