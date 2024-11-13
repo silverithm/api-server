@@ -1,10 +1,13 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
-import java.time.LocalDateTime;
+import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 
 public record DispatchHistoryDTO(
         Long id,
-        LocalDateTime createdAt,
+        String createdAt,
         int totalEmployees,
-        int totalElders
-) {}
+        int totalElders,
+        int totalTime,
+        DispatchType dispatchType
+) {
+}

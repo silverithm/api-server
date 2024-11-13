@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -23,12 +24,18 @@ public class DispatchHistory {
     private int totalEmployees;
     private int totalElders;
 
-    public static DispatchHistory of(LocalDateTime createdAt, String dispatchResult, int totalEmployees, int totalElders) {
+    private DispatchType dispatchType;
+    private int totalTime;
+
+    public static DispatchHistory of(LocalDateTime createdAt, String dispatchResult, int totalEmployees,
+                                     int totalElders, DispatchType dispatchType, int totalTime) {
         DispatchHistory dispatchHistory = new DispatchHistory();
         dispatchHistory.createdAt = createdAt;
         dispatchHistory.dispatchResult = dispatchResult;
         dispatchHistory.totalEmployees = totalEmployees;
         dispatchHistory.totalElders = totalElders;
+        dispatchHistory.dispatchType = dispatchType;
+        dispatchHistory.totalTime = totalTime;
         return dispatchHistory;
     }
 }

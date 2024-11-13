@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.entity.DispatchHistory;
 import com.silverithm.vehicleplacementsystem.repository.DispatchHistoryRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.cglib.core.Local;
@@ -30,7 +31,8 @@ public class DispatchHistoryService {
         DispatchHistory dispatchHistory = DispatchHistory.of(LocalDateTime.now(),
                 objectMapper.writeValueAsString(result),
                 (int) result.stream().map(AssignmentResponseDTO::employeeId).distinct().count(),
-                result.stream().mapToInt(r -> r.assignmentElders().size()).sum());
+                result.stream().mapToInt(r -> r.assignmentElders().size()).sum(), result.get(0).dispatchType(),
+                result.stream().mapToInt(AssignmentResponseDTO::time).sum());
 
         repository.save(dispatchHistory);
     }
@@ -43,8 +45,12 @@ public class DispatchHistoryService {
     }
 
     private DispatchHistoryDTO convertToDTO(DispatchHistory dispatchHistory) {
-        return new DispatchHistoryDTO(dispatchHistory.getId(), dispatchHistory.getCreatedAt(),
-                dispatchHistory.getTotalEmployees(), dispatchHistory.getTotalElders());
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        return new DispatchHistoryDTO(dispatchHistory.getId(), dispatchHistory.getCreatedAt().format(formatter),
+                dispatchHistory.getTotalEmployees(), dispatchHistory.getTotalElders(), dispatchHistory.getTotalTime(),
+                dispatchHistory.getDispatchType());
     }
 
 
