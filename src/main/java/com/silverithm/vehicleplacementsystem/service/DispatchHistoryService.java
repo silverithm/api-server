@@ -13,10 +13,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @Transactional
 public class DispatchHistoryService {
     private final DispatchHistoryRepository repository;
@@ -28,6 +30,9 @@ public class DispatchHistoryService {
     }
 
     public void saveDispatchResult(List<AssignmentResponseDTO> result) throws JsonProcessingException {
+
+        log.info(result.toString());
+        log.info(result.stream().mapToInt(AssignmentResponseDTO::time).sum() + "분 소요됨");
         DispatchHistory dispatchHistory = DispatchHistory.of(LocalDateTime.now(),
                 objectMapper.writeValueAsString(result),
                 (int) result.stream().map(AssignmentResponseDTO::employeeId).distinct().count(),

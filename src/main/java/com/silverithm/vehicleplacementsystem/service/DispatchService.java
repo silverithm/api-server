@@ -287,7 +287,7 @@ public class DispatchService {
                     new AssignmentResponseDTO(dispatchType, employees.get(i).id(), employees.get(i).homeAddress(),
                             employees.get(i).workplace(),
                             employees.get(i).name(),
-                            (int) (departureTimes.get(i) / 1), assignmentElders));
+                            (int) (departureTimes.get(i) - 0), assignmentElders));
         }
         return assignmentResponseDTOS;
     }

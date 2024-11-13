@@ -321,8 +321,8 @@ public class GeneticAlgorithm {
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                departureTime += distanceMatrix.get("Company")
-                        .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
+                departureTime += distanceMatrix.get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)))
+                        .get("Employee_" + employees.get(i).id());
 
                 if (employees.get(i).isDriver()) {
                     departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
@@ -355,7 +355,6 @@ public class GeneticAlgorithm {
                     if (j == 0) {
                         departureTime += distanceMatrix.get("Employee_" + employees.get(i).id())
                                 .get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(0)).id());
-                        continue;
                     }
 
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
