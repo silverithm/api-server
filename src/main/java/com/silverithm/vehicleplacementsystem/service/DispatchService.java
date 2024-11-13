@@ -211,8 +211,8 @@ public class DispatchService {
         log.info("OSRM API distance: " + distanceString);
         log.info("OSRM API duration: " + durationString);
 
-        return new OsrmApiResponseDTO(Integer.parseInt(durationString),
-                Integer.parseInt(distanceString));
+        return new OsrmApiResponseDTO(Integer.parseInt(distanceString),
+                Integer.parseInt(durationString));
     }
 
     public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
@@ -287,7 +287,7 @@ public class DispatchService {
                     new AssignmentResponseDTO(dispatchType, employees.get(i).id(), employees.get(i).homeAddress(),
                             employees.get(i).workplace(),
                             employees.get(i).name(),
-                            (int) (departureTimes.get(i) / 60), assignmentElders));
+                            (int) (departureTimes.get(i) / 1), assignmentElders));
         }
         return assignmentResponseDTOS;
     }
