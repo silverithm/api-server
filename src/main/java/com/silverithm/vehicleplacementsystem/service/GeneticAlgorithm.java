@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -26,6 +27,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class GeneticAlgorithm {
 
     private final ThreadPoolTaskExecutor executor;
+
+    private static final Random rand = new Random();
 
     private static final int MAX_ITERATIONS = 300;
     private static final int POPULATION_SIZE = 20000;
@@ -380,10 +383,6 @@ public class GeneticAlgorithm {
                 double departureTime = 0.0;
 
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
-//                    log.info("calculateDepartureTimes : " + chromosome.getGenes().get(i).get(j) + " "
-//                            + chromosome.getGenes().get(i).get(j + 1));
-//                    log.info(chromosome.getGenes().toString());
-
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
                     String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
                     if (j == 0) {
@@ -416,8 +415,7 @@ public class GeneticAlgorithm {
 
 
     private List<Chromosome> crossover(List<Chromosome> selectedChromosomes) {
-        Random rand = new Random();
-        List<Chromosome> offspring = new ArrayList<>();
+        List<Chromosome> offspring = new ArrayList<>(selectedChromosomes.size());
 
         for (int i = 0; i < selectedChromosomes.size(); i += 2) {
             Chromosome parent1 = Chromosome.copy(selectedChromosomes.get(i));
@@ -455,7 +453,6 @@ public class GeneticAlgorithm {
     }
 
     private int[] createSortedRandomCrossoverPoints(Chromosome parent1) {
-        Random rand = new Random();
         int[] crossoverPoints = new int[2];
         for (int i = 0; i < crossoverPoints.length; i++) {
             crossoverPoints[i] = rand.nextInt(parent1.getGenes().size());
@@ -510,7 +507,6 @@ public class GeneticAlgorithm {
     }
 
     private List<Chromosome> mutate(List<Chromosome> offspringChromosomes) throws Exception {
-        Random rand = new Random();
         List<Chromosome> mutatedChromosomes = new ArrayList<>();
 
         for (Chromosome chromosome : offspringChromosomes) {
@@ -539,22 +535,19 @@ public class GeneticAlgorithm {
     }
 
     private List<Chromosome> combinePopulations(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes,
-                                                List<Chromosome> mutatedChromosomes)
-            throws Exception {
-        List<Chromosome> combinedChromosomes = combineChromosome(chromosomes, offspringChromosomes, mutatedChromosomes);
+                                                List<Chromosome> mutatedChromosomes) {
+        List<Chromosome> combinedChromosomes = new ArrayList<>(POPULATION_SIZE);
+        Set<String> uniqueGenes = new HashSet<>();
 
-        Collections.sort(combinedChromosomes, (c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()));
+        // 1. 모든 염색체를 하나의 스트림으로 처리
+        Stream.of(chromosomes, offspringChromosomes, mutatedChromosomes)
+                .flatMap(List::stream)
+                .filter(c -> c.getFitness() > 0)  // 유효한 해결책만 필터링
+                .filter(c -> uniqueGenes.add(c.getGenes().toString()))  // 중복 제거
+                .sorted((c1, c2) -> Double.compare(c2.getFitness(), c1.getFitness()))  // 적합도 기준 정렬
+                .limit(POPULATION_SIZE)  // 상위 N개만 선택
+                .forEach(combinedChromosomes::add);
 
-        return combinedChromosomes;
-    }
-
-
-    private List<Chromosome> combineChromosome(List<Chromosome> chromosomes, List<Chromosome> offspringChromosomes,
-                                               List<Chromosome> mutatedChromosomes) {
-        List<Chromosome> combinedChromosomes = new ArrayList<>();
-        combinedChromosomes.addAll(chromosomes);
-        combinedChromosomes.addAll(offspringChromosomes);
-        combinedChromosomes.addAll(mutatedChromosomes);
         return combinedChromosomes;
     }
 
