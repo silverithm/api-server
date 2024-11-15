@@ -18,15 +18,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Slf4j
 public class GeneticAlgorithm {
+
+    private final ThreadPoolTaskExecutor executor;
 
     private static final int MAX_ITERATIONS = 300;
     private static final int POPULATION_SIZE = 20000;
     private static final double MUTATION_RATE = 0.9;
     private static final double CROSSOVER_RATE = 0.7;
+    private static final int BATCH_SIZE = 200;
+
 
     private final List<EmployeeDTO> employees;
     private final List<ElderlyDTO> elderlys;
@@ -38,11 +44,13 @@ public class GeneticAlgorithm {
 
     private final SSEService sseService;
 
-    public GeneticAlgorithm(List<EmployeeDTO> employees, List<ElderlyDTO> elderly, List<CoupleRequestDTO> couples,
+    public GeneticAlgorithm(ThreadPoolTaskExecutor executor, List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+                            List<CoupleRequestDTO> couples,
                             Map<String, Map<String, Integer>> distanceMatrix,
                             List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType, String userName,
                             SSEService sseService
     ) {
+        this.executor = executor;
         this.employees = employees;
         this.elderlys = elderly;
         this.couples = couples;
@@ -114,29 +122,57 @@ public class GeneticAlgorithm {
         return chromosomes;
     }
 
+    //    private void evaluatePopulation(List<Chromosome> chromosomes) {
+//        for (Chromosome chromosome : chromosomes) {
+//            chromosome.setFitness(calculateFitness(chromosome));
+//        }
+//    }
+// 2. 병렬 처리 방식
     private void evaluatePopulation(List<Chromosome> chromosomes) {
-        for (Chromosome chromosome : chromosomes) {
-            chromosome.setFitness(calculateFitness(chromosome));
+        // 작업을 여러 개의 배치로 나눔
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (int i = 0; i < chromosomes.size(); i += BATCH_SIZE) {
+            // 200개씩 묶어서 처리
+            int end = Math.min(i + BATCH_SIZE, chromosomes.size());
+            List<Chromosome> batch = chromosomes.subList(i, end);
+
+            // 각 배치를 별도 스레드에서 실행
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                for (Chromosome chromosome : batch) {
+                    chromosome.setFitness(calculateFitness(chromosome));
+                }
+            }, executor);
+
+            futures.add(future);
         }
+
+        // 모든 배치의 처리가 완료될 때까지 대기
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
     private double calculateFitness(Chromosome chromosome) {
 
         double fitness = 0.0;
 
-        fitness += calculateFitnessForDepartureTimes(chromosome);
-
-        if (evaluateFrontSeatAssignments(chromosome, fitness) == 0 || evaluateFixedAssignments(chromosome, fitness) == 0
-                || evaluateCoupleAssignments(chromosome, fitness) == 0) {
+        if (!isValidChromosome(chromosome)) {
             return 0.0;
         }
 
+        fitness += calculateFitnessForDepartureTimes(chromosome);
         fitness += addFitnessForProximity(chromosome);
 
         return fitness;
     }
 
-    private double evaluateCoupleAssignments(Chromosome chromosome, double fitness) {
+    private boolean isValidChromosome(Chromosome chromosome) {
+        // 모든 제약조건 검사
+        return evaluateFrontSeatAssignments(chromosome) &&
+                evaluateFixedAssignments(chromosome) &&
+                evaluateCoupleAssignments(chromosome);
+    }
+
+    private boolean evaluateCoupleAssignments(Chromosome chromosome) {
         // Elderly ID를 인덱스로 매핑하는 맵 생성
         Map<Long, Integer> elderlyIdToIndex = new HashMap<>();
         for (int i = 0; i < elderlys.size(); i++) {
@@ -153,28 +189,26 @@ public class GeneticAlgorithm {
             Integer elderly2Index = elderlyIdToIndex.get(elderly2Id);
 
             if (elderly1Index == null || elderly2Index == null) {
-                // 만약 부부 어르신 중 하나라도 인덱스 변환에 실패하면 (즉, elderly 리스트에 존재하지 않으면)
-                // 평가를 건너뜁니다.
+                // 인덱스 변환 실패시 다음 부부로 건너뛰기
                 continue;
             }
 
             boolean found = false;
 
-            // 염색체의 각 직원의 유전자를 확인하여 부부 어르신이 같은 유전자에 있는지 확인
+            // 부부가 같은 차량에 배정되었는지 확인
             for (List<Integer> gene : chromosome.getGenes()) {
                 if (gene.contains(elderly1Index) && gene.contains(elderly2Index)) {
-                    // 부부가 같은 유전자에 배치된 경우, 평가를 통과했으므로 루프 탈출
                     found = true;
                     break;
                 }
             }
 
-            // 부부 어르신이 서로 다른 유전자에 배치된 경우, fitness를 0으로 설정
+            // 부부가 다른 차량에 배정된 경우
             if (!found) {
-                fitness = 0.0;
+                return false;
             }
         }
-        return fitness; // 최종적으로 수정된 fitness 값을 반환
+        return true; // 모든 부부가 같은 차량에 배정됨
     }
 
     private double calculateFitnessForDepartureTimes(Chromosome chromosome) {
@@ -232,24 +266,23 @@ public class GeneticAlgorithm {
         return fitness;
     }
 
-    private double evaluateFixedAssignments(Chromosome chromosome, double fitness) {
-        return fixedAssignments.evaluateFitness(chromosome, fitness);
+    private boolean evaluateFixedAssignments(Chromosome chromosome) {
+        return fixedAssignments.evaluateFitness(chromosome);
     }
 
-    private double evaluateFrontSeatAssignments(Chromosome chromosome, double fitness) {
+    private boolean evaluateFrontSeatAssignments(Chromosome chromosome) {
         for (int i = 0; i < employees.size(); i++) {
             boolean frontSeatAssigned = false;
             for (int j = 0; j < chromosome.getGenes().get(i).size(); j++) {
                 if (elderlys.get(j).requiredFrontSeat()) {
                     if (frontSeatAssigned) {
-                        fitness = 0.0;
-                        break;
+                        return false;
                     }
                     frontSeatAssigned = true;
                 }
             }
         }
-        return fitness;
+        return true;
     }
 
     private double addFitnessForDispatchTypes(Chromosome chromosome, double fitness, int i) {
@@ -321,7 +354,8 @@ public class GeneticAlgorithm {
                     departureTime += distanceMatrix.get(startNodeId).get(destinationNodeId);
                 }
 
-                departureTime += distanceMatrix.get("Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)))
+                departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
+                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)))
                         .get("Employee_" + employees.get(i).id());
 
                 if (employees.get(i).isDriver()) {

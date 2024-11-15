@@ -60,21 +60,16 @@ public class FixedAssignments {
     }
 
 
-    public double evaluateFitness(Chromosome chromosome, double fitness) {
-
+    public boolean evaluateFitness(Chromosome chromosome) {
         for (int employee_idx : fixedAssignments.keySet()) {
             for (int i = 0; i < chromosome.getGenes().get(employee_idx).size(); i++) {
+                // 고정 배정과 다르고, 고정 배정이 -1이 아닌 경우
                 if (chromosome.getGenes().get(employee_idx).get(i) != fixedAssignments.get(employee_idx).get(i)
                         && fixedAssignments.get(employee_idx).get(i) != -1) {
-                    fitness = 0.0;
-                    break;
+                    return false;  // 제약조건 위반
                 }
             }
-            if (fitness == 0.0) {
-                break;
-            }
         }
-
-        return fitness;
+        return true;  // 모든 제약조건 만족
     }
 }

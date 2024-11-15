@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -35,15 +38,9 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class DispatchService {
 
-    //가까운 거리일수록 가중치가 더 들어가야함 - 가까운 거리를 붙여주어야함
-    //고정 시키는 인원이 주어지면 해당 직원에게 고정 인원이 없으면 점수를 0으로 해주어야함
-
-    private static int MAX_ITERATIONS = 300;
-    private static int POPULATION_SIZE = 20000;
-    private static double MUTATION_RATE = 0.9;
-    private static double CROSSOVER_RATE = 0.7;
-
-
+    @Autowired
+    @Qualifier("geneticAlgorithmExecutor")
+    private ThreadPoolTaskExecutor executor;
     private final LinkDistanceRepository linkDistanceRepository;
     private final SSEService sseService;
     private final DispatchHistoryService dispatchHistoryService;
@@ -61,53 +58,6 @@ public class DispatchService {
         this.kakaoKey = kakaoKey;
         this.dispatchHistoryService = dispatchHistoryService;
     }
-
-//    public int getDistanceTotalTimeWithTmapApi(Location startAddress,
-//                                               Location destAddress) throws NullPointerException {
-//
-//        int totalTime = 0;
-//        try {
-//
-//            String url = "https://apis.openapi.sk.com/tmap/routes?version=1";
-//
-//            // 요청 헤더 설정
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.set("Accept", "application/json");
-//            headers.set("Content-Type", "application/json");
-//            headers.set("appKey", key);
-//
-//            // 요청 데이터 설정
-//            String requestBody = String.format(
-//                    "{\"roadType\":32, \"startX\":%.8f, \"startY\":%.8f, \"endX\":%.8f, \"endY\":%.8f}",
-//                    startAddress.getLongitude(), startAddress.getLatitude(), destAddress.getLongitude(),
-//                    destAddress.getLatitude());
-//
-//            // HTTP 요청 엔티티 생성
-//            HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
-//
-//            // RestTemplate 생성
-//            RestTemplate restTemplate = new RestTemplate();
-//
-//            // API 호출
-//            ResponseEntity<String> responseEntity = restTemplate.exchange(
-//                    url,
-//                    HttpMethod.POST,
-//                    requestEntity,
-//                    String.class
-//            );
-//
-//            totalTime = Integer.parseInt(responseEntity.getBody().split("\"totalDistance\":")[1].split(",")[0].trim());
-//
-//        } catch (NullPointerException e) {
-//            e.printStackTrace();
-//            throw new NullPointerException("[ERROR] TMAP API 요청에 실패하였습니다.");
-//        }
-//
-//        log.info("Tmap API distance :  " + totalTime);
-//
-//        return totalTime;
-//    }
-
 
     public KakaoMapApiResponseDTO getDistanceTotalTimeWithTmapApi(Location startAddress,
                                                                   Location destAddress) throws NullPointerException {
@@ -230,10 +180,11 @@ public class DispatchService {
                 requestDispatchDTO.dispatchType());
         sseService.notify(requestDispatchDTO.userName(), 15);
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys, couples, distanceMatrix,
-                fixedAssignments,
-                requestDispatchDTO.dispatchType(), requestDispatchDTO.userName(),
-                sseService);
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(executor, employees, elderlys,
+                couples,
+                distanceMatrix,
+                fixedAssignments, requestDispatchDTO.dispatchType(),
+                requestDispatchDTO.userName(), sseService);
 
         List<Chromosome> chromosomes = geneticAlgorithm.run();
         // 최적의 솔루션 추출
