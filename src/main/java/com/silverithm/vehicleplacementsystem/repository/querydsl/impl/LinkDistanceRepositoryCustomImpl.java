@@ -44,6 +44,16 @@ public class LinkDistanceRepositoryCustomImpl implements LinkDistanceRepositoryC
 
     }
 
+    @Override
+    public Optional<LinkDistance> findNodeByStartNodeIdAndDestinationNodeId(String startNodeId,
+                                                                            String destinationNodeId) {
+
+        return Optional.ofNullable(jpaQueryFactory.selectFrom(linkDistance)
+                .where(startNodeIdEq(startNodeId))
+                .where(destinationNodeIdEq(destinationNodeId))
+                .fetchOne());
+    }
+
     private BooleanBuilder startNodeIdEq(String startNodeId) {
         return nullSafeBuilder(() -> linkDistance.startNodeId.eq(startNodeId));
     }

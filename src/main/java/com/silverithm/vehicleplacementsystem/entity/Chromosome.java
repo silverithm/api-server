@@ -4,6 +4,7 @@ package com.silverithm.vehicleplacementsystem.entity;
 import com.silverithm.vehicleplacementsystem.dto.CoupleRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @Setter
 @NoArgsConstructor
 @Slf4j
-public class Chromosome {
+public class Chromosome implements Serializable {
 
     private List<List<Integer>> genes;
     private double fitness;
@@ -225,5 +226,6 @@ public class Chromosome {
 
         return copyObject;
     }
+
 
 }

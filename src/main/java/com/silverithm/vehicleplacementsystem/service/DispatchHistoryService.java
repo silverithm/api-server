@@ -31,8 +31,6 @@ public class DispatchHistoryService {
 
     public void saveDispatchResult(List<AssignmentResponseDTO> result) throws JsonProcessingException {
 
-        log.info(result.toString());
-        log.info(result.stream().mapToInt(AssignmentResponseDTO::time).sum() + "분 소요됨");
         DispatchHistory dispatchHistory = DispatchHistory.of(LocalDateTime.now(),
                 objectMapper.writeValueAsString(result),
                 (int) result.stream().map(AssignmentResponseDTO::employeeId).distinct().count(),

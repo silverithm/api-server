@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.CompanyDTO;
@@ -24,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import java.util.ArrayList;
@@ -36,11 +38,10 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 @Slf4j
+@EnableCaching
 public class DispatchService {
 
-    @Autowired
-    @Qualifier("geneticAlgorithmExecutor")
-    private ThreadPoolTaskExecutor executor;
+
     private final LinkDistanceRepository linkDistanceRepository;
     private final SSEService sseService;
     private final DispatchHistoryService dispatchHistoryService;
@@ -51,7 +52,8 @@ public class DispatchService {
 
     public DispatchService(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
                            LinkDistanceRepository linkDistanceRepository,
-                           SSEService sseService, DispatchHistoryService dispatchHistoryService) {
+                           SSEService sseService, DispatchHistoryService dispatchHistoryService
+                            ) {
         this.linkDistanceRepository = linkDistanceRepository;
         this.sseService = sseService;
         this.key = key;
@@ -179,12 +181,13 @@ public class DispatchService {
         Map<String, Map<String, Integer>> distanceMatrix = calculateDistanceMatrix(employees, elderlys, company,
                 requestDispatchDTO.dispatchType());
         sseService.notify(requestDispatchDTO.userName(), 15);
+
         // 유전 알고리즘 실행
-        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(executor, employees, elderlys,
+        GeneticAlgorithm geneticAlgorithm = new GeneticAlgorithm(employees, elderlys,
                 couples,
-                distanceMatrix,
-                fixedAssignments, requestDispatchDTO.dispatchType(),
-                requestDispatchDTO.userName(), sseService);
+                fixedAssignments,
+                sseService);
+        geneticAlgorithm.initialize(distanceMatrix, requestDispatchDTO.dispatchType(), requestDispatchDTO.userName());
 
         List<Chromosome> chromosomes = geneticAlgorithm.run();
         // 최적의 솔루션 추출
@@ -202,18 +205,6 @@ public class DispatchService {
                 + bestChromosome.getDepartureTimes());
 
         log.info(assignmentResponseDTOS.toString());
-
-//        for (Map.Entry<String, Map<String, Integer>> outerEntry : distanceMatrix.entrySet()) {
-//            String outerKey = outerEntry.getKey();
-//            Map<String, Integer> innerMap = outerEntry.getValue();
-//
-//            for (Map.Entry<String, Integer> innerEntry : innerMap.entrySet()) {
-//                String innerKey = innerEntry.getKey();
-//                Integer value = innerEntry.getValue();
-//
-//                log.info("Outer Key: " + outerKey + ", Inner Key: " + innerKey + ", Value: " + value);
-//            }
-//        }
 
         sseService.notify(requestDispatchDTO.userName(), 100);
 
@@ -263,11 +254,14 @@ public class DispatchService {
             String startNodeId = "Company";
             String destinationNodeId = "Elderly_" + elderlys.get(i).id();
 
-            Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
-                    destinationNodeId);
-            Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
-                    startNodeId,
-                    destinationNodeId);
+//            Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+//                    destinationNodeId);
+//            Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
+//                    startNodeId,
+//                    destinationNodeId);
+            Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(startNodeId, destinationNodeId);
+            Optional<Integer> totalTime = Optional.ofNullable(linkDistance.get().getTotalTime());
+            Optional<Integer> totalDistance = Optional.ofNullable(linkDistance.get().getTotalDistance());
 
             Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
             Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
@@ -320,11 +314,14 @@ public class DispatchService {
                 String startNodeId = "Elderly_" + elderlys.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
-                        destinationNodeId);
-                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
-                        startNodeId,
-                        destinationNodeId);
+//                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+//                        destinationNodeId);
+//                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
+//                        startNodeId,
+//                        destinationNodeId);
+                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(startNodeId, destinationNodeId);
+                Optional<Integer> totalTime = Optional.ofNullable(linkDistance.get().getTotalTime());
+                Optional<Integer> totalDistance = Optional.ofNullable(linkDistance.get().getTotalDistance());
 
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
                 Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
@@ -376,11 +373,15 @@ public class DispatchService {
                 String startNodeId = "Employee_" + employees.get(i).id();
                 String destinationNodeId = "Elderly_" + elderlys.get(j).id();
 
-                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
-                        destinationNodeId);
-                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
-                        startNodeId,
-                        destinationNodeId);
+//                Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
+//                        destinationNodeId);
+//                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
+//                        startNodeId,
+//                        destinationNodeId);
+
+                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(startNodeId, destinationNodeId);
+                Optional<Integer> totalTime = Optional.ofNullable(linkDistance.get().getTotalTime());
+                Optional<Integer> totalDistance = Optional.ofNullable(linkDistance.get().getTotalDistance());
 
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
                 Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정

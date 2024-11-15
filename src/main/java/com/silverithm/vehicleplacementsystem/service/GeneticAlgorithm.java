@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.CoupleRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
@@ -18,15 +19,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.stereotype.Service;
 
 @Slf4j
+@Service
+@EnableCaching
 public class GeneticAlgorithm {
 
-    private final ThreadPoolTaskExecutor executor;
 
     private static final Random rand = new Random();
 
@@ -36,33 +39,36 @@ public class GeneticAlgorithm {
     private static final double CROSSOVER_RATE = 0.7;
     private static final int BATCH_SIZE = 200;
 
-
     private final List<EmployeeDTO> employees;
     private final List<ElderlyDTO> elderlys;
     private final List<CoupleRequestDTO> couples;
     private final FixedAssignments fixedAssignments;
-    private final Map<String, Map<String, Integer>> distanceMatrix;
-    private final DispatchType dispatchType;
-    private final String userName;
+    private Map<String, Map<String, Integer>> distanceMatrix;
+    private DispatchType dispatchType;
+    private String userName;
 
     private final SSEService sseService;
 
-    public GeneticAlgorithm(ThreadPoolTaskExecutor executor, List<EmployeeDTO> employees, List<ElderlyDTO> elderly,
+    public GeneticAlgorithm(List<EmployeeDTO> employees,
+                            List<ElderlyDTO> elderly,
                             List<CoupleRequestDTO> couples,
-                            Map<String, Map<String, Integer>> distanceMatrix,
-                            List<FixedAssignmentsDTO> fixedAssignments, DispatchType dispatchType, String userName,
+                            List<FixedAssignmentsDTO> fixedAssignments,
                             SSEService sseService
     ) {
-        this.executor = executor;
         this.employees = employees;
         this.elderlys = elderly;
         this.couples = couples;
-        this.distanceMatrix = distanceMatrix;
         this.fixedAssignments = generateFixedAssignmentMap(fixedAssignments, elderlys, employees);
-        this.dispatchType = dispatchType;
         this.sseService = sseService;
+    }
+
+    public void initialize(Map<String, Map<String, Integer>> distanceMatrix, DispatchType dispatchType,
+                           String userName) {
+        this.distanceMatrix = distanceMatrix;
+        this.dispatchType = dispatchType;
         this.userName = userName;
     }
+
 
     public List<Chromosome> run() throws Exception {
 
@@ -85,7 +91,6 @@ public class GeneticAlgorithm {
                 List<Chromosome> offspringChromosomes = crossover(selectedChromosomes);
                 // 돌연변이
                 List<Chromosome> mutatedChromosomes = mutate(offspringChromosomes);
-
                 // 다음 세대 생성
                 chromosomes = combinePopulations(selectedChromosomes, offspringChromosomes, mutatedChromosomes);
 //                log.info(chromosomes.get(0).getFitness() + " " + chromosomes.get(0).getGenes());
@@ -125,37 +130,13 @@ public class GeneticAlgorithm {
         return chromosomes;
     }
 
-    //    private void evaluatePopulation(List<Chromosome> chromosomes) {
-//        for (Chromosome chromosome : chromosomes) {
-//            chromosome.setFitness(calculateFitness(chromosome));
-//        }
-//    }
-// 2. 병렬 처리 방식
     private void evaluatePopulation(List<Chromosome> chromosomes) {
-        // 작업을 여러 개의 배치로 나눔
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-        for (int i = 0; i < chromosomes.size(); i += BATCH_SIZE) {
-            // 200개씩 묶어서 처리
-            int end = Math.min(i + BATCH_SIZE, chromosomes.size());
-            List<Chromosome> batch = chromosomes.subList(i, end);
-
-            // 각 배치를 별도 스레드에서 실행
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                for (Chromosome chromosome : batch) {
-                    chromosome.setFitness(calculateFitness(chromosome));
-                }
-            }, executor);
-
-            futures.add(future);
+        for (Chromosome chromosome : chromosomes) {
+            chromosome.setFitness(calculateFitness(chromosome));
         }
-
-        // 모든 배치의 처리가 완료될 때까지 대기
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
-    private double calculateFitness(Chromosome chromosome) {
-
+    public double calculateFitness(Chromosome chromosome) {
         double fitness = 0.0;
 
         if (!isValidChromosome(chromosome)) {
@@ -488,19 +469,39 @@ public class GeneticAlgorithm {
     }
 
     private void fixDuplicateAssignments(Chromosome child, List<ElderlyDTO> elderlys) {
-        Set<Integer> assignedElderly = new HashSet<>();
+        int totalElderly = elderlys.size();
+        // 1. 빠른 조회를 위한 boolean 배열 사용
+        boolean[] used = new boolean[totalElderly];
+        // 2. 미사용 어르신 인덱스 추적
+        List<Integer> unusedIndices = new ArrayList<>(totalElderly);
+
+        // 첫 번째 패스: 사용된 어르신 체크
+        for (List<Integer> gene : child.getGenes()) {
+            for (int elderlyId : gene) {
+                if (elderlyId >= 0 && elderlyId < totalElderly) {
+                    if (used[elderlyId]) {
+                        // 중복된 경우 나중에 재할당하기 위해 -1로 마킹
+                        gene.set(gene.indexOf(elderlyId), -1);
+                    } else {
+                        used[elderlyId] = true;
+                    }
+                }
+            }
+        }
+
+        // 미사용 어르신 인덱스 수집
+        for (int i = 0; i < totalElderly; i++) {
+            if (!used[i]) {
+                unusedIndices.add(i);
+            }
+        }
+
+        // 중복 제거된 위치에 미사용 어르신 할당
+        int unusedIndex = 0;
         for (List<Integer> gene : child.getGenes()) {
             for (int i = 0; i < gene.size(); i++) {
-                int elderlyId = gene.get(i);
-                if (!assignedElderly.add(elderlyId)) {
-                    // 중복 발생 시, 다른 노인으로 교체
-                    for (int newElderlyId = 0; newElderlyId < elderlys.size(); newElderlyId++) {
-                        if (!assignedElderly.contains(newElderlyId)) {
-                            gene.set(i, newElderlyId);
-                            assignedElderly.add(newElderlyId);
-                            break;
-                        }
-                    }
+                if (gene.get(i) == -1) {
+                    gene.set(i, unusedIndices.get(unusedIndex++));
                 }
             }
         }
