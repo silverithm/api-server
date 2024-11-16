@@ -53,7 +53,7 @@ public class DispatchService {
     public DispatchService(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
                            LinkDistanceRepository linkDistanceRepository,
                            SSEService sseService, DispatchHistoryService dispatchHistoryService
-                            ) {
+    ) {
         this.linkDistanceRepository = linkDistanceRepository;
         this.sseService = sseService;
         this.key = key;
@@ -254,12 +254,8 @@ public class DispatchService {
             String startNodeId = "Company";
             String destinationNodeId = "Elderly_" + elderlys.get(i).id();
 
-//            Optional<Integer> totalTime = linkDistanceRepository.findByStartNodeIdAndDestinationNodeId(startNodeId,
-//                    destinationNodeId);
-//            Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
-//                    startNodeId,
-//                    destinationNodeId);
-            Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(startNodeId, destinationNodeId);
+            Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
+                    startNodeId, destinationNodeId);
             Optional<Integer> totalTime = Optional.ofNullable(linkDistance.get().getTotalTime());
             Optional<Integer> totalDistance = Optional.ofNullable(linkDistance.get().getTotalDistance());
 
@@ -280,7 +276,7 @@ public class DispatchService {
 
             }
 
-            if (totalTime.isEmpty() || totalDistance.isEmpty()) {
+            if (totalTime == null || totalDistance == null) {
 
                 OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(company.companyAddress(),
                         elderlys.get(i).homeAddress());
@@ -319,7 +315,8 @@ public class DispatchService {
 //                Optional<Integer> totalDistance = linkDistanceRepository.findDistanceByStartNodeIdAndDestinationNodeId(
 //                        startNodeId,
 //                        destinationNodeId);
-                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(startNodeId, destinationNodeId);
+                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
+                        startNodeId, destinationNodeId);
                 Optional<Integer> totalTime = Optional.ofNullable(linkDistance.get().getTotalTime());
                 Optional<Integer> totalDistance = Optional.ofNullable(linkDistance.get().getTotalDistance());
 
@@ -340,7 +337,7 @@ public class DispatchService {
 
                 }
 
-                if (totalTime.isEmpty() || totalDistance.isEmpty()) {
+                if (totalTime == null || totalDistance == null) {
 
                     OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(
                             elderlys.get(i).homeAddress(),
@@ -379,14 +376,15 @@ public class DispatchService {
 //                        startNodeId,
 //                        destinationNodeId);
 
-                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(startNodeId, destinationNodeId);
+                Optional<LinkDistance> linkDistance = linkDistanceRepository.findNodeByStartNodeIdAndDestinationNodeId(
+                        startNodeId, destinationNodeId);
                 Optional<Integer> totalTime = Optional.ofNullable(linkDistance.get().getTotalTime());
                 Optional<Integer> totalDistance = Optional.ofNullable(linkDistance.get().getTotalDistance());
 
                 Integer totalTimeValue = totalTime.orElse(0); // 값이 없으면 0으로 기본값 설정
                 Integer totalDistanceValue = totalDistance.orElse(0); // 값이 없으면 0으로 기본값 설정
 
-                if (totalTime.isPresent()) {
+                if (totalTime.isPresent() && totalDistance.isPresent()) {
 
                     if (dispatchType == DispatchType.DISTANCE_IN || dispatchType == DispatchType.DISTANCE_OUT) {
                         distanceMatrix.get(startNodeId).put(destinationNodeId, totalDistanceValue);
@@ -400,7 +398,7 @@ public class DispatchService {
 
                 }
 
-                if (totalTime.isEmpty()) {
+                if (totalTime == null || totalDistance == null) {
 
                     OsrmApiResponseDTO osrmApiResponseDTO = getDistanceTotalTimeWithOsrmApi(
                             employees.get(i).homeAddress(),
