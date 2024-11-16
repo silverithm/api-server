@@ -14,8 +14,6 @@ services:
       timeout: 10s
       retries: 3
     networks:
-      - osrm_network
-
+      - silverithm_network
 networks:
-  osrm_network:
-    driver: bridge
+  silverithm_network:
