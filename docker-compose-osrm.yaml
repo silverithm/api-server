@@ -1,0 +1,21 @@
+services:
+  osrm:
+    container_name: osrm-server
+    image: ghcr.io/project-osrm/osrm-backend
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./osrm-data:/data
+    command: "osrm-routed --algorithm mld /data/south-korea-latest.osrm"
+    restart: always
+    healthcheck:      # 헬스체크 설정
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - osrm_network
+
+networks:
+  osrm_network:
+    driver: bridge
