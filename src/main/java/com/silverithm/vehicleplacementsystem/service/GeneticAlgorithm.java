@@ -111,6 +111,10 @@ public class GeneticAlgorithm {
     }
 
     private List<Chromosome> selectChromosomes(List<Chromosome> chromosomes) {
+        if (chromosomes.size() < POPULATION_SIZE) {
+            return chromosomes;
+        }
+        
         return chromosomes.subList(0, POPULATION_SIZE);
     }
 
