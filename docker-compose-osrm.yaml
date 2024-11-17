@@ -15,5 +15,6 @@ services:
       retries: 3
     networks:
       - silverithm_network
+      -
 networks:
   silverithm_network:
