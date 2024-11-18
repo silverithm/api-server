@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.stereotype.Service;
 
@@ -317,8 +318,7 @@ public class GeneticAlgorithm {
         return score;
     }
 
-
-    private List<Double> calculateDepartureTimes(Chromosome chromosome) {
+    public List<Double> calculateDepartureTimes(Chromosome chromosome) {
 
         List<Double> departureTimes = new ArrayList<>();
 
