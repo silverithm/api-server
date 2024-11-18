@@ -148,7 +148,6 @@ public class DispatchServiceV3 {
                 durationString = String.valueOf((int) duration);  // 초 단위
                 distanceString = String.valueOf((int) distance);  // 미터 단위
 
-                log.info("Parsed values - Distance: {} meters, Duration: {} seconds", distance, duration);
             } else {
                 log.warn("No routes found in OSRM response: {}", response.getBody());
                 throw new RuntimeException("No routes found in OSRM response");
