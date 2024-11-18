@@ -71,7 +71,6 @@ public class GeneticAlgorithm {
 
 
     public List<Chromosome> run() throws Exception {
-
         // 초기 솔루션 생성
         List<Chromosome> chromosomes;
         try {
@@ -114,7 +113,7 @@ public class GeneticAlgorithm {
         if (chromosomes.size() < POPULATION_SIZE) {
             return chromosomes;
         }
-        
+
         return chromosomes.subList(0, POPULATION_SIZE);
     }
 
@@ -328,8 +327,6 @@ public class GeneticAlgorithm {
                 double departureTime = 0.0;
                 for (int j = 0; j < chromosome.getGenes().get(i).size() - 1; j++) {
                     String company = "Company";
-//                    log.info("calculateDepartureTimes : " + chromosome.getGenes().get(i).get(j) + " "
-//                            + chromosome.getGenes().get(i).get(j + 1));
 
                     String startNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j)).id();
                     String destinationNodeId = "Elderly_" + elderlys.get(chromosome.getGenes().get(i).get(j + 1)).id();
@@ -343,7 +340,7 @@ public class GeneticAlgorithm {
                 }
 
                 departureTime += distanceMatrix.get("Elderly_" + elderlys.get(
-                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)))
+                                chromosome.getGenes().get(i).get(chromosome.getGenes().get(i).size() - 1)).id())
                         .get("Employee_" + employees.get(i).id());
 
                 if (employees.get(i).isDriver()) {

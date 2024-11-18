@@ -50,6 +50,9 @@ public class DispatchService {
     private String key;
     private String kakaoKey;
 
+    @Value("${osrm.server.url}")
+    private String osrmServerUrl;
+
 
     public DispatchService(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
                            LinkDistanceRepository linkDistanceRepository,
@@ -127,7 +130,7 @@ public class DispatchService {
                     + destAddress.getLongitude() + "," + destAddress.getLatitude();
 
             // table 대신 route 서비스 사용
-            String url = "http://osrm-server:5000/route/v1/driving/" + coordinates;
+            String url = osrmServerUrl + "/route/v1/driving/" + coordinates;
 
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
@@ -161,8 +164,7 @@ public class DispatchService {
             throw new NullPointerException("[ERROR] OSRM API 요청에 실패하였습니다. - " + e.getMessage());
         }
 
-        log.info("OSRM API distance: " + distanceString);
-        log.info("OSRM API duration: " + durationString);
+        log.info("OSRM API distance and duration : " + distanceString + " " + durationString);
 
         return new OsrmApiResponseDTO(Integer.parseInt(distanceString),
                 Integer.parseInt(durationString));
