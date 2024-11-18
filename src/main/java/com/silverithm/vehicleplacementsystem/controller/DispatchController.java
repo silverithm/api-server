@@ -9,6 +9,9 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.service.DispatchHistoryService;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
+import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
+import com.silverithm.vehicleplacementsystem.service.DispatchServiceV3;
+import com.silverithm.vehicleplacementsystem.service.DispatchServiceV4;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +31,23 @@ public class DispatchController {
     private DispatchService dispatchService;
 
     @Autowired
+    private DispatchServiceV2 dispatchServiceV2;
+
+    @Autowired
+    private DispatchServiceV3 dispatchServiceV3;
+
+    @Autowired
+    private DispatchServiceV4 dispatchServiceV4;
+
+
+    @Autowired
     private DispatchHistoryService dispatchHistoryService;
 
     // RESTful API endpoint
     @PostMapping("/api/v1/dispatch")
     public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) throws Exception {
-        return dispatchService.getOptimizedAssignments(requestDispatchDTO);
+//        return dispatchService.getOptimizedAssignments(requestDispatchDTO);
+        return dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
     }
 
     @GetMapping("/api/v1/history")
