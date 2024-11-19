@@ -72,6 +72,18 @@ services:
     networks:
       - silverithm_network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: silverithm_rabbitmq
+    ports:
+      - "5672:5672"   # RabbitMQ 기본 포트
+      - "15672:15672" # RabbitMQ 관리 UI 포트
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    networks:
+      - silverithm_network
+
   app:
     container_name: silverithm-backend
     build: .
@@ -82,7 +94,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4.0'  # 10코어 전체 할당
+          cpus: '2.0'
     environment:
       LOG_PATH: /logs
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}

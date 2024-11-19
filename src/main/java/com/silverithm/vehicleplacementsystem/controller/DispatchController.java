@@ -49,12 +49,8 @@ public class DispatchController {
     // RESTful API endpoint
     @PostMapping("/api/v1/dispatch")
     public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) throws Exception {
-        long startTime = System.currentTimeMillis();
 
         List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
-
-        long endTime = System.currentTimeMillis();
-        log.info("Dispatch API execution time: {} ms", endTime - startTime);
 
         return result;
     }
