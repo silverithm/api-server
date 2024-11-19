@@ -10,7 +10,6 @@ public interface LinkDistanceRepositoryCustom {
 
     Optional<Integer> findDistanceByStartNodeIdAndDestinationNodeId(String startNodeId, String destinationNodeId);
 
-    @Cacheable(value = "linkDistance", key = "#startNodeId + #destinationNodeId")
     Optional<LinkDistance> findNodeByStartNodeIdAndDestinationNodeId(String startNodeId, String destinationNodeId);
 
 }

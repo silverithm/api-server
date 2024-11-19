@@ -39,6 +39,9 @@ public class DispatchController {
     @Autowired
     private DispatchServiceV4 dispatchServiceV4;
 
+    @Autowired
+    private DispatchServiceV4 dispatchServiceV5;
+
 
     @Autowired
     private DispatchHistoryService dispatchHistoryService;
@@ -46,8 +49,14 @@ public class DispatchController {
     // RESTful API endpoint
     @PostMapping("/api/v1/dispatch")
     public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) throws Exception {
-//        return dispatchService.getOptimizedAssignments(requestDispatchDTO);
-        return dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
+        long startTime = System.currentTimeMillis();
+
+        List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
+
+        long endTime = System.currentTimeMillis();
+        log.info("Dispatch API execution time: {} ms", endTime - startTime);
+
+        return result;
     }
 
     @GetMapping("/api/v1/history")
