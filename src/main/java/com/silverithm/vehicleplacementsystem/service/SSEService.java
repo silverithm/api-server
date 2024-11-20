@@ -1,7 +1,10 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.repository.EmitterRepository;
 import java.io.IOException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -35,8 +38,16 @@ public class SSEService {
      */
     public void notify(String userName, Object event) {
         sendToClient(userName, event);
-
     }
+
+    public void notifyResult(String userName, List<AssignmentResponseDTO> event) {
+        sendDispatchResult(userName, event);
+    }
+
+    public void notifyError(String userName) {
+        sendDispatchError(userName);
+    }
+
 
     /**
      * 클라이언트에게 데이터를 전송
@@ -49,6 +60,30 @@ public class SSEService {
         if (emitter != null) {
             try {
                 emitter.send(SseEmitter.event().id(String.valueOf(userName)).name("sse").data(data));
+            } catch (IOException exception) {
+                emitterRepository.deleteById(userName);
+                emitter.completeWithError(exception);
+            }
+        }
+    }
+
+    private void sendDispatchResult(String userName, List<AssignmentResponseDTO> data) {
+        SseEmitter emitter = emitterRepository.get(userName);
+        if (emitter != null) {
+            try {
+                emitter.send(SseEmitter.event().id(String.valueOf(userName)).name("dispatch").data(data));
+            } catch (IOException exception) {
+                emitterRepository.deleteById(userName);
+                emitter.completeWithError(exception);
+            }
+        }
+    }
+
+    private void sendDispatchError(String userName) {
+        SseEmitter emitter = emitterRepository.get(userName);
+        if (emitter != null) {
+            try {
+                emitter.send(SseEmitter.event().id(String.valueOf(userName)).name("error").data("dispatch error"));
             } catch (IOException exception) {
                 emitterRepository.deleteById(userName);
                 emitter.completeWithError(exception);
@@ -73,4 +108,6 @@ public class SSEService {
 
         return emitter;
     }
+
+
 }

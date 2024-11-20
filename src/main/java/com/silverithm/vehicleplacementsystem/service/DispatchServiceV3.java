@@ -204,6 +204,7 @@ public class DispatchServiceV3 {
         log.info(assignmentResponseDTOS.toString());
 
         sseService.notify(requestDispatchDTO.userName(), 100);
+        sseService.notifyResult(requestDispatchDTO.userName(), assignmentResponseDTOS);
 
         return assignmentResponseDTOS;
     }

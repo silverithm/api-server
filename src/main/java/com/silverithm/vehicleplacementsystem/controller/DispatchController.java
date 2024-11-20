@@ -12,9 +12,11 @@ import com.silverithm.vehicleplacementsystem.service.DispatchService;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV3;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV4;
+import com.silverithm.vehicleplacementsystem.service.SSEService;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,17 +44,24 @@ public class DispatchController {
     @Autowired
     private DispatchServiceV4 dispatchServiceV5;
 
+    @Autowired
+    private SSEService sseService;
 
     @Autowired
     private DispatchHistoryService dispatchHistoryService;
 
     // RESTful API endpoint
     @PostMapping("/api/v1/dispatch")
-    public List<AssignmentResponseDTO> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) throws Exception {
+    public ResponseEntity<List<AssignmentResponseDTO>> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO)
+            throws Exception {
 
-        List<AssignmentResponseDTO> result = dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO);
+        try {
+            return ResponseEntity.ok().body(dispatchServiceV3.getOptimizedAssignments(requestDispatchDTO));
+        } catch (Exception e) {
+            sseService.notifyError(requestDispatchDTO.userName());
+            return ResponseEntity.badRequest().build();
+        }
 
-        return result;
     }
 
     @GetMapping("/api/v1/history")
