@@ -77,6 +77,7 @@ services:
     container_name: silverithm_rabbitmq
     ports:
       - "5672:5672"   # RabbitMQ 기본 포트
+      - "5671:5671"   # RabbitMQ SSL 포트
       - "15672:15672" # RabbitMQ 관리 UI 포트
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
