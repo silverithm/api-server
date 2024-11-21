@@ -44,23 +44,23 @@ public class RabbitMQConfig {
         rabbitFactory.setPort(port);
         rabbitFactory.setUsername(username);
         rabbitFactory.setPassword(password);
-        rabbitFactory.useSslProtocol();
-        try {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(this.getClass().getClassLoader()
-                            .getResourceAsStream("keystore.p12"),
-                    "rlawnfpr12".toCharArray());
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
-                    TrustManagerFactory.getDefaultAlgorithm());
-            trustManagerFactory.init(keyStore);
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
-
-            rabbitFactory.useSslProtocol(sslContext);
-        } catch (Exception e) {
-            throw new RuntimeException("SSL 설정 실패", e);
-        }
+//        rabbitFactory.useSslProtocol();
+//        try {
+//            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+//            keyStore.load(this.getClass().getClassLoader()
+//                            .getResourceAsStream("keystore.p12"),
+//                    "rlawnfpr12".toCharArray());
+//            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
+//                    TrustManagerFactory.getDefaultAlgorithm());
+//            trustManagerFactory.init(keyStore);
+//
+//            SSLContext sslContext = SSLContext.getInstance("TLS");
+//            sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+//
+//            rabbitFactory.useSslProtocol(sslContext);
+//        } catch (Exception e) {
+//            throw new RuntimeException("SSL 설정 실패", e);
+//        }
 
         CachingConnectionFactory factory = new CachingConnectionFactory(rabbitFactory);
         return factory;
