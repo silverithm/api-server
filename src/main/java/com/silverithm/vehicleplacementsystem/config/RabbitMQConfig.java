@@ -46,7 +46,7 @@ public class RabbitMQConfig {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(this.getClass().getClassLoader()
                             .getResourceAsStream("keystore.p12"),
-                    "keystore-password".toCharArray());
+                    "rlawnfpr12".toCharArray());
             TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
                     TrustManagerFactory.getDefaultAlgorithm());
             trustManagerFactory.init(keyStore);
