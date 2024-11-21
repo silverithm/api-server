@@ -83,7 +83,6 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     networks:
       - silverithm_network
-      - shared_network
 
   app:
     container_name: silverithm-backend
@@ -101,8 +100,8 @@ services:
       SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_HOST: ${RABBITMQ_HOST}
+      SPRING_RABBITMQ_PORT: ${RABBITMQ_PORT}
       SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       JAVA_OPTS: >
@@ -117,13 +116,9 @@ services:
     restart: always
     networks:
       - silverithm_network
-      - shared_network
 
 volumes:
   db-data:
 
 networks:
   silverithm_network:
-  shared_network:
-    name: rabbitmq_network
-    external: true

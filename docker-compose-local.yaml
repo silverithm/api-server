@@ -1,0 +1,129 @@
+version: '3.8'
+services:
+  loki:
+    image: grafana/loki:2.9.2
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - silverithm_network
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    volumes:
+      - ./logs:/logs
+      - ./cfg/promtail.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - silverithm_network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./cfg/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    networks:
+      - silverithm_network
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: always
+    ports:
+      - 3003:3003
+    volumes:
+      - ./cfg/grafana/provisioning:/etc/grafana/provisioning
+      - ./cfg/grafana/grafana.ini:/etc/grafana/grafana.ini
+    env_file:
+      - ./cfg/grafana/grafana.env
+    networks:
+      - silverithm_network
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411" # Expose the Zipkin UI port
+    networks:
+      - silverithm_network
+  db:
+    container_name: silverithm_db
+    image: mysql:8.3
+    environment:
+      MYSQL_DATABASE: ${MYSQL_NAME}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    restart: always
+    networks:
+      - silverithm_network
+    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+
+  redis:
+    container_name: silverithm_redis
+    image: redis
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      - silverithm_network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: silverithm_rabbitmq
+    ports:
+      - "5672:5672"   # RabbitMQ 기본 포트
+      - "15672:15672" # RabbitMQ 관리 UI 포트
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    networks:
+      - silverithm_network
+      - shared_network
+
+  app:
+    container_name: silverithm-backend
+    build: .
+    volumes:
+      - ./logs:/logs
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+    environment:
+      LOG_PATH: /logs
+      SPRING_DATASOURCE_URL: ${MYSQL_PROD_URL}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_RABBITMQ_HOST: ${RABBITMQ_HOST}
+      SPRING_RABBITMQ_PORT: ${RABBITMQ_PORT}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      JAVA_OPTS: >
+        -XX:MaxRAMPercentage=80.0
+        -XX:InitialRAMPercentage=70.0
+        -XX:+UseG1GC
+        -XX:ParallelGCThreads=10  # 10코어에 맞춤
+        -XX:ConcGCThreads=2
+        -XX:MaxGCPauseMillis=200
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - silverithm_network
+      - shared_network
+
+volumes:
+  db-data:
+
+networks:
+  silverithm_network:
+  shared_network:
+    name: rabbitmq_network
+    external: true
