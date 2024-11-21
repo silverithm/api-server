@@ -81,6 +81,10 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+      - RABBITMQ_SSL_CERTFILE= /etc/rabbitmq/cert/fullchain.pem
+      - RABBITMQ_SSL_KEYFILE= /etc/rabbitmq/cert/privkey.pem
+    volumes:
+      - ./data/certbot/conf/live/silverithm.site:/etc/rabbitmq/cert
     networks:
       - silverithm_network
 
