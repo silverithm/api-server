@@ -83,6 +83,7 @@ services:
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     networks:
       - silverithm_network
+      - shared_network
 
   app:
     container_name: silverithm-backend
@@ -116,9 +117,13 @@ services:
     restart: always
     networks:
       - silverithm_network
+      - shared_network
 
 volumes:
   db-data:
 
 networks:
   silverithm_network:
+  shared_network:
+    name: rabbitmq_network
+    external: true

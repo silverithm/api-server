@@ -1,7 +1,7 @@
 services:
   osrm:
     container_name: osrm-server
-    image: ghcr.io/project-osrm/osrm-backend
+    image: osrm/osrm-backend:latest@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
     ports:
       - "5001:5000"
     volumes:

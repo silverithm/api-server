@@ -23,6 +23,12 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue responseQueue() {
+        return new Queue("dispatch-response-queue", true);  // durable = true
+    }
+
+
+    @Bean
     public Queue deadLetterQueue() {
         return new Queue("dispatch.dlq");
     }
