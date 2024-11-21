@@ -2,7 +2,9 @@ package com.silverithm.vehicleplacementsystem.config;
 
 
 import java.io.FileInputStream;
+import java.security.KeyManagementException;
 import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import org.springframework.amqp.core.Binding;
@@ -34,7 +36,7 @@ public class RabbitMQConfig {
     private String password;
 
     @Bean
-    public ConnectionFactory connectionFactory() {
+    public ConnectionFactory connectionFactory() throws NoSuchAlgorithmException, KeyManagementException {
 
         com.rabbitmq.client.ConnectionFactory rabbitFactory = new com.rabbitmq.client.ConnectionFactory();
         rabbitFactory.setMaxInboundMessageBodySize(1545270062);
@@ -42,6 +44,7 @@ public class RabbitMQConfig {
         rabbitFactory.setPort(port);
         rabbitFactory.setUsername(username);
         rabbitFactory.setPassword(password);
+        rabbitFactory.useSslProtocol();
         try {
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(this.getClass().getClassLoader()
