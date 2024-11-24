@@ -1,5 +1,7 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
+import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
@@ -40,6 +42,17 @@ public class UserController {
         return userService.signup(userDataDTO);
     }
 
+    @PostMapping("api/v1/find/password")
+    public ResponseEntity<FindPasswordResponse> findPassword(@RequestParam String email) {
+        return ResponseEntity.ok().body(userService.findPassword(email));
+    }
+
+    @PostMapping("api/v1/change/password")
+    public ResponseEntity<String> changePassword(@RequestBody PasswordChangeRequest passwordChangeRequest) {
+        userService.changePassword(passwordChangeRequest);
+        return ResponseEntity.ok().body("success");
+    }
+
 
     @PostMapping("api/v1/logout")
     public ResponseEntity logout(HttpServletRequest request) {
@@ -47,7 +60,8 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-//    @DeleteMapping(value = "/{username}")
+
+    //    @DeleteMapping(value = "/{username}")
 //    public String delete(@PathVariable String username) {
 //        userService.delete(username);
 //        return username;

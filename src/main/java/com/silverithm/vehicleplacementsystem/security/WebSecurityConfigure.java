@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.security;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtAuthenticationFilter;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -14,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,7 +69,8 @@ public class WebSecurityConfigure {
                 String email = authentication.getName();
                 String password = authentication.getCredentials().toString();
 
-                AppUser user = userRepository.findByEmail(email);
+                AppUser user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new CustomException("User not found", HttpStatus.UNPROCESSABLE_ENTITY));
 
                 if (passwordEncoder().matches(password, user.getPassword())) {
                     return new UsernamePasswordAuthenticationToken(email, password);
@@ -100,6 +104,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/actuator/*").permitAll()
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
+                                .requestMatchers("api/v1/find/password").permitAll()
                                 .requestMatchers("/api/v1/employee/downloadEmployeeExcel").permitAll()
                                 .requestMatchers("/api/v1/employee/downloadElderlyExcel").permitAll()
                                 .requestMatchers("/api/v1/employee/uploadElderlyExcel").permitAll()

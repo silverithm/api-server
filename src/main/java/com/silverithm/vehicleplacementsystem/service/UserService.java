@@ -1,13 +1,14 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
-import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -16,16 +17,11 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.security.Key;
 import java.util.Collections;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,6 +29,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.security.SecureRandom;
+
 
 @Slf4j
 @Service
@@ -46,6 +44,8 @@ public class UserService {
     private JwtTokenProvider jwtTokenProvider;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private EmailService emailService;
     @Autowired
     private RedisUtils redisUtils;
 
@@ -71,18 +71,19 @@ public class UserService {
     public SigninResponseDTO signin(UserSigninDTO userSigninDTO) {
         try {
 
-            AppUser findUser = userRepository.findByEmail(userSigninDTO.getEmail());
+            AppUser findUser = userRepository.findByEmail(userSigninDTO.getEmail())
+                    .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
 
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
-
 
             TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
                     Collections.singleton(findUser.getUserRole()));
 
             findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
 
-            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(), findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
+            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
+                    findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
                     tokenInfo);
 
 
@@ -141,6 +142,66 @@ public class UserService {
 
     public AppUser loadUserByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    public FindPasswordResponse findPassword(String email) {
+        AppUser findUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        String temporaryPassword = createTemporaryPassword(findUser);
+
+        try {
+            sendTemporaryPasswordEmail(email, temporaryPassword);
+            return new FindPasswordResponse("임시 비밀번호가 이메일로 전송되었습니다.");
+        } catch (Exception e) {
+            throw new CustomException("이메일 전송에 실패했습니다. : " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private String createTemporaryPassword(AppUser user) {
+        String temporaryPassword = generateRandomPassword(10);
+
+        String encodedPassword = passwordEncoder.encode(temporaryPassword);
+
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
+
+        return temporaryPassword;
+    }
+
+    private String generateRandomPassword(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        SecureRandom secureRandom = new SecureRandom();
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < length; i++) {
+            int randomIndex = secureRandom.nextInt(chars.length());
+            sb.append(chars.charAt(randomIndex));
+        }
+
+        return sb.toString();
+    }
+
+    // 이메일 전송
+    private void sendTemporaryPasswordEmail(String email, String temporaryPassword) {
+        String subject = "실버리즘 임시 비밀번호 발급";
+        String content = temporaryPassword;
+
+        emailService.sendEmailAsync(email, subject, content);
+    }
+
+    public void changePassword(PasswordChangeRequest passwordChangeRequest) {
+        AppUser findUser = userRepository.findByEmail(passwordChangeRequest.email())
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (!passwordEncoder.matches(passwordChangeRequest.currentPassword(), findUser.getPassword())) {
+            throw new CustomException("Invalid current password", HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        String encodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());
+        findUser.setPassword(encodedPassword);
+
+        userRepository.save(findUser);
     }
 }
 
