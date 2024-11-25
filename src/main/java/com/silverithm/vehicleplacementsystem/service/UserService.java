@@ -100,7 +100,6 @@ public class UserService {
         if (!userRepository.existsByEmail(userDataDTO.getEmail())) {
             Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
 
-            System.out.println(userDataDTO.getName());
             AppUser user = new AppUser(userDataDTO.getName(), userDataDTO.getEmail(),
                     passwordEncoder.encode(userDataDTO.getPassword()), userDataDTO.getRole(),
                     tokenInfo.getRefreshToken(),
