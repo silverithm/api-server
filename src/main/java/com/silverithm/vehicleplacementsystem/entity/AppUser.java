@@ -23,9 +23,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Table(indexes = {
         @Index(name = "idx_app_user_email", columnList = "email"),
-        @Index(name = "idx_app_user_access_token", columnList = "access_token"),
-        @Index(name = "idx_app_user_refresh_token", columnList = "refresh_token"),
-        @Index(name = "idx_app_user_email_tokens", columnList = "email,access_token,refresh_token")
 })
 public class AppUser {
 
