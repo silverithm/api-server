@@ -80,7 +80,7 @@ public class UserService {
             TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
                     Collections.singleton(findUser.getUserRole()));
 
-            findUser.update(tokenInfo.getAccessToken(), tokenInfo.getRefreshToken());
+            findUser.update(tokenInfo.getRefreshToken());
 
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
                     findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
@@ -103,7 +103,7 @@ public class UserService {
             System.out.println(userDataDTO.getName());
             AppUser user = new AppUser(userDataDTO.getName(), userDataDTO.getEmail(),
                     passwordEncoder.encode(userDataDTO.getPassword()), userDataDTO.getRole(),
-                    tokenInfo.getAccessToken(), tokenInfo.getRefreshToken(),
+                    tokenInfo.getRefreshToken(),
                     userDataDTO.getCompanyName(), companyLocation, userDataDTO.getCompanyAddress());
 
             userRepository.save(user);

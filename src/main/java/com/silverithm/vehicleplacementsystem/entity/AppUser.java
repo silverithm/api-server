@@ -39,7 +39,6 @@ public class AppUser {
 
     private UserRole userRole;
 
-    private String accessToken;
     private String refreshToken;
     private String companyName;
     private String companyAddressName;
@@ -52,21 +51,19 @@ public class AppUser {
     })
     private Location companyAddress;
 
-    public AppUser(String name, String email, String encode, UserRole role, String accessToken, String refreshToken,
+    public AppUser(String name, String email, String encode, UserRole role, String refreshToken,
                    String companyName, Location companyLocation, String companyAddressName) {
         this.username = name;
         this.email = email;
         this.password = encode;
         this.userRole = role;
-        this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.companyName = companyName;
         this.companyAddress = companyLocation;
         this.companyAddressName = companyAddressName;
     }
 
-    public void update(String accessToken, String refreshToken) {
-        this.accessToken = accessToken;
+    public void update(String refreshToken) {
         this.refreshToken = refreshToken;
     }
 
