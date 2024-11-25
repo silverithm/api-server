@@ -84,7 +84,7 @@ public class DispatchController {
             rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
 
             return ResponseEntity.accepted()
-                    .body("jobId : " + jobId + " 배차 요청 성공");
+                    .body(jobId);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("배차 요청 실패");
         }
