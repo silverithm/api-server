@@ -9,9 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,6 +21,12 @@ import lombok.NoArgsConstructor;
 @Entity
 @Data
 @NoArgsConstructor
+@Table(indexes = {
+        @Index(name = "idx_app_user_email", columnList = "email"),
+        @Index(name = "idx_app_user_access_token", columnList = "access_token"),
+        @Index(name = "idx_app_user_refresh_token", columnList = "refresh_token"),
+        @Index(name = "idx_app_user_email_tokens", columnList = "email,access_token,refresh_token")
+})
 public class AppUser {
 
     @Id
