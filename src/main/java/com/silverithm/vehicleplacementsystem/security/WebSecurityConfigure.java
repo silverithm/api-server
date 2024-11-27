@@ -56,7 +56,7 @@ public class WebSecurityConfigure {
             config.setAllowedMethods(Collections.singletonList("*"));
             config.setAllowedOriginPatterns(Collections.singletonList("http://localhost:3000"));
             config.setAllowedOrigins(Collections.singletonList("https://silverithm.netlify.app/"));
-            config.setAllowedOrigins(Collections.singletonList("https://silverithm.co.kr/"));
+            config.setAllowedOrigins(Collections.singletonList("https://www.silverithm.co.kr/"));
             config.setAllowCredentials(true);
             return config;
         };
