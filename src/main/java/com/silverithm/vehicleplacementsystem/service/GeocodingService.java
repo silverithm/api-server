@@ -19,7 +19,7 @@ public class GeocodingService {
     public Location getAddressCoordinates(String address)  throws Exception{
         try {
             String baseUrl = "https://maps.googleapis.com/maps/api/geocode/json";
-            String finalUrl = baseUrl + "?address=" + address.replace(" ", "+") + "&key=" + key;
+            String finalUrl = baseUrl + "?address=" + cleanKoreanAddress(address).replace(" ", "+") + "&key=" + key;
 
             RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<String> response = restTemplate.getForEntity(finalUrl, String.class);
@@ -37,4 +37,18 @@ public class GeocodingService {
             throw new Exception();
         }
     }
+
+    private String cleanKoreanAddress(String address) {
+        // Find the index of the first opening parenthesis
+        int parenthesisIndex = address.indexOf("(");
+
+        if (parenthesisIndex != -1) {
+            // Return the part before the parenthesis, trimmed to remove any trailing spaces
+            return address.substring(0, parenthesisIndex).trim();
+        }
+
+        // If no parentheses found, return the original address
+        return address;
+    }
+
 }
