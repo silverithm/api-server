@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cglib.core.Local;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,19 +31,20 @@ public class DispatchHistoryService {
         this.objectMapper = objectMapper;
     }
 
-    public void saveDispatchResult(List<AssignmentResponseDTO> result) throws JsonProcessingException {
+    public void saveDispatchResult(List<AssignmentResponseDTO> result, String username) throws JsonProcessingException {
 
         DispatchHistory dispatchHistory = DispatchHistory.of(LocalDateTime.now(),
                 objectMapper.writeValueAsString(result),
                 (int) result.stream().map(AssignmentResponseDTO::employeeId).distinct().count(),
                 result.stream().mapToInt(r -> r.assignmentElders().size()).sum(), result.get(0).dispatchType(),
-                result.stream().mapToInt(AssignmentResponseDTO::time).sum());
+                result.stream().mapToInt(AssignmentResponseDTO::time).sum(), username);
 
         repository.save(dispatchHistory);
     }
 
-    public List<DispatchHistoryDTO> getDispatchHistories() {
-        return repository.findAllByOrderByCreatedAtDesc()
+    public List<DispatchHistoryDTO> getDispatchHistories(@AuthenticationPrincipal UserDetails userDetails) {
+
+        return repository.findAllByUsernameOrderByCreatedAtDesc(userDetails.getUsername())
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());

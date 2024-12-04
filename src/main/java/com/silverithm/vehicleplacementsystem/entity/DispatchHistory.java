@@ -18,6 +18,8 @@ public class DispatchHistory {
 
     private LocalDateTime createdAt;
 
+    private String username;
+
     @Column(columnDefinition = "TEXT")
     private String dispatchResult; // JSON 형태로 저장
 
@@ -28,7 +30,7 @@ public class DispatchHistory {
     private int totalTime;
 
     public static DispatchHistory of(LocalDateTime createdAt, String dispatchResult, int totalEmployees,
-                                     int totalElders, DispatchType dispatchType, int totalTime) {
+                                     int totalElders, DispatchType dispatchType, int totalTime, String username) {
         DispatchHistory dispatchHistory = new DispatchHistory();
         dispatchHistory.createdAt = createdAt;
         dispatchHistory.dispatchResult = dispatchResult;
@@ -36,6 +38,7 @@ public class DispatchHistory {
         dispatchHistory.totalElders = totalElders;
         dispatchHistory.dispatchType = dispatchType;
         dispatchHistory.totalTime = totalTime;
+        dispatchHistory.username = username;
         return dispatchHistory;
     }
 }

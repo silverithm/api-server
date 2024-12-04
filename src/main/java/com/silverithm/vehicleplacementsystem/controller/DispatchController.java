@@ -27,6 +27,8 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -71,7 +73,8 @@ public class DispatchController {
     private ObjectMapper objectMapper;
 
     @PostMapping("/api/v1/dispatch")
-    public ResponseEntity<String> dispatch(@RequestBody RequestDispatchDTO requestDispatchDTO) {
+    public ResponseEntity<String> dispatch(@AuthenticationPrincipal UserDetails userDetails,
+                                           @RequestBody RequestDispatchDTO requestDispatchDTO) {
 
         try {
             String jobId = UUID.randomUUID().toString();
@@ -79,6 +82,7 @@ public class DispatchController {
             Message message = MessageBuilder
                     .withBody(objectMapper.writeValueAsBytes(requestDispatchDTO))
                     .setHeader("jobId", jobId)
+                    .setHeader("username", userDetails.getUsername())
                     .build();
 
             rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
@@ -94,11 +98,13 @@ public class DispatchController {
     @RabbitListener(queues = "dispatch-response-queue")
     public void handleDispatchResponse(Message message) {
         try {
+            String username = message.getMessageProperties().getHeaders().get("username").toString();
+
             List<AssignmentResponseDTO> result = objectMapper.readValue(message.getBody(),
                     new TypeReference<List<AssignmentResponseDTO>>() {
                     });
 
-            dispatchHistoryService.saveDispatchResult(result);
+            dispatchHistoryService.saveDispatchResult(result, username);
         } catch (Exception e) {
             log.error("배차 응답 처리 중 오류 발생: ", e);
             String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
@@ -108,8 +114,8 @@ public class DispatchController {
 
 
     @GetMapping("/api/v1/history")
-    public List<DispatchHistoryDTO> getHistories() {
-        return dispatchHistoryService.getDispatchHistories();
+    public List<DispatchHistoryDTO> getHistories(@AuthenticationPrincipal UserDetails userDetails) {
+        return dispatchHistoryService.getDispatchHistories(userDetails);
     }
 
     @GetMapping("/api/v1/history/{id}")

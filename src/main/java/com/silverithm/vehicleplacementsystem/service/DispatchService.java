@@ -170,7 +170,8 @@ public class DispatchService {
                 Integer.parseInt(durationString));
     }
 
-    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO) throws Exception {
+    public List<AssignmentResponseDTO> getOptimizedAssignments(RequestDispatchDTO requestDispatchDTO)
+            throws Exception {
 
         List<EmployeeDTO> employees = requestDispatchDTO.employees();
         List<ElderlyDTO> elderlys = requestDispatchDTO.elderlys();
@@ -202,7 +203,6 @@ public class DispatchService {
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
 
-        dispatchHistoryService.saveDispatchResult(assignmentResponseDTOS);
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
                 + bestChromosome.getDepartureTimes());

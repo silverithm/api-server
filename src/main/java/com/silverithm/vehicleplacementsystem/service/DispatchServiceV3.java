@@ -196,7 +196,6 @@ public class DispatchServiceV3 {
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
 
-        dispatchHistoryService.saveDispatchResult(assignmentResponseDTOS);
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
                 + bestChromosome.getDepartureTimes());

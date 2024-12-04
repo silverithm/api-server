@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface DispatchHistoryRepository extends JpaRepository<DispatchHistory, Long> {
     List<DispatchHistory> findAllByOrderByCreatedAtDesc();
+    List<DispatchHistory> findAllByUsernameOrderByCreatedAtDesc(String username);
 }
