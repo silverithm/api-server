@@ -71,4 +71,7 @@ public class AppUser {
         this.refreshToken = refreshToken;
     }
 
+    public void updateCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
 }

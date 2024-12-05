@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
@@ -12,9 +13,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,6 +62,13 @@ public class UserController {
     public ResponseEntity logout(HttpServletRequest request) {
         userService.logout(request);
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("api/v1/users/company-name")
+    public ResponseEntity<String> updateCompanyName(@AuthenticationPrincipal UserDetails userDetails,
+                                                    @RequestBody UpdateCompanyNameDTO updateCompanyNameDTO) {
+        userService.updateCompanyName(updateCompanyNameDTO, userDetails.getUsername());
+        return ResponseEntity.ok().body("success");
     }
 
 

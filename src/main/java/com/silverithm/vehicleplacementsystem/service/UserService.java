@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
@@ -201,6 +202,13 @@ public class UserService {
         findUser.setPassword(encodedPassword);
 
         userRepository.save(findUser);
+    }
+
+    @Transactional
+    public void updateCompanyName(UpdateCompanyNameDTO updateCompanyNameDTO, String userEmail) {
+        AppUser findUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+        findUser.updateCompanyName(updateCompanyNameDTO.companyName());
     }
 }
 
