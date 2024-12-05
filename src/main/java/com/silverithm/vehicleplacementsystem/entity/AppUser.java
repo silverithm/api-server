@@ -74,4 +74,9 @@ public class AppUser {
     public void updateCompanyName(String companyName) {
         this.companyName = companyName;
     }
+
+    public void updateCompanyAddress(Location companyLocation, String companyAddressName) {
+        this.companyAddress = companyLocation;
+        this.companyAddressName = companyAddressName;
+    }
 }

@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
@@ -68,6 +69,14 @@ public class UserController {
     public ResponseEntity<String> updateCompanyName(@AuthenticationPrincipal UserDetails userDetails,
                                                     @RequestBody UpdateCompanyNameDTO updateCompanyNameDTO) {
         userService.updateCompanyName(updateCompanyNameDTO, userDetails.getUsername());
+        return ResponseEntity.ok().body("success");
+    }
+
+    @PutMapping("api/v1/users/company-address")
+    public ResponseEntity<String> updateCompanyAddress(@AuthenticationPrincipal UserDetails userDetails,
+                                                       @RequestBody UpdateCompanyAddressDTO updateCompanyAddressDTO)
+            throws Exception {
+        userService.updateCompanyAddress(updateCompanyAddressDTO, userDetails.getUsername());
         return ResponseEntity.ok().body("success");
     }
 

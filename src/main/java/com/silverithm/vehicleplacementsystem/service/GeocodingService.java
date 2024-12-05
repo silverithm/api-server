@@ -3,11 +3,13 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Service
 public class GeocodingService {
     private String key;
@@ -16,7 +18,7 @@ public class GeocodingService {
         this.key = key;
     }
 
-    public Location getAddressCoordinates(String address)  throws Exception{
+    public Location getAddressCoordinates(String address) throws Exception {
         try {
             String baseUrl = "https://maps.googleapis.com/maps/api/geocode/json";
             String finalUrl = baseUrl + "?address=" + cleanKoreanAddress(address).replace(" ", "+") + "&key=" + key;
@@ -33,8 +35,7 @@ public class GeocodingService {
 
             return new Location(latitude, longitude);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new Exception();
+            throw new Exception("Failed to get coordinates for address: " + address);
         }
     }
 

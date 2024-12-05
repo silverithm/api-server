@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
@@ -209,6 +210,15 @@ public class UserService {
         AppUser findUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
         findUser.updateCompanyName(updateCompanyNameDTO.companyName());
+    }
+
+    @Transactional
+    public void updateCompanyAddress(UpdateCompanyAddressDTO updateCompanyAddressDTO, String userEmail)
+            throws Exception {
+        AppUser findUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+        Location companyLocation = geocodingService.getAddressCoordinates(updateCompanyAddressDTO.companyAddress());
+        findUser.updateCompanyAddress(companyLocation, updateCompanyAddressDTO.companyAddress());
     }
 }
 
