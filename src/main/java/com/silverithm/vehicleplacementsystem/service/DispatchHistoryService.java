@@ -7,6 +7,7 @@ import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDetailDTO;
 import com.silverithm.vehicleplacementsystem.entity.DispatchHistory;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.DispatchHistoryRepository;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
@@ -15,6 +16,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cglib.core.Local;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -62,12 +65,28 @@ public class DispatchHistoryService {
 
     public DispatchHistoryDetailDTO getDispatchDetail(Long historyId) throws JsonProcessingException {
         DispatchHistory history = repository.findById(historyId)
-                .orElseThrow(() -> new RuntimeException("History not found"));
+                .orElseThrow(() -> new CustomException("History not found", HttpStatus.BAD_REQUEST));
         List<AssignmentResponseDTO> assignments = objectMapper.readValue(
                 history.getDispatchResult(),
                 new TypeReference<List<AssignmentResponseDTO>>() {
                 }
         );
         return new DispatchHistoryDetailDTO(history.getId(), history.getCreatedAt(), assignments);
+    }
+
+    public ResponseEntity<Long> deleteHistory(Long id, UserDetails userDetails) {
+
+        DispatchHistory history = repository.findById(id)
+                .orElseThrow(() -> new CustomException("History not found", HttpStatus.BAD_REQUEST));
+
+        log.info("history.getUsername() : {}", history.getUsername());
+        log.info("userDetails.getUsername() : {}", userDetails.getUsername());
+
+        if (!history.getUsername().equals(userDetails.getUsername())) {
+            throw new CustomException("You are not authorized to delete this history", HttpStatus.FORBIDDEN);
+        }
+
+        repository.deleteById(id);
+        return ResponseEntity.ok().body(id);
     }
 }
