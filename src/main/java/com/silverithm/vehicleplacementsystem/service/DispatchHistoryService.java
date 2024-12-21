@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cglib.core.Local;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -45,12 +47,10 @@ public class DispatchHistoryService {
         repository.save(dispatchHistory);
     }
 
-    public List<DispatchHistoryDTO> getDispatchHistories(@AuthenticationPrincipal UserDetails userDetails) {
+    public Page<DispatchHistoryDTO> getDispatchHistories(@AuthenticationPrincipal UserDetails userDetails, Pageable pageable) {
 
-        return repository.findAllByUsernameOrderByCreatedAtDesc(userDetails.getUsername())
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        return repository.findAllByUsername(userDetails.getUsername(), pageable)
+                .map(this::convertToDTO);
     }
 
     private DispatchHistoryDTO convertToDTO(DispatchHistory dispatchHistory) {

@@ -7,8 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDetailDTO;
-import com.silverithm.vehicleplacementsystem.dto.DispatchResponseDTO;
-import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
 import com.silverithm.vehicleplacementsystem.service.DispatchHistoryService;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
@@ -26,16 +24,18 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -115,8 +115,10 @@ public class DispatchController {
 
 
     @GetMapping("/api/v1/history")
-    public List<DispatchHistoryDTO> getHistories(@AuthenticationPrincipal UserDetails userDetails) {
-        return dispatchHistoryService.getDispatchHistories(userDetails);
+    public Page<DispatchHistoryDTO> getHistories(@AuthenticationPrincipal UserDetails userDetails,
+                                                 @PageableDefault(size = 9, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return dispatchHistoryService.getDispatchHistories(userDetails,pageable);
     }
 
     @GetMapping("/api/v1/history/{id}")
