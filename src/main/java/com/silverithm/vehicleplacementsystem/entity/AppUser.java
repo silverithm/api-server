@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.entity;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -13,17 +14,19 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.util.List;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Data
 @NoArgsConstructor
 @Table(indexes = {
         @Index(name = "idx_app_user_email", columnList = "email"),
 })
+@Getter
 public class AppUser {
 
     @Id
@@ -42,6 +45,9 @@ public class AppUser {
     private String refreshToken;
     private String companyName;
     private String companyAddressName;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Subscription subscription;
 
 
     @Embedded
@@ -78,5 +84,9 @@ public class AppUser {
     public void updateCompanyAddress(Location companyLocation, String companyAddressName) {
         this.companyAddress = companyLocation;
         this.companyAddressName = companyAddressName;
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 }

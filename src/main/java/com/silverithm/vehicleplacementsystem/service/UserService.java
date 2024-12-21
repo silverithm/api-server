@@ -164,7 +164,7 @@ public class UserService {
 
         String encodedPassword = passwordEncoder.encode(temporaryPassword);
 
-        user.setPassword(encodedPassword);
+        user.updatePassword(encodedPassword);
         userRepository.save(user);
 
         return temporaryPassword;
@@ -200,7 +200,7 @@ public class UserService {
         }
 
         String encodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());
-        findUser.setPassword(encodedPassword);
+        findUser.updatePassword(encodedPassword);
 
         userRepository.save(findUser);
     }
