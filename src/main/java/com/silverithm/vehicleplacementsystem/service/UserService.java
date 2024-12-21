@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
@@ -84,10 +85,15 @@ public class UserService {
 
             findUser.update(tokenInfo.getRefreshToken());
 
+            if (findUser.getSubscription() == null) {
+                return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
+                        findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
+                        tokenInfo, new SubscriptionResponseDTO());
+            }
+
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
                     findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
-                    tokenInfo);
-
+                    tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()));
 
         } catch (AuthenticationException e) {
             throw new CustomException("Invalid username/password supplied", HttpStatus.UNPROCESSABLE_ENTITY);

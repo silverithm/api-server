@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 public enum SubscriptionBillingType {
+    FREE("FREE"),
     MONTHLY("MONTHLY"),
     YEARLY("YEARLY");
 

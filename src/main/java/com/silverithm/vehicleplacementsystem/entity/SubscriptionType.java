@@ -2,7 +2,8 @@ package com.silverithm.vehicleplacementsystem.entity;
 
 public enum SubscriptionType {
     BASIC("BASIC"),
-    ENTERPRISE("ENTERPRISE");
+    ENTERPRISE("ENTERPRISE"),
+    FREE("FREE");
 
     private final String value;
 

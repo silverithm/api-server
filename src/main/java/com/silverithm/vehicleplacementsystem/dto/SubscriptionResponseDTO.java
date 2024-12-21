@@ -18,6 +18,10 @@ public class SubscriptionResponseDTO {
     private Integer amount;
 
     public SubscriptionResponseDTO(Subscription subscription) {
+        if (subscription == null) {
+            return;
+        }
+
         this.id = subscription.getId();
         this.planName = subscription.getPlanName();
         this.billingType = subscription.getBillingType();
@@ -26,4 +30,12 @@ public class SubscriptionResponseDTO {
         this.status = subscription.getStatus();
         this.amount = subscription.getAmount();
     }
+
+    public SubscriptionResponseDTO() {
+        this.planName = SubscriptionType.FREE;
+        this.billingType = SubscriptionBillingType.FREE;
+        this.status = SubscriptionStatus.INACTIVE;
+    }
+
+
 }
