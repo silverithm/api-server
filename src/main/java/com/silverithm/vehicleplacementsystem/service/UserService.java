@@ -226,5 +226,9 @@ public class UserService {
         Location companyLocation = geocodingService.getAddressCoordinates(updateCompanyAddressDTO.companyAddress());
         findUser.updateCompanyAddress(companyLocation, updateCompanyAddressDTO.companyAddress());
     }
+
+    public Integer getDailyDispatchLimit(String username) {
+        return redisUtils.getDailyDispatchLimit(username);
+    }
 }
 

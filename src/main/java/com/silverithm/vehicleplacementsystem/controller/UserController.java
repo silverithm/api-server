@@ -102,5 +102,9 @@ public class UserController {
         return userService.refresh(req.getRemoteUser());
     }
 
+    @GetMapping("/api/v1/users/dispatch-limit")
+    public ResponseEntity<Integer> getDailyDispatchLimit(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok().body(userService.getDailyDispatchLimit(userDetails.getUsername()));
+    }
 
 }

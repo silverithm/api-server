@@ -459,7 +459,7 @@ public class DispatchService {
             return false;
         }
 
-        return redisUtils.isExceededDailyRequestLimit(user.getEmail(), MAX_DISPATCH_LIMIT);
+        return redisUtils.isExceededDailyRequestLimit(user.getEmail());
     }
 
 

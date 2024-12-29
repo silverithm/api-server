@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class RedisUtils {
+
+    private static final int MAX_DISPATCH_LIMIT = 5;
+
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisTemplate<String, Object> redisBlackListTemplate;
 
@@ -62,7 +65,7 @@ public class RedisUtils {
         log.info("Current count: {}", currentCount);
     }
 
-    public boolean isExceededDailyRequestLimit(String key, int dailyLimit) {
+    public boolean isExceededDailyRequestLimit(String key) {
         Long currentCount = incrementRequestCount(key);
         log.info("Current count: {}", currentCount);
 
@@ -70,7 +73,7 @@ public class RedisUtils {
             setExpirationToNextMidnight(key);
         }
 
-        return isLimitExceeded(currentCount, dailyLimit);
+        return isLimitExceeded(currentCount, MAX_DISPATCH_LIMIT);
     }
 
     private Long incrementRequestCount(String key) {
@@ -86,11 +89,9 @@ public class RedisUtils {
     }
 
     private long calculateSecondsUntilNextMidnight() {
-//        LocalDateTime now = LocalDateTime.now();
-//        LocalDateTime nextMidnight = now.plusDays(1).with(LocalTime.MIDNIGHT);
-//        return ChronoUnit.SECONDS.between(now, nextMidnight);
-        return 180L;
-
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime nextMidnight = now.plusDays(1).with(LocalTime.MIDNIGHT);
+        return ChronoUnit.SECONDS.between(now, nextMidnight);
     }
 
     private boolean isLimitExceeded(Long currentCount, int limit) {
@@ -98,4 +99,9 @@ public class RedisUtils {
         return currentCount > limit;
     }
 
+    public int getDailyDispatchLimit(String username) {
+        Object count = redisTemplate.opsForValue().get(username);
+        return count == null ? MAX_DISPATCH_LIMIT
+                : ((int) count) >= MAX_DISPATCH_LIMIT ? 0 : (MAX_DISPATCH_LIMIT - (int) count);
+    }
 }
