@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.dto.AssignmentResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDTO;
 import com.silverithm.vehicleplacementsystem.dto.DispatchHistoryDetailDTO;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.service.DispatchHistoryService;
 import com.silverithm.vehicleplacementsystem.service.DispatchService;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
@@ -76,31 +77,29 @@ public class DispatchController {
     @PostMapping("/api/v1/dispatch")
     public ResponseEntity<String> dispatch(@AuthenticationPrincipal UserDetails userDetails,
                                            @RequestBody RequestDispatchDTO requestDispatchDTO) {
-
+        String jobId = UUID.randomUUID().toString();
         try {
-            String jobId = UUID.randomUUID().toString();
-
-            Message message = MessageBuilder
-                    .withBody(objectMapper.writeValueAsBytes(requestDispatchDTO))
-                    .setHeader("jobId", jobId)
-                    .setHeader("username", userDetails.getUsername())
-                    .build();
-
-            rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
-
+            dispatchService.requestDispatchWithRabbitMQ(requestDispatchDTO, userDetails, jobId);
             return ResponseEntity.accepted()
                     .body(jobId);
+        } catch (CustomException e) {
+            log.info("배차 요청 실패: {}", e.getMessage());
+            sseService.notifyError(jobId);
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
+            log.info("배차 요청 실패: {}", e.getMessage());
+            dispatchService.decrementDailyRequestCount(userDetails.getUsername());
+            sseService.notifyError(jobId);
             return ResponseEntity.badRequest().body("배차 요청 실패");
         }
-
     }
 
     @RabbitListener(queues = "dispatch-response-queue")
     public void handleDispatchResponse(Message message) {
-        try {
-            String username = message.getMessageProperties().getHeaders().get("username").toString();
 
+        String username = message.getMessageProperties().getHeaders().get("username").toString();
+
+        try {
             List<AssignmentResponseDTO> result = objectMapper.readValue(message.getBody(),
                     new TypeReference<List<AssignmentResponseDTO>>() {
                     });
@@ -109,6 +108,7 @@ public class DispatchController {
         } catch (Exception e) {
             log.error("배차 응답 처리 중 오류 발생: ", e);
             String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
+            dispatchService.decrementDailyRequestCount(username);
             sseService.notifyError(jobId);
         }
     }
@@ -118,7 +118,7 @@ public class DispatchController {
     public Page<DispatchHistoryDTO> getHistories(@AuthenticationPrincipal UserDetails userDetails,
                                                  @PageableDefault(size = 9, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return dispatchHistoryService.getDispatchHistories(userDetails,pageable);
+        return dispatchHistoryService.getDispatchHistories(userDetails, pageable);
     }
 
     @GetMapping("/api/v1/history/{id}")

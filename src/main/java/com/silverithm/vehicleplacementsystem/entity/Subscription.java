@@ -81,4 +81,8 @@ public class Subscription {
     public Boolean isActivated() {
         return this.status.equals(SubscriptionStatus.ACTIVE);
     }
+
+    public boolean isFreeUser() {
+        return this.planName.equals(SubscriptionType.FREE);
+    }
 }

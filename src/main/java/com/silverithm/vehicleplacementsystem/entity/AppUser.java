@@ -89,4 +89,12 @@ public class AppUser {
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+
+    public boolean isActiveSubscription() {
+        if (this.subscription.getStatus().equals(SubscriptionStatus.ACTIVE)) {
+            return true;
+        }
+        return false;
+    }
 }

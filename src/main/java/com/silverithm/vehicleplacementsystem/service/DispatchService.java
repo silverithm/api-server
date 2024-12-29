@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
@@ -14,26 +15,33 @@ import com.silverithm.vehicleplacementsystem.dto.KakaoMapApiResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.OsrmApiResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.RequestDispatchDTO;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Chromosome;
 import com.silverithm.vehicleplacementsystem.entity.DispatchType;
 import com.silverithm.vehicleplacementsystem.entity.LinkDistance;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.LinkDistanceRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.endpoint.web.Link;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -42,10 +50,13 @@ import org.springframework.web.client.RestTemplate;
 @EnableCaching
 public class DispatchService {
 
+    private static final int MAX_DISPATCH_LIMIT = 5;
+    private static final String RATE_LIMIT_KEY_PREFIX = "rate_limit:";
 
     private final LinkDistanceRepository linkDistanceRepository;
     private final SSEService sseService;
     private final DispatchHistoryService dispatchHistoryService;
+    private final UserRepository userRepository;
 
     private String key;
     private String kakaoKey;
@@ -53,16 +64,29 @@ public class DispatchService {
     @Value("${osrm.server.url}")
     private String osrmServerUrl;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Qualifier("dispatchQueue")
+    @Autowired
+    private Queue dispatchQueue;
+    @Autowired
+    private RedisUtils redisUtils;
 
     public DispatchService(@Value("${tmap.key}") String key, @Value("${kakao.key}") String kakaoKey,
                            LinkDistanceRepository linkDistanceRepository,
-                           SSEService sseService, DispatchHistoryService dispatchHistoryService
+                           SSEService sseService, DispatchHistoryService dispatchHistoryService,
+                           UserRepository userRepository
     ) {
         this.linkDistanceRepository = linkDistanceRepository;
         this.sseService = sseService;
         this.key = key;
         this.kakaoKey = kakaoKey;
         this.dispatchHistoryService = dispatchHistoryService;
+        this.userRepository = userRepository;
     }
 
     public KakaoMapApiResponseDTO getDistanceTotalTimeWithTmapApi(Location startAddress,
@@ -202,7 +226,6 @@ public class DispatchService {
 
         List<AssignmentResponseDTO> assignmentResponseDTOS = createResult(
                 employees, elderlys, bestChromosome, departureTimes, requestDispatchDTO.dispatchType());
-
 
         log.info("done : " + bestChromosome.getGenes().toString() + " " + bestChromosome.getFitness() + " "
                 + bestChromosome.getDepartureTimes());
@@ -400,6 +423,49 @@ public class DispatchService {
     }
 
 
+    public String requestDispatchWithRabbitMQ(RequestDispatchDTO requestDispatchDTO, UserDetails userDetails,
+                                              String jobId)
+            throws JsonProcessingException, CustomException {
+
+        if (isLimitExceeded(userDetails)) {
+            log.info("Daily request limit exceeded for user: {}", userDetails.getUsername());
+            throw new CustomException("배차 요청이 일일 제한을 초과했습니다.", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+
+        return sendMessage(requestDispatchDTO, userDetails, jobId);
+    }
+
+    private String sendMessage(RequestDispatchDTO requestDispatchDTO, UserDetails userDetails, String jobId)
+            throws JsonProcessingException {
+
+
+        Message message = MessageBuilder
+                .withBody(objectMapper.writeValueAsBytes(requestDispatchDTO))
+                .setHeader("jobId", jobId)
+                .setHeader("username", userDetails.getUsername())
+                .build();
+
+        rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
+
+        return jobId;
+    }
+
+    public Boolean isLimitExceeded(UserDetails userDetails) {
+
+        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (user.isActiveSubscription()) {
+            return false;
+        }
+
+        return redisUtils.isExceededDailyRequestLimit(user.getEmail(), MAX_DISPATCH_LIMIT);
+    }
+
+
+    public void decrementDailyRequestCount(String username) {
+        redisUtils.decrementDailyRequestCount(username);
+    }
 }
 
 
