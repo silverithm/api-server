@@ -86,14 +86,16 @@ public class RedisUtils {
     }
 
     private long calculateSecondsUntilNextMidnight() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime nextMidnight = now.plusDays(1).with(LocalTime.MIDNIGHT);
-        return ChronoUnit.SECONDS.between(now, nextMidnight);
+//        LocalDateTime now = LocalDateTime.now();
+//        LocalDateTime nextMidnight = now.plusDays(1).with(LocalTime.MIDNIGHT);
+//        return ChronoUnit.SECONDS.between(now, nextMidnight);
+        return 180L;
+
     }
 
     private boolean isLimitExceeded(Long currentCount, int limit) {
         log.info("isLimitExceeded: currentCount={}, limit={}, boolean={}", currentCount, limit, currentCount >= limit);
-        return currentCount >= limit;
+        return currentCount > limit;
     }
 
 }
