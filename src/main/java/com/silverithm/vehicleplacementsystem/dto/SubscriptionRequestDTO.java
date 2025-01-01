@@ -11,4 +11,6 @@ public class SubscriptionRequestDTO {
     private SubscriptionType planName;
     private SubscriptionBillingType billingType;
     private Integer amount;
+    private String customerKey;
+    private String authKey;
 }
