@@ -1,6 +1,8 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.CascadeType;
@@ -46,6 +48,10 @@ public class AppUser {
     private String companyName;
     private String companyAddressName;
 
+    @Column(unique = true)
+    private String customerKey;
+
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Subscription subscription;
 
@@ -58,7 +64,7 @@ public class AppUser {
     private Location companyAddress;
 
     public AppUser(String name, String email, String encode, UserRole role, String refreshToken,
-                   String companyName, Location companyLocation, String companyAddressName) {
+                   String companyName, Location companyLocation, String companyAddressName, String customerKey) {
         this.username = name;
         this.email = email;
         this.password = encode;
@@ -67,6 +73,22 @@ public class AppUser {
         this.companyName = companyName;
         this.companyAddress = companyLocation;
         this.companyAddressName = companyAddressName;
+        this.customerKey = customerKey;
+    }
+
+    public static AppUser of(UserDataDTO userDataDTO, String encodedPassowrd, TokenInfo tokenInfo,
+                             Location companyLocation, String customerKey) {
+        return new AppUser(
+                userDataDTO.getName(),
+                userDataDTO.getEmail(),
+                encodedPassowrd,
+                userDataDTO.getRole(),
+                tokenInfo.getRefreshToken(),
+                userDataDTO.getCompanyName(),
+                companyLocation,
+                userDataDTO.getCompanyAddress(),
+                customerKey
+        );
     }
 
     public void update(String refreshToken) {

@@ -22,6 +22,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Key;
 import java.util.Collections;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -100,25 +101,40 @@ public class UserService {
         }
     }
 
+    @Transactional
     public TokenInfo signup(UserDataDTO userDataDTO) throws Exception {
+        validateEmailNotExists(userDataDTO.getEmail());
 
-        TokenInfo tokenInfo = jwtTokenProvider.generateToken(userDataDTO.getName(),
-                Collections.singleton(userDataDTO.getRole()));
+        TokenInfo tokenInfo = generateTokenInfo(userDataDTO);
+        Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
+        String customerKey = generateUniqueCustomerKey();
 
-        if (!userRepository.existsByEmail(userDataDTO.getEmail())) {
-            Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
+        userRepository.save(
+                AppUser.of(userDataDTO, passwordEncoder.encode(userDataDTO.getPassword()), tokenInfo, companyLocation,
+                        customerKey));
 
-            AppUser user = new AppUser(userDataDTO.getName(), userDataDTO.getEmail(),
-                    passwordEncoder.encode(userDataDTO.getPassword()), userDataDTO.getRole(),
-                    tokenInfo.getRefreshToken(),
-                    userDataDTO.getCompanyName(), companyLocation, userDataDTO.getCompanyAddress());
+        return tokenInfo;
+    }
 
-            userRepository.save(user);
-
-            return tokenInfo;
-        } else {
+    private void validateEmailNotExists(String email) {
+        if (userRepository.existsByEmail(email)) {
             throw new CustomException("Useremail is already in use", HttpStatus.UNPROCESSABLE_ENTITY);
         }
+    }
+
+    private TokenInfo generateTokenInfo(UserDataDTO userDataDTO) {
+        return jwtTokenProvider.generateToken(
+                userDataDTO.getName(),
+                Collections.singleton(userDataDTO.getRole())
+        );
+    }
+
+    private String generateUniqueCustomerKey() {
+        String customerKey;
+        do {
+            customerKey = UUID.randomUUID().toString();
+        } while (userRepository.existsByCustomerKey(customerKey));
+        return customerKey;
     }
 
     @Transactional
