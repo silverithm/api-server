@@ -89,12 +89,12 @@ public class UserService {
             if (findUser.getSubscription() == null) {
                 return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
                         findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
-                        tokenInfo, new SubscriptionResponseDTO());
+                        tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey());
             }
 
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
                     findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
-                    tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()));
+                    tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
 
         } catch (AuthenticationException e) {
             throw new CustomException("Invalid username/password supplied", HttpStatus.UNPROCESSABLE_ENTITY);
