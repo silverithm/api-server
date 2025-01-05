@@ -54,14 +54,15 @@ public class SubscriptionService {
                         () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
 
         BillingResponse billingResponse = requestBillingKey(requestDto);
-        requestPayment(requestDto, billingResponse);
+        PaymentResponse paymentResponse = requestPayment(requestDto, billingResponse);
+
 
         return Optional.ofNullable(user.getSubscription())
                 .map(subscription -> updateSubscription(subscription, requestDto))
                 .orElseGet(() -> createNewSubscription(requestDto, user));
     }
-
     public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, BillingResponse billingResponse) {
+
         try {
             // Base64 인코딩
             String encodedAuth = Base64.getEncoder()
