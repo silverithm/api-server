@@ -46,7 +46,7 @@ public class SubscriptionService {
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
 
-    @Transactional
+    @Transactional(timeout = 15)
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
