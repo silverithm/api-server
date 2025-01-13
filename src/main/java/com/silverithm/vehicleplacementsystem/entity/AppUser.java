@@ -51,9 +51,10 @@ public class AppUser {
     @Column(unique = true)
     private String customerKey;
 
-
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Subscription subscription;
+
+    private String billingKey;
 
 
     @Embedded
@@ -119,4 +120,13 @@ public class AppUser {
         }
         return false;
     }
+
+    public void updateBillingKey(String billingKey) {
+        this.billingKey = billingKey;
+    }
+
+    public boolean isEmptyBillingKey() {
+        return this.billingKey == null || this.billingKey.isEmpty();
+    }
+
 }

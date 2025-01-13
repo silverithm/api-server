@@ -53,15 +53,18 @@ public class SubscriptionService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
 
-        BillingResponse billingResponse = requestBillingKey(requestDto);
-        PaymentResponse paymentResponse = requestPayment(requestDto, billingResponse);
+        if (user.isEmptyBillingKey()) {
+            requestBillingKey(requestDto);
+        }
 
+        requestPayment(requestDto, user.getBillingKey());
 
         return Optional.ofNullable(user.getSubscription())
                 .map(subscription -> updateSubscription(subscription, requestDto))
                 .orElseGet(() -> createNewSubscription(requestDto, user));
     }
-    public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, BillingResponse billingResponse) {
+
+    public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, String billingKey) {
 
         try {
             // Base64 인코딩
@@ -88,7 +91,7 @@ public class SubscriptionService {
 
             // 토스 API 호출
             ResponseEntity<PaymentResponse> response = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/billing/" + billingResponse.billingKey(),
+                    "https://api.tosspayments.com/v1/billing/" + billingKey,
                     HttpMethod.POST,
                     entity,
                     PaymentResponse.class
