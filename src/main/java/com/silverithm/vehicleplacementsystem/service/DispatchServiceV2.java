@@ -232,7 +232,7 @@ public class DispatchServiceV2 {
                     new AssignmentResponseDTO(dispatchType, employees.get(i).id(), employees.get(i).homeAddress(),
                             employees.get(i).workplace(),
                             employees.get(i).name(),
-                            (int) (departureTimes[i] - 0), assignmentElders));
+                            (int) (departureTimes[i] - 0), assignmentElders, employees.get(i).isDriver()));
         }
         return assignmentResponseDTOS;
     }
