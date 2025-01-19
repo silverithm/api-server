@@ -427,10 +427,10 @@ public class DispatchService {
                                               String jobId)
             throws JsonProcessingException, CustomException {
 
-        if (isLimitExceeded(userDetails)) {
-            log.info("Daily request limit exceeded for user: {}", userDetails.getUsername());
-            throw new CustomException("배차 요청이 일일 제한을 초과했습니다.", HttpStatus.SERVICE_UNAVAILABLE);
-        }
+//        if (isLimitExceeded(userDetails)) {
+//            log.info("Daily request limit exceeded for user: {}", userDetails.getUsername());
+//            throw new CustomException("배차 요청이 일일 제한을 초과했습니다.", HttpStatus.SERVICE_UNAVAILABLE);
+//        }
 
         return sendMessage(requestDispatchDTO, userDetails, jobId);
     }
