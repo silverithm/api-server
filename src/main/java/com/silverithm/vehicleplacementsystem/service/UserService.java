@@ -249,10 +249,12 @@ public class UserService {
         return redisUtils.getDailyDispatchLimit(username);
     }
 
+    @Transactional
     public List<AppUser> updateCustomerKey() {
         List<AppUser> users = userRepository.findAll();
         users.forEach(user -> {
             String customerKey = generateUniqueCustomerKey();
+            log.info(customerKey);
             user.updateCustomerKey(customerKey);
         });
         return users;
