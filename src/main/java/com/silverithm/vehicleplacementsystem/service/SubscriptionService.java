@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -37,6 +38,7 @@ import org.springframework.web.client.RestTemplate;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class SubscriptionService {
 
     @Value("${toss.secret-key}")
@@ -53,9 +55,9 @@ public class SubscriptionService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
 
-        if (user.isEmptyBillingKey()) {
-            user.updateBillingKey(requestBillingKey(requestDto).billingKey());
-        }
+        user.updateBillingKey(requestBillingKey(requestDto).billingKey());
+
+        log.info("Billing Key: " + user.getBillingKey());
 
         requestPayment(requestDto, user.getBillingKey());
 
@@ -135,6 +137,9 @@ public class SubscriptionService {
                     entity,
                     BillingResponse.class
             );
+
+            log.info("빌링키 발급 결과" + response.getBody().billingKey());
+            log.info("빌링키 발급 결과" + response.getBody().toString());
 
             return response.getBody();
 

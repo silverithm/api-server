@@ -129,4 +129,7 @@ public class AppUser {
         return this.billingKey == null || this.billingKey.isEmpty();
     }
 
+    public void updateCustomerKey(String customerKey) {
+        this.customerKey = customerKey;
+    }
 }

@@ -22,8 +22,10 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Key;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -245,6 +247,15 @@ public class UserService {
 
     public Integer getDailyDispatchLimit(String username) {
         return redisUtils.getDailyDispatchLimit(username);
+    }
+
+    public List<AppUser> updateCustomerKey() {
+        List<AppUser> users = userRepository.findAll();
+        users.forEach(user -> {
+            String customerKey = generateUniqueCustomerKey();
+            user.updateCustomerKey(customerKey);
+        });
+        return users;
     }
 }
 

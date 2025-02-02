@@ -81,6 +81,13 @@ public class UserController {
     }
 
 
+    @PutMapping("api/v1/users/customer-key")
+    public ResponseEntity<String> updateCustomerKey() {
+        userService.updateCustomerKey();
+        return ResponseEntity.ok().body("success");
+    }
+
+
     //    @DeleteMapping(value = "/{username}")
 //    public String delete(@PathVariable String username) {
 //        userService.delete(username);
