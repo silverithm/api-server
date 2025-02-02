@@ -61,7 +61,7 @@ public class SubscriptionService {
 
         return Optional.ofNullable(user.getSubscription())
                 .map(subscription -> updateSubscription(subscription, requestDto))
-                .orElseGet(() -> createNewSubscription(requestDto, user));
+                .orElseGet(() -> createSubscription(requestDto, user));
     }
 
     public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, String billingKey) {
@@ -150,7 +150,7 @@ public class SubscriptionService {
         return new SubscriptionResponseDTO(subscription);
     }
 
-    private SubscriptionResponseDTO createNewSubscription(SubscriptionRequestDTO requestDto, AppUser user) {
+    private SubscriptionResponseDTO createSubscription(SubscriptionRequestDTO requestDto, AppUser user) {
         LocalDateTime startDate = LocalDateTime.now();
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
 
