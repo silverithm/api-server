@@ -17,11 +17,14 @@ public class RedisUtils {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisTemplate<String, Object> redisBlackListTemplate;
+    private final RedisTemplate<String, Integer> integerRedisTemplate;
 
     public RedisUtils(RedisTemplate<String, Object> redisTemplate,
-                      RedisTemplate<String, Object> redisBlackListTemplate) {
+                      RedisTemplate<String, Object> redisBlackListTemplate,
+                      RedisTemplate<String, Integer> integerRedisTemplate) {
         this.redisTemplate = redisTemplate;
         this.redisBlackListTemplate = redisBlackListTemplate;
+        this.integerRedisTemplate = integerRedisTemplate;
     }
 
     public void set(String key, String userEmail, int minutes) {
@@ -61,8 +64,14 @@ public class RedisUtils {
     }
 
     public void decrementDailyRequestCount(String key) {
-        Long currentCount = redisTemplate.opsForValue().decrement(key, 1);
-        log.info("Current count: {}", currentCount);
+        if (integerRedisTemplate.opsForValue().get(key) > 0) {
+            Long currentCount = integerRedisTemplate.opsForValue().decrement(key, 1);
+            log.info(key + ":Current count: {}", currentCount);
+        }
+    }
+
+    private Long incrementRequestCount(String key) {
+        return integerRedisTemplate.opsForValue().increment(key, 1);
     }
 
     public boolean isExceededDailyRequestLimit(String key) {
@@ -76,9 +85,6 @@ public class RedisUtils {
         return isLimitExceeded(currentCount, MAX_DISPATCH_LIMIT);
     }
 
-    private Long incrementRequestCount(String key) {
-        return redisTemplate.opsForValue().increment(key, 1);
-    }
 
     private boolean isFirstRequest(Long count) {
         return count == 1;
