@@ -155,7 +155,29 @@ public class SubscriptionService {
         return new SubscriptionResponseDTO(subscription);
     }
 
-    private SubscriptionResponseDTO createSubscription(SubscriptionRequestDTO requestDto, AppUser user) {
+    public SubscriptionResponseDTO createSubscription(SubscriptionRequestDTO requestDto, AppUser user) {
+        LocalDateTime startDate = LocalDateTime.now();
+        LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
+
+        Subscription subscription = Subscription.builder()
+                .planName(requestDto.getPlanName())
+                .billingType(requestDto.getBillingType())
+                .startDate(startDate)
+                .endDate(endDate)
+                .status(SubscriptionStatus.ACTIVE)
+                .amount(requestDto.getAmount())
+                .user(user)
+                .build();
+
+        return new SubscriptionResponseDTO(subscriptionRepository.save(subscription));
+    }
+
+    public SubscriptionResponseDTO createSubscriptionToUser(SubscriptionRequestDTO requestDto,
+                                                            UserDetails userDetails) {
+        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(
+                        () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
+
         LocalDateTime startDate = LocalDateTime.now();
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
 

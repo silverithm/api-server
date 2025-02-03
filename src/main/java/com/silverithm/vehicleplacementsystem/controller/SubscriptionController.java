@@ -29,6 +29,14 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.createOrUpdateSubscription(userDetails, requestDto));
     }
 
+    @PostMapping
+    public ResponseEntity<SubscriptionResponseDTO> createSubscription(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody SubscriptionRequestDTO requestDto) {
+        return ResponseEntity.ok(subscriptionService.createSubscriptionToUser(requestDto, userDetails));
+    }
+
+
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionResponseDTO> getSubscription(@PathVariable Long id) {
         return ResponseEntity.ok(subscriptionService.getSubscription(id));
