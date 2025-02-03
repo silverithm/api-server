@@ -53,10 +53,6 @@ public class EmployeeService {
             throw new Exception();
         }
 
-        Subscription subscription = subscriptionRepository.findByUserId(userId).orElseThrow();
-
-        validateFreeUserElderlySize(userId, subscription);
-
         AppUser user = userRepository.findById(userId).orElseThrow();
 
         Employee employee = new Employee(addEmployeeRequest.workPlace(), addEmployeeRequest.homeAddress(),
@@ -96,16 +92,6 @@ public class EmployeeService {
         employee.update(employeeUpdateRequestDTO.homeAddress(), employeeUpdateRequestDTO.workPlace(),
                 employeeUpdateRequestDTO.name(), updatedHomeAddress,
                 updatedWorkPlace, employeeUpdateRequestDTO.maxCapacity(), employeeUpdateRequestDTO.isDriver());
-    }
-
-
-    private void validateFreeUserElderlySize(Long userId, Subscription subscription) {
-        if (subscription.isFreeUser()) {
-            List<Elderly> elderlys = elderRepository.findByUserId(userId);
-            if (elderlys.size() >= 30) {
-                throw new CustomException("Free user can only add 30 elderly", HttpStatus.BAD_REQUEST);
-            }
-        }
     }
 
 

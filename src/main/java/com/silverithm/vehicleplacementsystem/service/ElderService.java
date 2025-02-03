@@ -52,22 +52,9 @@ public class ElderService {
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
-        Subscription subscription = subscriptionRepository.findByUserId(userId).orElseThrow();
-
-        validateFreeUserElderlySize(userId, subscription);
-
         Elderly elderly = new Elderly(addElderRequest.name(), addElderRequest.homeAddress(), homeAddress,
                 addElderRequest.requiredFrontSeat(), user);
         elderRepository.save(elderly);
-    }
-
-    private void validateFreeUserElderlySize(Long userId, Subscription subscription) {
-        if (subscription.isFreeUser()) {
-            List<Elderly> elderlys = elderRepository.findByUserId(userId);
-            if (elderlys.size() >= 30) {
-                throw new CustomException("Free user can only add 30 elderly", HttpStatus.BAD_REQUEST);
-            }
-        }
     }
 
 
