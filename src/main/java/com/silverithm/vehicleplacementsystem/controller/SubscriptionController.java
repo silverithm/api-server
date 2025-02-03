@@ -29,11 +29,10 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.createOrUpdateSubscription(userDetails, requestDto));
     }
 
-    @PostMapping
-    public ResponseEntity<SubscriptionResponseDTO> createSubscription(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody SubscriptionRequestDTO requestDto) {
-        return ResponseEntity.ok(subscriptionService.createSubscriptionToUser(requestDto, userDetails));
+    @PostMapping("/admin/{userId}")
+    public ResponseEntity<SubscriptionResponseDTO> createSubscriptionToUser(
+            @RequestBody SubscriptionRequestDTO requestDto, @PathVariable Long userId) {
+        return ResponseEntity.ok(subscriptionService.createSubscriptionToUser(requestDto, userId));
     }
 
 

@@ -172,11 +172,13 @@ public class SubscriptionService {
         return new SubscriptionResponseDTO(subscriptionRepository.save(subscription));
     }
 
+    @Transactional
     public SubscriptionResponseDTO createSubscriptionToUser(SubscriptionRequestDTO requestDto,
-                                                            UserDetails userDetails) {
-        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                                                            Long userId) {
+
+        AppUser user = userRepository.findById(userId)
                 .orElseThrow(
-                        () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
+                        () -> new IllegalArgumentException("User not found with userId: " + userId));
 
         LocalDateTime startDate = LocalDateTime.now();
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());

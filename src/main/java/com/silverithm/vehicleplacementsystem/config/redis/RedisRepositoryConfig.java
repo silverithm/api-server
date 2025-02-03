@@ -71,6 +71,20 @@ public class RedisRepositoryConfig {
     }
 
     @Bean
+    public RedisTemplate<String, Integer> integerRedisTemplate() {  // 구체적인 타입 지정
+        RedisTemplate<String, Integer> integerRedisTemplate = new RedisTemplate<>();
+        integerRedisTemplate.setConnectionFactory(redisConnectionFactory());
+
+        // 직렬화 설정 추가
+        integerRedisTemplate.setKeySerializer(new StringRedisSerializer());
+        integerRedisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        integerRedisTemplate.setHashKeySerializer(new StringRedisSerializer());
+        integerRedisTemplate.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+        return integerRedisTemplate;
+    }
+
+    @Bean
     @Primary
     public CacheManager contentCacheManager() {
         RedisCacheConfiguration configuration = RedisCacheConfiguration.defaultCacheConfig()
