@@ -9,7 +9,10 @@ import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
+import com.silverithm.vehicleplacementsystem.entity.Subscription;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
+import com.silverithm.vehicleplacementsystem.repository.SubscriptionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.io.IOException;
 import java.util.Comparator;
@@ -22,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -39,6 +43,8 @@ public class ElderService {
 
     @Autowired
     private GeocodingService geocodingService;
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
 
     public void addElder(Long userId, AddElderRequest addElderRequest) throws Exception {
 
@@ -46,9 +52,22 @@ public class ElderService {
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
+        Subscription subscription = subscriptionRepository.findByUserId(userId).orElseThrow();
+
+        validateFreeUserElderlySize(userId, subscription);
+
         Elderly elderly = new Elderly(addElderRequest.name(), addElderRequest.homeAddress(), homeAddress,
                 addElderRequest.requiredFrontSeat(), user);
         elderRepository.save(elderly);
+    }
+
+    private void validateFreeUserElderlySize(Long userId, Subscription subscription) {
+        if (subscription.isFreeUser()) {
+            List<Elderly> elderlys = elderRepository.findByUserId(userId);
+            if (elderlys.size() >= 30) {
+                throw new CustomException("Free user can only add 30 elderly", HttpStatus.BAD_REQUEST);
+            }
+        }
     }
 
 

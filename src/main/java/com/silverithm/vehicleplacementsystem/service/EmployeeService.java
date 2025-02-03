@@ -7,8 +7,11 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
+import com.silverithm.vehicleplacementsystem.entity.Subscription;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
+import com.silverithm.vehicleplacementsystem.repository.SubscriptionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.util.Comparator;
 import java.util.List;
@@ -19,6 +22,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,9 @@ public class EmployeeService {
     @Autowired
     private GeocodingService geocodingService;
 
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
+
     public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) throws Exception {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addEmployeeRequest.homeAddress());
@@ -46,8 +53,9 @@ public class EmployeeService {
             throw new Exception();
         }
 
-        System.out.println(homeAddress + " " + addEmployeeRequest.homeAddress());
-        System.out.println(workPlace + " " + addEmployeeRequest.workPlace());
+        Subscription subscription = subscriptionRepository.findByUserId(userId).orElseThrow();
+
+        validateFreeUserElderlySize(userId, subscription);
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
@@ -78,9 +86,6 @@ public class EmployeeService {
     }
 
 
-
-
-
     @Transactional
     public void updateEmployee(Long id, EmployeeUpdateRequestDTO employeeUpdateRequestDTO) throws Exception {
         Location updatedHomeAddress = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.homeAddress());
@@ -92,5 +97,16 @@ public class EmployeeService {
                 employeeUpdateRequestDTO.name(), updatedHomeAddress,
                 updatedWorkPlace, employeeUpdateRequestDTO.maxCapacity(), employeeUpdateRequestDTO.isDriver());
     }
+
+
+    private void validateFreeUserElderlySize(Long userId, Subscription subscription) {
+        if (subscription.isFreeUser()) {
+            List<Elderly> elderlys = elderRepository.findByUserId(userId);
+            if (elderlys.size() >= 30) {
+                throw new CustomException("Free user can only add 30 elderly", HttpStatus.BAD_REQUEST);
+            }
+        }
+    }
+
 
 }
