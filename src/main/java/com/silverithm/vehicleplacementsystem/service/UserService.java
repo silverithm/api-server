@@ -6,8 +6,11 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
+import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
@@ -19,6 +22,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.security.auth.message.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Key;
 import java.util.Collections;
@@ -29,6 +33,7 @@ import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.hibernate5.SpringSessionContext;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -130,6 +135,7 @@ public class UserService {
                 Collections.singleton(userDataDTO.getRole())
         );
     }
+
 
     private String generateUniqueCustomerKey() {
         String customerKey;
@@ -259,5 +265,20 @@ public class UserService {
         });
         return users;
     }
+
+    @Transactional(readOnly = true)
+    public UserResponseDTO.TokenInfo refreshToken(TokenRefreshRequest tokenRefreshRequest) {
+
+        AppUser user = userRepository.findByRefreshToken(tokenRefreshRequest.refreshToken())
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (!jwtTokenProvider.validateToken(user.getRefreshToken())) {
+            throw new CustomException("Invalid Refresh Token", HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        return jwtTokenProvider.generateToken(user.getRefreshToken(), Collections.singleton(user.getUserRole()));
+    }
+
+
 }
 

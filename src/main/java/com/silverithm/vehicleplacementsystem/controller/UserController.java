@@ -3,9 +3,12 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
+import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.service.UserService;
@@ -23,6 +26,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+
 
 @Slf4j
 @RestController
@@ -88,25 +93,10 @@ public class UserController {
     }
 
 
-    //    @DeleteMapping(value = "/{username}")
-//    public String delete(@PathVariable String username) {
-//        userService.delete(username);
-//        return username;
-//    }
-//
-//    @GetMapping(value = "/{username}")
-//    public UserResponseDTO search(@PathVariable String username) {
-//        return new UserResponseDTO(username);
-//    }
-//
-//    @GetMapping(value = "/me")
-//    public UserResponseDTO whoami(HttpServletRequest req) {
-//        return new UserResponseDTO(req.getRemoteUser());
-//    }
-//
-    @GetMapping("/refresh")
-    public String refresh(HttpServletRequest req) {
-        return userService.refresh(req.getRemoteUser());
+    @PostMapping("/refresh-token")
+    public ResponseEntity<UserResponseDTO.TokenInfo> refreshToken(
+            @Valid @RequestBody final TokenRefreshRequest tokenRefreshRequest) {
+        return ResponseEntity.ok().body(userService.refreshToken(tokenRefreshRequest));
     }
 
     @GetMapping("/api/v1/users/dispatch-limit")
