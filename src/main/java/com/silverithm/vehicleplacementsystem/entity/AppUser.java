@@ -115,7 +115,7 @@ public class AppUser {
 
 
     public boolean isActiveSubscription() {
-        if (this.subscription.getStatus().equals(SubscriptionStatus.ACTIVE)) {
+        if (this.subscription != null && this.subscription.getStatus().equals(SubscriptionStatus.ACTIVE)) {
             return true;
         }
         return false;

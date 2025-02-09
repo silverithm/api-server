@@ -452,8 +452,6 @@ public class DispatchService {
 
     public Boolean isLimitExceeded(UserDetails userDetails) {
 
-        log.info("isLimitExceeded : " + userDetails.getUsername());
-
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
 
