@@ -26,6 +26,7 @@ import jakarta.security.auth.message.AuthException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Key;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -266,8 +267,10 @@ public class UserService {
         return users;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public UserResponseDTO.TokenInfo refreshToken(TokenRefreshRequest tokenRefreshRequest) {
+
+        log.info("refresh Toekn !!! : " + new Date());
 
         AppUser user = userRepository.findByRefreshToken(tokenRefreshRequest.refreshToken())
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
@@ -276,7 +279,12 @@ public class UserService {
             throw new CustomException("Invalid Refresh Token", HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
-        return jwtTokenProvider.generateToken(user.getRefreshToken(), Collections.singleton(user.getUserRole()));
+        UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(user.getEmail(),
+                Collections.singleton(user.getUserRole()));
+
+        user.updateRefreshToken(tokenInfo.getRefreshToken());
+
+        return tokenInfo;
     }
 
 

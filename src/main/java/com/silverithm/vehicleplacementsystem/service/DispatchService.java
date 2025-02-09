@@ -33,6 +33,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -438,7 +439,6 @@ public class DispatchService {
     private String sendMessage(RequestDispatchDTO requestDispatchDTO, UserDetails userDetails, String jobId)
             throws JsonProcessingException {
 
-
         Message message = MessageBuilder
                 .withBody(objectMapper.writeValueAsBytes(requestDispatchDTO))
                 .setHeader("jobId", jobId)
@@ -451,6 +451,8 @@ public class DispatchService {
     }
 
     public Boolean isLimitExceeded(UserDetails userDetails) {
+
+        log.info("isLimitExceeded : " + userDetails.getUsername());
 
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));

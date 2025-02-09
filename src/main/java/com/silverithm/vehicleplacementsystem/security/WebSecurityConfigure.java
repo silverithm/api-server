@@ -111,6 +111,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/employee/uploadElderlyExcel").permitAll()
                                 .requestMatchers("/api/v1/employee/uploadEmployeeExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
+                                .requestMatchers("api/v1/refresh-token").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
                         UsernamePasswordAuthenticationFilter.class);

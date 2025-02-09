@@ -93,7 +93,7 @@ public class UserController {
     }
 
 
-    @PostMapping("/refresh-token")
+    @PostMapping("api/v1/refresh-token")
     public ResponseEntity<UserResponseDTO.TokenInfo> refreshToken(
             @Valid @RequestBody final TokenRefreshRequest tokenRefreshRequest) {
         return ResponseEntity.ok().body(userService.refreshToken(tokenRefreshRequest));
