@@ -26,11 +26,14 @@ public class SubscriptionScheduler {
         this.userRepository = userRepository;
     }
 
+
+    //    @Scheduled(cron = "*/10 * * * * *")
     @Scheduled(cron = "0 0 6 * * *")
     public void processScheduledPayments() {
-
         LocalDateTime currentDate = LocalDateTime.now();
+        log.info("🔄 스케줄러 실행됨 - 현재 시간: {}", currentDate);  // 스케줄러 실행 여부 확인
         List<AppUser> users = userRepository.findUsersRequiringSubscriptionBilling(currentDate);
+        log.info("🔍 결제 대상 유저 수: {}", users.size());  // 결제 대상 유저 확인
 
         for (AppUser user : users) {
 
@@ -47,6 +50,8 @@ public class SubscriptionScheduler {
             );
 
             PaymentResponse paymentResponse = subscriptionService.requestPayment(requestDto, user.getBillingKey());
+//            log.info("스케줄링 결제 성공: " + user.getUsername() + "," + currentDate);
+//            log.info(requestDto.toString());
 
             if (paymentResponse.status().equals("DONE")) {
                 log.info("스케줄링 결제 성공: " + user.getUsername() + "," + currentDate);
