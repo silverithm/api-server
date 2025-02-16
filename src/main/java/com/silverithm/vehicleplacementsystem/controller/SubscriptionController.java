@@ -51,4 +51,6 @@ public class SubscriptionController {
     public ResponseEntity<List<SubscriptionResponseDTO>> getActiveSubscriptions() {
         return ResponseEntity.ok(subscriptionService.getActiveSubscriptions());
     }
+
+
 }

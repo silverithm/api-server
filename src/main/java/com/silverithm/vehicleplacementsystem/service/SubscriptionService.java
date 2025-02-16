@@ -55,7 +55,9 @@ public class SubscriptionService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
 
-        user.updateBillingKey(requestBillingKey(requestDto).billingKey());
+        if (user.getBillingKey() == null) {
+            user.updateBillingKey(requestBillingKey(requestDto).billingKey());
+        }
 
         log.info("Billing Key: " + user.getBillingKey());
 
