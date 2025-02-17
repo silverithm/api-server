@@ -57,7 +57,8 @@ public class SubscriptionService {
                                 HttpStatus.NOT_FOUND);
 
         if (user.getBillingKey() == null) {
-            user.updateBillingKey(requestBillingKey(requestDto).billingKey());
+            BillingResponse billingResponse = requestBillingKey(requestDto);
+            user.updateBillingKey(billingResponse.billingKey());
         }
 
         requestPayment(requestDto, user.getBillingKey());
