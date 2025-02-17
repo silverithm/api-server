@@ -54,7 +54,7 @@ public class SubscriptionService {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(
                         () -> new CustomException("User not found with email: " + userDetails.getUsername(),
-                                HttpStatus.NOT_FOUND);
+                                HttpStatus.NOT_FOUND));
 
         if (user.getBillingKey() == null) {
             BillingResponse billingResponse = requestBillingKey(requestDto);
