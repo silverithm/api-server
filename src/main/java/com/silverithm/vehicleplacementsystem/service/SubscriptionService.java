@@ -48,24 +48,36 @@ public class SubscriptionService {
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
 
-    @Transactional(timeout = 15)
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
-        AppUser user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(
-                        () -> new CustomException("User not found with email: " + userDetails.getUsername(),
-                                HttpStatus.NOT_FOUND));
+        AppUser user = findUserByEmail(userDetails.getUsername());
+        ensureBillingKey(user, requestDto);
+        processPayment(requestDto, user.getBillingKey());
+        return processSubscription(user, requestDto);
+    }
 
+    private AppUser findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException("User not found with email: " + email, HttpStatus.NOT_FOUND));
+    }
+
+    private void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
         if (user.getBillingKey() == null) {
             BillingResponse billingResponse = requestBillingKey(requestDto);
             user.updateBillingKey(billingResponse.billingKey());
         }
+    }
 
-        requestPayment(requestDto, user.getBillingKey());
+    private void processPayment(SubscriptionRequestDTO requestDto, String billingKey) {
+        requestPayment(requestDto, billingKey);
+    }
 
-        return Optional.ofNullable(user.getSubscription())
-                .map(subscription -> updateSubscription(subscription, requestDto))
-                .orElseGet(() -> createSubscription(requestDto, user));
+    @Transactional(timeout = 15)
+    public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
+        if (user.getSubscription() != null) {
+            return updateSubscription(user.getSubscription(), requestDto);
+        }
+        return createSubscription(requestDto, user);
     }
 
     public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, String billingKey) {
