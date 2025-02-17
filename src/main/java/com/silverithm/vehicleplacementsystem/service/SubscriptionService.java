@@ -72,7 +72,7 @@ public class SubscriptionService {
         requestPayment(requestDto, billingKey);
     }
 
-    @Transactional(timeout = 15)
+    @Transactional
     public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
         if (user.getSubscription() != null) {
             return updateSubscription(user.getSubscription(), requestDto);
