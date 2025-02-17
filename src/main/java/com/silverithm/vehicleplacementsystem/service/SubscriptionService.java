@@ -53,13 +53,12 @@ public class SubscriptionService {
                                                               SubscriptionRequestDTO requestDto) {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(
-                        () -> new IllegalArgumentException("User not found with email: " + userDetails.getUsername()));
+                        () -> new CustomException("User not found with email: " + userDetails.getUsername(),
+                                HttpStatus.NOT_FOUND);
 
         if (user.getBillingKey() == null) {
             user.updateBillingKey(requestBillingKey(requestDto).billingKey());
         }
-
-        log.info("Billing Key: " + user.getBillingKey());
 
         requestPayment(requestDto, user.getBillingKey());
 
