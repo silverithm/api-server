@@ -41,10 +41,10 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getSubscription(id));
     }
 
-    @PutMapping("/{id}/cancel")
-    public ResponseEntity<SubscriptionResponseDTO> cancelSubscription(@AuthenticationPrincipal UserDetails userDetails,
-                                                                      @PathVariable Long id) {
-        return ResponseEntity.ok(subscriptionService.cancelSubscription(userDetails, id));
+    @PutMapping("/cancel")
+    public ResponseEntity<SubscriptionResponseDTO> cancelSubscription(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subscriptionService.cancelSubscription(userDetails));
     }
 
     @GetMapping("/active")

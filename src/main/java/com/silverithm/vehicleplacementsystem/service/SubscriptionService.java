@@ -84,8 +84,7 @@ public class SubscriptionService {
 
         try {
             // Base64 인코딩
-            String encodedAuth = Base64.getEncoder()
-                    .encodeToString((secretKey + ":").getBytes());
+            String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
 
             // HTTP 요청 헤더 설정
             HttpHeaders headers = new HttpHeaders();
@@ -107,11 +106,8 @@ public class SubscriptionService {
 
             // 토스 API 호출
             ResponseEntity<PaymentResponse> response = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/billing/" + billingKey,
-                    HttpMethod.POST,
-                    entity,
-                    PaymentResponse.class
-            );
+                    "https://api.tosspayments.com/v1/billing/" + billingKey, HttpMethod.POST, entity,
+                    PaymentResponse.class);
 
             return response.getBody();
 
@@ -128,8 +124,7 @@ public class SubscriptionService {
     public BillingResponse requestBillingKey(SubscriptionRequestDTO requestDto) {
         try {
             // Base64 인코딩
-            String encodedAuth = Base64.getEncoder()
-                    .encodeToString((secretKey + ":").getBytes());
+            String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
 
             // HTTP 요청 헤더 설정
             HttpHeaders headers = new HttpHeaders();
@@ -146,11 +141,8 @@ public class SubscriptionService {
 
             // 토스 API 호출
             ResponseEntity<BillingResponse> response = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/billing/authorizations/issue",
-                    HttpMethod.POST,
-                    entity,
-                    BillingResponse.class
-            );
+                    "https://api.tosspayments.com/v1/billing/authorizations/issue", HttpMethod.POST, entity,
+                    BillingResponse.class);
 
             log.info("빌링키 발급 결과" + response.getBody().billingKey());
             log.info("빌링키 발급 결과" + response.getBody().toString());
@@ -164,8 +156,8 @@ public class SubscriptionService {
 
     private SubscriptionResponseDTO updateSubscription(Subscription subscription, SubscriptionRequestDTO requestDto) {
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
-        subscription.update(requestDto.getPlanName(), requestDto.getBillingType(),
-                requestDto.getAmount(), endDate, SubscriptionStatus.ACTIVE);
+        subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), endDate,
+                SubscriptionStatus.ACTIVE);
         return new SubscriptionResponseDTO(subscription);
     }
 
@@ -173,46 +165,32 @@ public class SubscriptionService {
         LocalDateTime startDate = LocalDateTime.now();
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
 
-        Subscription subscription = Subscription.builder()
-                .planName(requestDto.getPlanName())
-                .billingType(requestDto.getBillingType())
-                .startDate(startDate)
-                .endDate(endDate)
-                .status(SubscriptionStatus.ACTIVE)
-                .amount(requestDto.getAmount())
-                .user(user)
-                .build();
+        Subscription subscription = Subscription.builder().planName(requestDto.getPlanName())
+                .billingType(requestDto.getBillingType()).startDate(startDate).endDate(endDate)
+                .status(SubscriptionStatus.ACTIVE).amount(requestDto.getAmount()).user(user).build();
 
         return new SubscriptionResponseDTO(subscriptionRepository.save(subscription));
     }
 
     @Transactional
-    public SubscriptionResponseDTO createSubscriptionToUser(SubscriptionRequestDTO requestDto,
-                                                            Long userId) {
+    public SubscriptionResponseDTO createSubscriptionToUser(SubscriptionRequestDTO requestDto, Long userId) {
 
         AppUser user = userRepository.findById(userId)
-                .orElseThrow(
-                        () -> new IllegalArgumentException("User not found with userId: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("User not found with userId: " + userId));
 
         LocalDateTime startDate = LocalDateTime.now();
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
 
-        Subscription subscription = Subscription.builder()
-                .planName(requestDto.getPlanName())
-                .billingType(requestDto.getBillingType())
-                .startDate(startDate)
-                .endDate(endDate)
-                .status(SubscriptionStatus.ACTIVE)
-                .amount(requestDto.getAmount())
-                .user(user)
-                .build();
+        Subscription subscription = Subscription.builder().planName(requestDto.getPlanName())
+                .billingType(requestDto.getBillingType()).startDate(startDate).endDate(endDate)
+                .status(SubscriptionStatus.ACTIVE).amount(requestDto.getAmount()).user(user).build();
 
         return new SubscriptionResponseDTO(subscriptionRepository.save(subscription));
     }
 
     private LocalDateTime calculateEndDate(SubscriptionBillingType billingType) {
-        return billingType == SubscriptionBillingType.MONTHLY ?
-                LocalDateTime.now().plusMonths(1) : LocalDateTime.now().plusYears(1);
+        return billingType == SubscriptionBillingType.MONTHLY ? LocalDateTime.now().plusMonths(1)
+                : LocalDateTime.now().plusYears(1);
     }
 
     public SubscriptionResponseDTO getSubscription(Long id) {
@@ -222,14 +200,15 @@ public class SubscriptionService {
     }
 
     @Transactional
-    public SubscriptionResponseDTO cancelSubscription(UserDetails userDetails, Long id) {
+    public SubscriptionResponseDTO cancelSubscription(UserDetails userDetails) {
 
-        Subscription subscription = subscriptionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Subscription not found with id: " + id));
+        AppUser user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(
+                () -> new IllegalArgumentException("User not found with userEmail: " + userDetails.getUsername()));
 
-        if (!subscription.getUser().getEmail().equals(userDetails.getUsername())) {
-            throw new IllegalArgumentException(
-                    "User " + userDetails.getUsername() + " is not authorized to access subscription: " + id);
+        Subscription subscription = user.getSubscription();
+
+        if (subscription == null) {
+            throw new IllegalArgumentException("Subscription not found with userId: " + user.getId());
         }
 
         subscription.updateStatus(SubscriptionStatus.CANCELLED);
@@ -239,8 +218,7 @@ public class SubscriptionService {
     }
 
     public List<SubscriptionResponseDTO> getActiveSubscriptions() {
-        return subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE).stream()
-                .map(SubscriptionResponseDTO::new)
+        return subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE).stream().map(SubscriptionResponseDTO::new)
                 .collect(Collectors.toList());
     }
 }
