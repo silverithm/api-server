@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.service.SubscriptionService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/subscriptions")
 @RequiredArgsConstructor
+@Slf4j
 public class SubscriptionController {
     private final SubscriptionService subscriptionService;
 

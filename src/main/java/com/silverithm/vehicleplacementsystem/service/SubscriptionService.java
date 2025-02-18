@@ -203,12 +203,13 @@ public class SubscriptionService {
     public SubscriptionResponseDTO cancelSubscription(UserDetails userDetails) {
 
         AppUser user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(
-                () -> new IllegalArgumentException("User not found with userEmail: " + userDetails.getUsername()));
+                () -> new CustomException("User not found with userEmail: " + userDetails.getUsername(),
+                        HttpStatus.NOT_FOUND));
 
         Subscription subscription = user.getSubscription();
 
         if (subscription == null) {
-            throw new IllegalArgumentException("Subscription not found with userId: " + user.getId());
+            throw new CustomException("Subscription not found with userId: " + user.getId(), HttpStatus.NOT_FOUND);
         }
 
         subscription.updateStatus(SubscriptionStatus.CANCELLED);
