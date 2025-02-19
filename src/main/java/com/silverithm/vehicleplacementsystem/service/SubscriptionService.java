@@ -37,7 +37,6 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 @Slf4j
 public class SubscriptionService {
 
@@ -61,7 +60,8 @@ public class SubscriptionService {
                 .orElseThrow(() -> new CustomException("User not found with email: " + email, HttpStatus.NOT_FOUND));
     }
 
-    private void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
+    @Transactional
+    public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
         if (user.getBillingKey() == null) {
             BillingResponse billingResponse = requestBillingKey(requestDto);
             user.updateBillingKey(billingResponse.billingKey());
