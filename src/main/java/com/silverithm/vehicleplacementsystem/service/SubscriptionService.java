@@ -62,10 +62,8 @@ public class SubscriptionService {
 
     @Transactional
     public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
-        if (user.getBillingKey() == null) {
-            BillingResponse billingResponse = requestBillingKey(requestDto);
-            user.updateBillingKey(billingResponse.billingKey());
-        }
+        BillingResponse billingResponse = requestBillingKey(requestDto);
+        user.updateBillingKey(billingResponse.billingKey());
     }
 
     private void processPayment(SubscriptionRequestDTO requestDto, String billingKey) {
@@ -145,7 +143,6 @@ public class SubscriptionService {
                     BillingResponse.class);
 
             log.info("빌링키 발급 결과" + response.getBody().billingKey());
-            log.info("빌링키 발급 결과" + response.getBody().toString());
 
             return response.getBody();
 
