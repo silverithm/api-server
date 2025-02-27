@@ -65,9 +65,10 @@ public class SubscriptionService {
     public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
         BillingResponse billingResponse = requestBillingKey(requestDto);
         user.updateBillingKey(billingResponse.billingKey());
+        userRepository.save(user);
 
-        log.info(billingResponse.toString());
-        log.info(user.getBillingKey());
+        log.info(billingResponse.toString() + " " + user.getUsername());
+        log.info(user.getBillingKey() + " " + user.getUsername());
     }
 
     private void processPayment(SubscriptionRequestDTO requestDto, String billingKey) {
@@ -78,10 +79,10 @@ public class SubscriptionService {
     @Transactional
     public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
         if (user.getSubscription() != null) {
-            log.info("Subscription exists");
+            log.info("Subscription exists " + user.getUsername());
             return updateSubscription(user.getSubscription(), requestDto);
         }
-        log.info("Subscription does not exist");
+        log.info("Subscription does not exist " + user.getUserRole());
         return createSubscription(requestDto, user);
     }
 
@@ -162,6 +163,8 @@ public class SubscriptionService {
         LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
         subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), endDate,
                 SubscriptionStatus.ACTIVE);
+        subscriptionRepository.save(subscription);
+
         return new SubscriptionResponseDTO(subscription);
     }
 
