@@ -50,6 +50,7 @@ public class SubscriptionService {
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
         AppUser user = findUserByEmail(userDetails.getUsername());
+        log.info(user.toString());
         ensureBillingKey(user, requestDto);
         processPayment(requestDto, user.getBillingKey());
         return processSubscription(user, requestDto);
@@ -64,17 +65,23 @@ public class SubscriptionService {
     public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
         BillingResponse billingResponse = requestBillingKey(requestDto);
         user.updateBillingKey(billingResponse.billingKey());
+
+        log.info(billingResponse.toString());
+        log.info(user.getBillingKey());
     }
 
     private void processPayment(SubscriptionRequestDTO requestDto, String billingKey) {
         requestPayment(requestDto, billingKey);
+        log.info("결제 성공" + requestDto.getCustomerName());
     }
 
     @Transactional
     public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
         if (user.getSubscription() != null) {
+            log.info("Subscription exists");
             return updateSubscription(user.getSubscription(), requestDto);
         }
+        log.info("Subscription does not exist");
         return createSubscription(requestDto, user);
     }
 
