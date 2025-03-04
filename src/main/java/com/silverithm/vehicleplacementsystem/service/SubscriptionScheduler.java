@@ -19,10 +19,13 @@ import org.springframework.stereotype.Service;
 public class SubscriptionScheduler {
 
     private final SubscriptionService subscriptionService;
+    private final BillingService billingService;
     private final UserRepository userRepository;
 
-    public SubscriptionScheduler(SubscriptionService subscriptionService, UserRepository userRepository) {
+    public SubscriptionScheduler(SubscriptionService subscriptionService, BillingService billingService,
+                                 UserRepository userRepository) {
         this.subscriptionService = subscriptionService;
+        this.billingService = billingService;
         this.userRepository = userRepository;
     }
 
@@ -49,7 +52,7 @@ public class SubscriptionScheduler {
                     0
             );
 
-            PaymentResponse paymentResponse = subscriptionService.requestPayment(requestDto, user.getBillingKey());
+            PaymentResponse paymentResponse = billingService.requestPayment(requestDto, user.getBillingKey());
 //            log.info("스케줄링 결제 성공: " + user.getUsername() + "," + currentDate);
 //            log.info(requestDto.toString());
 

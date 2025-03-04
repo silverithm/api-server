@@ -1,5 +1,7 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
+import java.time.LocalDateTime;
+
 public enum SubscriptionBillingType {
     FREE("FREE"),
     MONTHLY("MONTHLY"),
@@ -14,4 +16,10 @@ public enum SubscriptionBillingType {
     public String getValue() {
         return value;
     }
+
+    public static LocalDateTime calculateEndDate(SubscriptionBillingType billingType) {
+        return billingType == SubscriptionBillingType.MONTHLY ? LocalDateTime.now().plusMonths(1)
+                : LocalDateTime.now().plusYears(1);
+    }
+
 }

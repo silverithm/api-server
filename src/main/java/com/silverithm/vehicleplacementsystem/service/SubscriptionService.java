@@ -40,20 +40,18 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class SubscriptionService {
 
-    @Value("${toss.secret-key}")
-    private String secretKey;
-
+    private final BillingService billingService;
+    private final SubscriptionTransactionService subscriptionTransactionService;
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
-    private final RestTemplate restTemplate;
 
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
         AppUser user = findUserByEmail(userDetails.getUsername());
         log.info(user.toString());
-        ensureBillingKey(user, requestDto);
-        processPayment(requestDto, user.getBillingKey());
-        return processSubscription(user, requestDto);
+        billingService.ensureBillingKey(user, requestDto);
+        billingService.processPayment(requestDto, user.getBillingKey());
+        return subscriptionTransactionService.processSubscription(user, requestDto);
     }
 
     private AppUser findUserByEmail(String email) {
@@ -61,123 +59,6 @@ public class SubscriptionService {
                 .orElseThrow(() -> new CustomException("User not found with email: " + email, HttpStatus.NOT_FOUND));
     }
 
-    @Transactional
-    public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
-        BillingResponse billingResponse = requestBillingKey(requestDto);
-        user.updateBillingKey(billingResponse.billingKey());
-        userRepository.save(user);
-
-        log.info(billingResponse.toString() + " " + user.getUsername());
-        log.info(user.getBillingKey() + " " + user.getUsername());
-    }
-
-    private void processPayment(SubscriptionRequestDTO requestDto, String billingKey) {
-        requestPayment(requestDto, billingKey);
-        log.info("결제 성공" + requestDto.getCustomerName());
-    }
-
-    @Transactional
-    public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
-        if (user.getSubscription() != null) {
-            log.info("Subscription exists " + user.getUsername());
-            return updateSubscription(user.getSubscription(), requestDto);
-        }
-        log.info("Subscription does not exist " + user.getUserRole());
-        return createSubscription(requestDto, user);
-    }
-
-    public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, String billingKey) {
-
-        try {
-            // Base64 인코딩
-            String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
-
-            // HTTP 요청 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Basic " + encodedAuth);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            // 요청 바디 생성
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("customerKey", requestDto.getCustomerKey());
-            requestBody.put("amount", requestDto.getAmount());
-            requestBody.put("orderId", UUID.randomUUID().toString());
-            requestBody.put("orderName", requestDto.getOrderName());
-            requestBody.put("customerEmail", requestDto.getCustomerEmail());
-            requestBody.put("customerName", requestDto.getCustomerName());
-            requestBody.put("taxFreeAmount", requestDto.getTaxFreeAmount());
-
-            // HTTP 엔티티 생성
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-            // 토스 API 호출
-            ResponseEntity<PaymentResponse> response = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/billing/" + billingKey, HttpMethod.POST, entity,
-                    PaymentResponse.class);
-
-            return response.getBody();
-
-        } catch (HttpClientErrorException e) {
-            if (e.getStatusCode().is5xxServerError()) {
-                throw new CustomException("토스 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
-            }
-            throw new CustomException("결제 실패: " + e.getResponseBodyAsString(), HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            throw new CustomException("서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    public BillingResponse requestBillingKey(SubscriptionRequestDTO requestDto) {
-        try {
-            // Base64 인코딩
-            String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
-
-            // HTTP 요청 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Basic " + encodedAuth);
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            // 요청 바디 생성
-            Map<String, String> requestBody = new HashMap<>();
-            requestBody.put("authKey", requestDto.getAuthKey());
-            requestBody.put("customerKey", requestDto.getCustomerKey());
-
-            // HTTP 엔티티 생성
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
-
-            // 토스 API 호출
-            ResponseEntity<BillingResponse> response = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/billing/authorizations/issue", HttpMethod.POST, entity,
-                    BillingResponse.class);
-
-            log.info("빌링키 발급 결과" + response.getBody().billingKey());
-
-            return response.getBody();
-
-        } catch (HttpClientErrorException e) {
-            throw new CustomException("빌링키 발급 실패: " + e.getResponseBodyAsString(), HttpStatus.SERVICE_UNAVAILABLE);
-        }
-    }
-
-    private SubscriptionResponseDTO updateSubscription(Subscription subscription, SubscriptionRequestDTO requestDto) {
-        LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
-        subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), endDate,
-                SubscriptionStatus.ACTIVE);
-        subscriptionRepository.save(subscription);
-
-        return new SubscriptionResponseDTO(subscription);
-    }
-
-    public SubscriptionResponseDTO createSubscription(SubscriptionRequestDTO requestDto, AppUser user) {
-        LocalDateTime startDate = LocalDateTime.now();
-        LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
-
-        Subscription subscription = Subscription.builder().planName(requestDto.getPlanName())
-                .billingType(requestDto.getBillingType()).startDate(startDate).endDate(endDate)
-                .status(SubscriptionStatus.ACTIVE).amount(requestDto.getAmount()).user(user).build();
-
-        return new SubscriptionResponseDTO(subscriptionRepository.save(subscription));
-    }
 
     @Transactional
     public SubscriptionResponseDTO createSubscriptionToUser(SubscriptionRequestDTO requestDto, Long userId) {
@@ -186,7 +67,7 @@ public class SubscriptionService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found with userId: " + userId));
 
         LocalDateTime startDate = LocalDateTime.now();
-        LocalDateTime endDate = calculateEndDate(requestDto.getBillingType());
+        LocalDateTime endDate = SubscriptionBillingType.calculateEndDate(requestDto.getBillingType());
 
         Subscription subscription = Subscription.builder().planName(requestDto.getPlanName())
                 .billingType(requestDto.getBillingType()).startDate(startDate).endDate(endDate)
@@ -195,10 +76,6 @@ public class SubscriptionService {
         return new SubscriptionResponseDTO(subscriptionRepository.save(subscription));
     }
 
-    private LocalDateTime calculateEndDate(SubscriptionBillingType billingType) {
-        return billingType == SubscriptionBillingType.MONTHLY ? LocalDateTime.now().plusMonths(1)
-                : LocalDateTime.now().plusYears(1);
-    }
 
     public SubscriptionResponseDTO getSubscription(Long id) {
         Subscription subscription = subscriptionRepository.findById(id)
