@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
         @Index(name = "idx_app_user_email", columnList = "email"),
 })
 @Getter
-public class AppUser {
+public class AppUser extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
