@@ -50,13 +50,6 @@ public class Employee extends Node {
 
     private Boolean isDriver;
 
-    @CreatedDate
-    private LocalDateTime createdAt;
-    @LastModifiedDate
-    private LocalDateTime modifiedAt;
-
-
-
     @ManyToOne
     @JoinColumn(name = "user_id")
     private AppUser user;

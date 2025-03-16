@@ -27,11 +27,6 @@ public class Elderly extends Node {
     private Location homeAddress;
     private boolean requiredFrontSeat;
 
-    @CreatedDate
-    private LocalDateTime createdAt;
-    @LastModifiedDate
-    private LocalDateTime modifiedAt;
-
 
     @ManyToOne
     @JoinColumn(name = "user_id")
