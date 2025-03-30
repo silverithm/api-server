@@ -15,6 +15,7 @@ import com.silverithm.vehicleplacementsystem.service.DispatchServiceV2;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV3;
 import com.silverithm.vehicleplacementsystem.service.DispatchServiceV4;
 import com.silverithm.vehicleplacementsystem.service.SSEService;
+import com.silverithm.vehicleplacementsystem.service.SlackService;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +66,9 @@ public class DispatchController {
     private DispatchHistoryService dispatchHistoryService;
 
     @Autowired
+    private SlackService slackService;
+
+    @Autowired
     private RabbitTemplate rabbitTemplate;
 
     @Qualifier("dispatchQueue")
@@ -74,6 +78,7 @@ public class DispatchController {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     @PostMapping("/api/v1/dispatch")
     public ResponseEntity<String> dispatch(@AuthenticationPrincipal UserDetails userDetails,
                                            @RequestBody RequestDispatchDTO requestDispatchDTO) {
@@ -82,14 +87,12 @@ public class DispatchController {
             dispatchService.requestDispatchWithRabbitMQ(requestDispatchDTO, userDetails, jobId);
             return ResponseEntity.accepted()
                     .body(jobId);
-        } catch (CustomException e) {
-            log.info("배차 요청 실패: {}", e.getMessage());
-            sseService.notifyError(jobId);
-            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             log.info("배차 요청 실패: {}", e.getMessage());
             dispatchService.decrementDailyRequestCount(userDetails.getUsername());
             sseService.notifyError(jobId);
+            slackService.sendApiFailureNotification("차량 배차 요청 실패", userDetails.getUsername(), e.getMessage(),
+                    requestDispatchDTO.toString());
             return ResponseEntity.badRequest().body("배차 요청 실패");
         }
     }

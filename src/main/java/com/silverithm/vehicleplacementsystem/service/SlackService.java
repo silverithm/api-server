@@ -67,15 +67,17 @@ public class SlackService {
     /**
      * API 요청 실패 알림 전송
      */
-    public void sendApiFailureNotification(String apiName, String errorMessage, String requestParams) {
+    public void sendApiFailureNotification(String apiName, String userEmail, String errorMessage,
+                                           String requestParams) {
         try {
             String message = String.format(
                     "{\"text\":\":x: *API 요청 실패* :x:\\n" +
                             "• API: %s\\n" +
+                            "• 사용자 이메일: %s\\n" +
                             "• 에러 메시지: %s\\n" +
                             "• 요청 파라미터: %s\\n" +
                             "• 발생시간: %s\"}",
-                    apiName, errorMessage, requestParams, java.time.LocalDateTime.now());
+                    apiName, userEmail, errorMessage, requestParams, java.time.LocalDateTime.now());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
