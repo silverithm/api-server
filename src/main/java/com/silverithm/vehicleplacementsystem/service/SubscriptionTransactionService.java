@@ -32,7 +32,6 @@ public class SubscriptionTransactionService {
 
     private SubscriptionResponseDTO updateSubscription(Subscription subscription, SubscriptionRequestDTO requestDto) {
         LocalDateTime endDate = SubscriptionBillingType.calculateEndDate(requestDto.getBillingType());
-        // 도메인 모델 내부에 로직 캡슐화
         subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), endDate,
                 SubscriptionStatus.ACTIVE);
         return new SubscriptionResponseDTO(subscription);

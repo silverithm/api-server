@@ -48,11 +48,15 @@ public class SubscriptionService {
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
         AppUser user = findUserByEmail(userDetails.getUsername());
-        log.info(user.toString());
         billingService.ensureBillingKey(user, requestDto);
         billingService.processPayment(requestDto, user.getBillingKey());
         return subscriptionTransactionService.processSubscription(user, requestDto);
     }
+
+    public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
+        return subscriptionTransactionService.processSubscription(user, requestDto);
+    }
+
 
     private AppUser findUserByEmail(String email) {
         return userRepository.findByEmail(email)

@@ -30,7 +30,6 @@ public class SubscriptionScheduler {
     }
 
 
-    //    @Scheduled(cron = "*/10 * * * * *")
     @Scheduled(cron = "0 0 6 * * *")
     public void processScheduledPayments() {
         LocalDateTime currentDate = LocalDateTime.now();
@@ -53,11 +52,10 @@ public class SubscriptionScheduler {
             );
 
             PaymentResponse paymentResponse = billingService.requestPayment(requestDto, user.getBillingKey());
-//            log.info("스케줄링 결제 성공: " + user.getUsername() + "," + currentDate);
-//            log.info(requestDto.toString());
 
             if (paymentResponse.status().equals("DONE")) {
                 log.info("스케줄링 결제 성공: " + user.getUsername() + "," + currentDate);
+                subscriptionService.processSubscription(user, requestDto);
             } else {
                 log.info("스케줄링 결제 실패: " + user.getUsername() + "," + currentDate);
             }
