@@ -34,6 +34,7 @@ public class BillingService {
 
     private final RestTemplate restTemplate;
     private final UserRepository userRepository;
+    private final SlackService slackService;
 
 
     @Transactional
@@ -56,6 +57,7 @@ public class BillingService {
         try {
             // Base64 인코딩
             String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
+            String orderId = UUID.randomUUID().toString();
 
             // HTTP 요청 헤더 설정
             HttpHeaders headers = new HttpHeaders();
@@ -66,7 +68,7 @@ public class BillingService {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("customerKey", requestDto.getCustomerKey());
             requestBody.put("amount", requestDto.getAmount());
-            requestBody.put("orderId", UUID.randomUUID().toString());
+            requestBody.put("orderId", orderId);
             requestBody.put("orderName", requestDto.getOrderName());
             requestBody.put("customerEmail", requestDto.getCustomerEmail());
             requestBody.put("customerName", requestDto.getCustomerName());
@@ -79,6 +81,8 @@ public class BillingService {
             ResponseEntity<PaymentResponse> response = restTemplate.exchange(
                     "https://api.tosspayments.com/v1/billing/" + billingKey, HttpMethod.POST, entity,
                     PaymentResponse.class);
+
+            slackService.sendPaymentSuccessNotification(orderId, requestDto.getCustomerName(), requestDto.getAmount());
 
             return response.getBody();
 
