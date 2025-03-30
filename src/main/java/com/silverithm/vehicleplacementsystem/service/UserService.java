@@ -60,24 +60,20 @@ public class UserService {
     private EmailService emailService;
     @Autowired
     private RedisUtils redisUtils;
+    @Autowired
+    private SlackService slackService;
 
     @Autowired
     private GeocodingService geocodingService;
 
     private Key secretKey;
 
+
     public UserService(@Value("${jwt.secretKey}") String secretKey) {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-
-    public String refresh(String remoteUser) {
-        return "";
-    }
-
-    public void delete(String username) {
-    }
 
     @Transactional
     public SigninResponseDTO signin(UserSigninDTO userSigninDTO) {
@@ -120,6 +116,7 @@ public class UserService {
         userRepository.save(
                 AppUser.of(userDataDTO, passwordEncoder.encode(userDataDTO.getPassword()), tokenInfo, companyLocation,
                         customerKey));
+        slackService.sendSignupSuccessNotification(userDataDTO.getEmail(), userDataDTO.getName(), userDataDTO.getCompanyName());
 
         return tokenInfo;
     }

@@ -44,14 +44,15 @@ public class SlackService {
     /**
      * 회원가입 성공 알림 전송
      */
-    public void sendSignupSuccessNotification(String userId, String email) {
+    public void sendSignupSuccessNotification(String email, String userName, String companyName) {
         try {
             String message = String.format(
                     "{\"text\":\":tada: *새 회원 가입* :tada:\\n" +
-                            "• 사용자 ID: %s\\n" +
-                            "• 이메일: %s\\n" +
+                            "• 사용자 이메일: %s\\n" +
+                            "• 사용자 이름: %s\\n" +
+                            "• 회사명: %s\\n" +
                             "• 가입일시: %s\"}",
-                    userId, email, java.time.LocalDateTime.now());
+                    email, userName, companyName, java.time.LocalDateTime.now());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
