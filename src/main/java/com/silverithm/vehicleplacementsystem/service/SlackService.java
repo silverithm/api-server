@@ -12,10 +12,16 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class SlackService {
     private final RestTemplate restTemplate;
-    private final String webhookUrl;
+    private final String paymentUrl;
+    private final String signupUrl;
+    private final String apiFailureUrl;
 
-    public SlackService(@Value("${slack.webhook.url}") String webhookUrl) {
-        this.webhookUrl = webhookUrl;
+    public SlackService(@Value("${slack.webhook.payment_url}") String paymentUrl,
+                        @Value("${slack.webhook.signup_url}") String signupUrl,
+                        @Value("${slack.webhook.api_failure_url}") String apiFailureUrl) {
+        this.paymentUrl = paymentUrl;
+        this.signupUrl = signupUrl;
+        this.apiFailureUrl = apiFailureUrl;
         this.restTemplate = new RestTemplate();
     }
 
@@ -35,7 +41,7 @@ public class SlackService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> request = new HttpEntity<>(message, headers);
 
-            restTemplate.postForObject(webhookUrl, request, String.class);
+            restTemplate.postForObject(paymentUrl, request, String.class);
         } catch (Exception e) {
             log.error("슬랙 알림 전송 실패: {}", e.getMessage(), e);
         }
@@ -58,7 +64,7 @@ public class SlackService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> request = new HttpEntity<>(message, headers);
 
-            restTemplate.postForObject(webhookUrl, request, String.class);
+            restTemplate.postForObject(signupUrl, request, String.class);
         } catch (Exception e) {
             log.error("슬랙 알림 전송 실패: {}", e.getMessage(), e);
         }
@@ -83,7 +89,7 @@ public class SlackService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> request = new HttpEntity<>(message, headers);
 
-            restTemplate.postForObject(webhookUrl, request, String.class);
+            restTemplate.postForObject(apiFailureUrl, request, String.class);
         } catch (Exception e) {
             log.error("슬랙 알림 전송 실패: {}", e.getMessage(), e);
         }
