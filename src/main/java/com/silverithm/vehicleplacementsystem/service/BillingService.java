@@ -36,7 +36,6 @@ public class BillingService {
     private final UserRepository userRepository;
     private final SlackService slackService;
 
-
     @Transactional
     public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
         BillingResponse billingResponse = requestBillingKey(requestDto);
@@ -90,8 +89,12 @@ public class BillingService {
             if (e.getStatusCode().is5xxServerError()) {
                 throw new CustomException("토스 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
             }
+            slackService.sendApiFailureNotification("결제 실패", requestDto.getCustomerEmail(), e.getResponseBodyAsString(),
+                    requestDto.toString());
             throw new CustomException("결제 실패: " + e.getResponseBodyAsString(), HttpStatus.BAD_REQUEST);
         } catch (Exception e) {
+            slackService.sendApiFailureNotification("결제 실패", requestDto.getCustomerEmail(), e.getMessage().toString(),
+                    requestDto.toString());
             throw new CustomException("서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
