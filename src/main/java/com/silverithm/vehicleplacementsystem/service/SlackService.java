@@ -18,7 +18,7 @@ public class SlackService {
 
     public SlackService(@Value("${slack.webhook.payment_url}") String paymentUrl,
                         @Value("${slack.webhook.signup_url}") String signupUrl,
-                        @Value("${slack.webhook.api_fail_url}") String apiFailureUrl) {
+                        @Value("${slack.webhook.api_failure_url}") String apiFailureUrl) {
         this.paymentUrl = paymentUrl;
         this.signupUrl = signupUrl;
         this.apiFailureUrl = apiFailureUrl;
