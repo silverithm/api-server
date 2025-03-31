@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.entity.Subscription;
@@ -55,8 +56,8 @@ public class EmployeeService {
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
-        Employee employee = new Employee(addEmployeeRequest.workPlace(), addEmployeeRequest.homeAddress(),
-                addEmployeeRequest.name(), workPlace, homeAddress,
+        Employee employee = new Employee(addEmployeeRequest.homeAddress(),
+                addEmployeeRequest.name(), user.getCompany(), homeAddress,
                 addEmployeeRequest.maxCapacity(), addEmployeeRequest.isDriver(), user);
         employeeRepository.save(employee);
     }
@@ -66,9 +67,10 @@ public class EmployeeService {
         List<Employee> employees = employeeRepository.findByUserId(userId);
 
         List<EmployeeDTO> employeeDTOS = employees.stream()
-                .map(employee -> new EmployeeDTO(employee.getId(), employee.getName(), employee.getHomeAddressName(),
-                        employee.getWorkPlaceAddressName(), employee.getHomeAddress(),
-                        employee.getWorkPlace(),
+                .map(employee -> new EmployeeDTO(employee.getId(), employee.getName(),
+                        employee.getHomeAddressName(), employee.getCompany().getAddressName(),
+                        employee.getHomeAddress(),
+                        employee.getCompany().getCompanyAddress(),
                         employee.getMaximumCapacity(), employee.getIsDriver()))
                 .sorted(Comparator.comparing(EmployeeDTO::name)).collect(Collectors.toList());
 

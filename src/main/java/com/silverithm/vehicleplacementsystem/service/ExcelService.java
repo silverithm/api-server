@@ -194,7 +194,7 @@ public class ExcelService {
             employeeRow.createCell(0).setCellValue(employee.getId());
             employeeRow.createCell(1).setCellValue(employee.getName());
             employeeRow.createCell(2).setCellValue(employee.getHomeAddressName());
-            employeeRow.createCell(3).setCellValue(employee.getWorkPlaceAddressName());
+            employeeRow.createCell(3).setCellValue(employee.getCompany().getAddressName());
             employeeRow.createCell(4).setCellValue(employee.getMaximumCapacity());
 
         }

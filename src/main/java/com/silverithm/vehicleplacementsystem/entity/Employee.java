@@ -8,6 +8,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -29,16 +30,12 @@ import org.xml.sax.helpers.LocatorImpl;
 public class Employee extends Node {
 
 
-    private String workPlaceAddressName;
     private String homeAddressName;
     private String name;
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name = "latitude", column = @Column(name = "workplace_latitude")),
-            @AttributeOverride(name = "longitude", column = @Column(name = "workplace_longitude"))
-    })
 
-    private Location workPlace;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
 
     @Embedded
     @AttributeOverrides({
@@ -54,13 +51,12 @@ public class Employee extends Node {
     @JoinColumn(name = "user_id")
     private AppUser user;
 
-    public Employee(String workPlaceAddressName, String homeAddressName, String name, Location workplace,
-                    Location homeAddress, int maximumCapacity, Boolean isDriver, AppUser user) {
+    public Employee(String homeAddressName, String name, Company company, Location homeAddress, int maximumCapacity,
+                    Boolean isDriver, AppUser user) {
 
-        this.workPlaceAddressName = workPlaceAddressName;
         this.homeAddressName = homeAddressName;
         this.name = name;
-        this.workPlace = workplace;
+        this.company = company;
         this.homeAddress = homeAddress;
         this.maximumCapacity = maximumCapacity;
         this.isDriver = isDriver;
@@ -71,12 +67,16 @@ public class Employee extends Node {
     public void update(String homeAddressName, String workPlaceAddressName, String name, Location homeAddress,
                        Location workPlace, int maxCapacity, Boolean isDriver) {
         this.homeAddressName = homeAddressName;
-        this.workPlaceAddressName = workPlaceAddressName;
         this.name = name;
         this.homeAddress = homeAddress;
-        this.workPlace = workPlace;
         this.maximumCapacity = maxCapacity;
         this.isDriver = isDriver;
+        updateWorkPlace(workPlaceAddressName, workPlace);
     }
+
+    public void updateWorkPlace(String workPlaceAddressName, Location workPlace) {
+        company.updateAddress(workPlaceAddressName, workPlace);
+    }
+
 }
 
