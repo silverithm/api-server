@@ -15,6 +15,7 @@ import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -91,13 +92,13 @@ public class UserService {
             findUser.update(tokenInfo.getRefreshToken());
 
             if (findUser.getSubscription() == null) {
-                return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
-                        findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
+                return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getName(),
+                        findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                         tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey());
             }
 
-            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompanyName(),
-                    findUser.getCompanyAddress(), findUser.getCompanyAddressName(),
+            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getName(),
+                    findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
 
         } catch (AuthenticationException e) {
@@ -111,12 +112,14 @@ public class UserService {
 
         TokenInfo tokenInfo = generateTokenInfo(userDataDTO);
         Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
+        Company company = new Company(userDataDTO.getCompanyName(), userDataDTO.getCompanyAddress(), companyLocation);
         String customerKey = generateUniqueCustomerKey();
 
         userRepository.save(
-                AppUser.of(userDataDTO, passwordEncoder.encode(userDataDTO.getPassword()), tokenInfo, companyLocation,
+                AppUser.of(userDataDTO, passwordEncoder.encode(userDataDTO.getPassword()), tokenInfo, company,
                         customerKey));
-        slackService.sendSignupSuccessNotification(userDataDTO.getEmail(), userDataDTO.getName(), userDataDTO.getCompanyName());
+        slackService.sendSignupSuccessNotification(userDataDTO.getEmail(), userDataDTO.getName(),
+                userDataDTO.getCompanyName());
 
         return tokenInfo;
     }

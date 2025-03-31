@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import jakarta.persistence.AttributeOverride;
@@ -9,6 +10,7 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -45,8 +47,12 @@ public class AppUser extends BaseEntity {
     private UserRole userRole;
 
     private String refreshToken;
-    private String companyName;
-    private String companyAddressName;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
+
 
     @Column(unique = true)
     private String customerKey;
@@ -57,37 +63,26 @@ public class AppUser extends BaseEntity {
     private String billingKey;
 
 
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name = "latitude", column = @Column(name = "company_latitude")),
-            @AttributeOverride(name = "longitude", column = @Column(name = "company_longitude"))
-    })
-    private Location companyAddress;
-
     public AppUser(String name, String email, String encode, UserRole role, String refreshToken,
-                   String companyName, Location companyLocation, String companyAddressName, String customerKey) {
+                   Company company, String customerKey) {
         this.username = name;
         this.email = email;
         this.password = encode;
         this.userRole = role;
         this.refreshToken = refreshToken;
-        this.companyName = companyName;
-        this.companyAddress = companyLocation;
-        this.companyAddressName = companyAddressName;
+        this.company = company;
         this.customerKey = customerKey;
     }
 
     public static AppUser of(UserDataDTO userDataDTO, String encodedPassowrd, TokenInfo tokenInfo,
-                             Location companyLocation, String customerKey) {
+                             Company company, String customerKey) {
         return new AppUser(
                 userDataDTO.getName(),
                 userDataDTO.getEmail(),
                 encodedPassowrd,
                 userDataDTO.getRole(),
                 tokenInfo.getRefreshToken(),
-                userDataDTO.getCompanyName(),
-                companyLocation,
-                userDataDTO.getCompanyAddress(),
+                company,
                 customerKey
         );
     }
@@ -101,12 +96,11 @@ public class AppUser extends BaseEntity {
     }
 
     public void updateCompanyName(String companyName) {
-        this.companyName = companyName;
+        this.company.updateName(companyName);
     }
 
     public void updateCompanyAddress(Location companyLocation, String companyAddressName) {
-        this.companyAddress = companyLocation;
-        this.companyAddressName = companyAddressName;
+        this.company.updateAddress(companyAddressName, companyLocation);
     }
 
     public void updatePassword(String encodedPassword) {
