@@ -1,5 +1,8 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -76,18 +79,22 @@ public class SlackService {
     public void sendApiFailureNotification(String apiName, String userEmail, String errorMessage,
                                            String requestParams) {
         try {
-            String message = String.format(
-                    "{\"text\":\":x: *API 요청 실패* :x:\\n" +
-                            "• API: %s\\n" +
-                            "• 사용자 이메일: %s\\n" +
-                            "• 에러 메시지: %s\\n" +
-                            "• 요청 파라미터: %s\\n" +
-                            "• 발생시간: %s\"}",
-                    apiName, userEmail, errorMessage, requestParams, java.time.LocalDateTime.now());
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, String> payload = new HashMap<>();
+            payload.put("text", String.format(
+                    ":x: *API 요청 실패* :x:\n" +
+                            "• API: %s\n" +
+                            "• 사용자 이메일: %s\n" +
+                            "• 에러 메시지: %s\n" +
+                            "• 요청 파라미터: %s\n" +
+                            "• 발생시간: %s",
+                    apiName, userEmail, errorMessage, requestParams, java.time.LocalDateTime.now()));
+
+            String jsonPayload = mapper.writeValueAsString(payload);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<String> request = new HttpEntity<>(message, headers);
+            HttpEntity<String> request = new HttpEntity<>(jsonPayload, headers);
 
             restTemplate.postForObject(apiFailureUrl, request, String.class);
         } catch (Exception e) {
