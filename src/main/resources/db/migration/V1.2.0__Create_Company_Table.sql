@@ -23,11 +23,11 @@ ALTER TABLE app_user
         FOREIGN KEY (company_id) REFERENCES company (id);
 
 -- elderly 테이블에 company_id 컬럼 추가
-ALTER TABLE elderly
+ALTER TABLE employee
     ADD COLUMN company_id BIGINT;
 
 -- 외래 키 제약 조건 추가
-ALTER TABLE elderly
-    ADD CONSTRAINT fk_elderly_company
+ALTER TABLE employee
+    ADD CONSTRAINT fk_employee_company
         FOREIGN KEY (company_id) REFERENCES company (id);
 
