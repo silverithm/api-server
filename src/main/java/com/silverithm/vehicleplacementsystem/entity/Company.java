@@ -1,7 +1,10 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,6 +30,10 @@ public class Company extends BaseEntity {
     private String addressName;
 
     @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "latitude", column = @Column(name = "company_latitude")),
+            @AttributeOverride(name = "longitude", column = @Column(name = "company_longitude"))
+    })
     private Location companyAddress;
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
