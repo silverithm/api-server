@@ -10,7 +10,7 @@ CREATE TABLE company
     company_latitude DOUBLE,
     company_longitude DOUBLE,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    modified_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    modified_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- app_user 테이블에 company_id 컬럼 추가
