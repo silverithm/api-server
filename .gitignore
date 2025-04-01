@@ -68,3 +68,5 @@ osrm-data/
 init-letsencrypt.sh
 
 data
+
+db_backup
