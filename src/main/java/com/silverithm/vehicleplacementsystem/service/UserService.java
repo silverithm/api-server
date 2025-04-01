@@ -295,5 +295,15 @@ public class UserService {
     }
 
 
+    public SubscriptionResponseDTO getUserSubscription(String userEmail) {
+        AppUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
+
+        if (user.getSubscription() == null) {
+            return new SubscriptionResponseDTO();
+        }
+
+        return new SubscriptionResponseDTO(user.getSubscription());
+    }
 }
 

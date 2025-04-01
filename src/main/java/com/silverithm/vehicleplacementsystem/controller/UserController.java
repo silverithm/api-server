@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
+import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
 import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
@@ -105,6 +106,11 @@ public class UserController {
     @GetMapping("/api/v1/users/dispatch-limit")
     public ResponseEntity<Integer> getDailyDispatchLimit(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok().body(userService.getDailyDispatchLimit(userDetails.getUsername()));
+    }
+
+    @GetMapping("/api/v1/user/subscription")
+    public ResponseEntity<SubscriptionResponseDTO> getUserSubscription(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok().body(userService.getUserSubscription(userDetails.getUsername()));
     }
 
 }
