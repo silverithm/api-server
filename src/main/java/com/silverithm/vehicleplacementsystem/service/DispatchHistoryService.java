@@ -38,6 +38,11 @@ public class DispatchHistoryService {
 
     public void saveDispatchResult(List<AssignmentResponseDTO> result, String username) throws JsonProcessingException {
 
+        if (result == null || result.isEmpty()) {
+            log.warn("배차 결과가 비어있습니다. 사용자: {}", username);
+            return;
+        }
+
         DispatchHistory dispatchHistory = DispatchHistory.of(LocalDateTime.now(),
                 objectMapper.writeValueAsString(result),
                 (int) result.stream().map(AssignmentResponseDTO::employeeId).distinct().count(),
@@ -47,7 +52,8 @@ public class DispatchHistoryService {
         repository.save(dispatchHistory);
     }
 
-    public Page<DispatchHistoryDTO> getDispatchHistories(@AuthenticationPrincipal UserDetails userDetails, Pageable pageable) {
+    public Page<DispatchHistoryDTO> getDispatchHistories(@AuthenticationPrincipal UserDetails userDetails,
+                                                         Pageable pageable) {
 
         return repository.findAllByUsername(userDetails.getUsername(), pageable)
                 .map(this::convertToDTO);
