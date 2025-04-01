@@ -18,6 +18,7 @@ import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
+import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -63,7 +64,8 @@ public class UserService {
     private RedisUtils redisUtils;
     @Autowired
     private SlackService slackService;
-
+    @Autowired
+    private CompanyRepository companyRepository;
     @Autowired
     private GeocodingService geocodingService;
 
@@ -115,6 +117,7 @@ public class UserService {
         Company company = new Company(userDataDTO.getCompanyName(), userDataDTO.getCompanyAddress(), companyLocation);
         String customerKey = generateUniqueCustomerKey();
 
+        companyRepository.save(company);
         userRepository.save(
                 AppUser.of(userDataDTO, passwordEncoder.encode(userDataDTO.getPassword()), tokenInfo, company,
                         customerKey));

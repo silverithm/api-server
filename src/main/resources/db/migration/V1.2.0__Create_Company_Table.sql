@@ -22,7 +22,7 @@ ALTER TABLE app_user
     ADD CONSTRAINT fk_app_user_company
         FOREIGN KEY (company_id) REFERENCES company (id);
 
--- elderly 테이블에 company_id 컬럼 추가
+-- employee 테이블에 company_id 컬럼 추가
 ALTER TABLE employee
     ADD COLUMN company_id BIGINT;
 
