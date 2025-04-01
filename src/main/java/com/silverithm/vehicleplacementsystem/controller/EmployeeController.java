@@ -60,10 +60,10 @@ public class EmployeeController {
         return "Success";
     }
 
-    @PostMapping("/api/v1/employee/company")
-    public String createEmployeeCompany(@AuthenticationPrincipal UserDetails userDetails,
-                                        @RequestBody CreateCompanyDto createCompanyDto) throws Exception {
-        employeeService.createEmployeeCompany(userDetails.getUsername(), createCompanyDto);
+    @PostMapping("/api/v1/employee/company/{userId}")
+    public String createEmployeeCompany(@PathVariable("userId") final Long userId,
+                                        @RequestBody final CreateCompanyDto createCompanyDto) throws Exception {
+        employeeService.createEmployeeCompany(userId, createCompanyDto);
         return "Success";
     }
 

@@ -103,8 +103,8 @@ public class EmployeeService {
 
 
     @Transactional
-    public void createEmployeeCompany(String userEmail, CreateCompanyDto createCompanyDto) throws Exception {
-        AppUser user = userRepository.findByEmail(userEmail)
+    public void createEmployeeCompany(Long userId, CreateCompanyDto createCompanyDto) throws Exception {
+        AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
         Location location = geocodingService.getAddressCoordinates(createCompanyDto.companyAddressName());
         Company company = Company.of(createCompanyDto.companyName(), createCompanyDto.companyAddressName(),

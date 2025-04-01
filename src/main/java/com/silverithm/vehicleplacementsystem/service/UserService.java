@@ -127,7 +127,7 @@ public class UserService {
         return tokenInfo;
     }
 
-    private void validateEmailNotExists(String email) {
+    private void validateEmailNotExists(String email) throws Exception {
         if (userRepository.existsByEmail(email)) {
             throw new CustomException("Useremail is already in use", HttpStatus.UNPROCESSABLE_ENTITY);
         }
