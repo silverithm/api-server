@@ -93,7 +93,7 @@ public class DispatchController {
             sseService.notifyError(jobId);
             slackService.sendApiFailureNotification("차량 배차 요청 실패", userDetails.getUsername(), e.getMessage(),
                     requestDispatchDTO.toString());
-            return ResponseEntity.badRequest().body("배차 요청 실패");
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -112,6 +112,8 @@ public class DispatchController {
             log.error("배차 응답 처리 중 오류 발생: ", e);
             String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
             dispatchService.decrementDailyRequestCount(username);
+            slackService.sendApiFailureNotification("차량 배차 요청 실패", username, e.getMessage(),
+                    message.getBody().toString());
             sseService.notifyError(jobId);
         }
     }
