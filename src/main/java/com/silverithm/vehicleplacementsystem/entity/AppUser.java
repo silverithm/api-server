@@ -95,6 +95,13 @@ public class AppUser extends BaseEntity {
         this.refreshToken = refreshToken;
     }
 
+    public void addCompany(Company company) {
+        this.company = company;
+        if (company.getUsers() != null && !company.getUsers().contains(this)) {
+            company.getUsers().add(this);
+        }
+    }
+
     public void updateCompanyName(String companyName) {
         this.company.updateName(companyName);
     }
@@ -126,4 +133,6 @@ public class AppUser extends BaseEntity {
     public void updateCustomerKey(String customerKey) {
         this.customerKey = customerKey;
     }
+
+
 }

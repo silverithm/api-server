@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
+import com.silverithm.vehicleplacementsystem.dto.CreateCompanyDto;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
@@ -15,6 +16,8 @@ import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,7 +60,12 @@ public class EmployeeController {
         return "Success";
     }
 
-
+    @PostMapping("/api/v1/employee/company")
+    public String createEmployeeCompany(@AuthenticationPrincipal UserDetails userDetails,
+                                        @RequestBody CreateCompanyDto createCompanyDto) throws Exception {
+        employeeService.createEmployeeCompany(userDetails.getUsername(), createCompanyDto);
+        return "Success";
+    }
 
 
 }

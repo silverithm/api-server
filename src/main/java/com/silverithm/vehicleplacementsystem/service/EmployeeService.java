@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
+import com.silverithm.vehicleplacementsystem.dto.CreateCompanyDto;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeDTO;
 import com.silverithm.vehicleplacementsystem.dto.EmployeeUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
@@ -10,10 +11,12 @@ import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.entity.Employee;
 import com.silverithm.vehicleplacementsystem.entity.Subscription;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
+import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
 import com.silverithm.vehicleplacementsystem.repository.EmployeeRepository;
 import com.silverithm.vehicleplacementsystem.repository.SubscriptionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
+import jakarta.transaction.TransactionScoped;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,6 +47,8 @@ public class EmployeeService {
 
     @Autowired
     private SubscriptionRepository subscriptionRepository;
+    @Autowired
+    private CompanyRepository companyRepository;
 
     public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) throws Exception {
 
@@ -97,4 +102,23 @@ public class EmployeeService {
     }
 
 
+    @Transactional
+    public void createEmployeeCompany(String userEmail, CreateCompanyDto createCompanyDto) throws Exception {
+        AppUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
+        Location location = geocodingService.getAddressCoordinates(createCompanyDto.companyAddressName());
+        Company company = Company.of(createCompanyDto.companyName(), createCompanyDto.companyAddressName(),
+                location);
+        companyRepository.save(company);
+
+        List<Employee> employees = employeeRepository.findByUserId(user.getId());
+
+        if (employees != null && !employees.isEmpty()) {
+            for (Employee employee : employees) {
+                employee.setCompany(company);
+            }
+        }
+
+        user.addCompany(company);
+    }
 }
