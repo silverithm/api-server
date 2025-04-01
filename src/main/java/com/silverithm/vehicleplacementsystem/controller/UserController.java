@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
 import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
@@ -78,11 +79,13 @@ public class UserController {
     }
 
     @PutMapping("api/v1/users/company-address")
-    public ResponseEntity<String> updateCompanyAddress(@AuthenticationPrincipal UserDetails userDetails,
-                                                       @RequestBody UpdateCompanyAddressDTO updateCompanyAddressDTO)
+    public ResponseEntity<UpdateCompanyAddressResponse> updateCompanyAddress(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody UpdateCompanyAddressDTO updateCompanyAddressDTO)
             throws Exception {
-        userService.updateCompanyAddress(updateCompanyAddressDTO, userDetails.getUsername());
-        return ResponseEntity.ok().body("success");
+
+        return ResponseEntity.ok()
+                .body(userService.updateCompanyAddress(updateCompanyAddressDTO, userDetails.getUsername()));
     }
 
 

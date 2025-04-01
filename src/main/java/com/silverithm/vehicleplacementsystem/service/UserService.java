@@ -9,6 +9,7 @@ import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
 import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
@@ -247,12 +248,15 @@ public class UserService {
     }
 
     @Transactional
-    public void updateCompanyAddress(UpdateCompanyAddressDTO updateCompanyAddressDTO, String userEmail)
+    public UpdateCompanyAddressResponse updateCompanyAddress(UpdateCompanyAddressDTO updateCompanyAddressDTO,
+                                                             String userEmail)
             throws Exception {
         AppUser findUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
         Location companyLocation = geocodingService.getAddressCoordinates(updateCompanyAddressDTO.companyAddress());
         findUser.updateCompanyAddress(companyLocation, updateCompanyAddressDTO.companyAddress());
+
+        return new UpdateCompanyAddressResponse(updateCompanyAddressDTO.companyAddress(), companyLocation);
     }
 
     public Integer getDailyDispatchLimit(String username) {
