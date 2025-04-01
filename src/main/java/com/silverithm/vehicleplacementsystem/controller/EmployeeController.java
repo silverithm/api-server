@@ -60,6 +60,13 @@ public class EmployeeController {
         return "Success";
     }
 
+    @PostMapping("/api/v1/employees/bulk")
+    public String bulkAddEmployees(@AuthenticationPrincipal UserDetails userDetails,
+                                @RequestBody List<AddEmployeeRequest> employeeRequests) throws Exception {
+        employeeService.bulkAddEmployees(userDetails, employeeRequests);
+        return "Success";
+    }
+
     @PostMapping("/api/v1/employee/company/{userId}")
     public String createEmployeeCompany(@PathVariable("userId") final Long userId,
                                         @RequestBody final CreateCompanyDto createCompanyDto) throws Exception {

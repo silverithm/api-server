@@ -1,11 +1,14 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
+import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.service.ElderService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,6 +53,13 @@ public class ElderController {
                                                @RequestBody ElderUpdateRequestDTO elderUpdateRequestDTO)
             throws Exception {
         elderService.updateElderRequiredFrontSeat(id, elderUpdateRequestDTO);
+        return "Success";
+    }
+
+    @PostMapping("/api/v1/elders/bulk")
+    public String bulkAddElders(@AuthenticationPrincipal UserDetails userDetails,
+                                @RequestBody List<AddElderRequest> elderRequests) throws Exception {
+        elderService.bulkAddElders(userDetails, elderRequests);
         return "Success";
     }
 }

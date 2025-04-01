@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
+import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.dto.Location;
@@ -28,6 +29,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -87,5 +89,21 @@ public class ElderService {
     public void updateElderRequiredFrontSeat(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) {
         Elderly elderly = elderRepository.findById(id).orElseThrow();
         elderly.update(elderUpdateRequestDTO.requiredFrontSeat());
+    }
+
+    public void bulkAddElders(UserDetails userDetails, List<AddElderRequest> elderRequests) throws Exception {
+        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
+
+        for (AddElderRequest elderRequest : elderRequests) {
+            Location homeAddress = geocodingService.getAddressCoordinates(elderRequest.homeAddress());
+
+            Elderly elderly = new Elderly(elderRequest.name(), elderRequest.homeAddress(), homeAddress,
+                    elderRequest.requiredFrontSeat(), user);
+
+            elderRepository.save(elderly);
+        }
+
+
     }
 }

@@ -27,6 +27,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -120,5 +121,24 @@ public class EmployeeService {
         }
 
         user.addCompany(company);
+    }
+
+    @Transactional
+    public void bulkAddEmployees(UserDetails userDetails, List<AddEmployeeRequest> employeeRequests) throws Exception {
+        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
+
+        for (AddEmployeeRequest employeeRequest : employeeRequests) {
+            Location homeAddress = geocodingService.getAddressCoordinates(employeeRequest.homeAddress());
+            Location workPlace = geocodingService.getAddressCoordinates(employeeRequest.workPlace());
+
+            if (homeAddress == null || workPlace == null) {
+                throw new CustomException("Invalid address", HttpStatus.BAD_REQUEST);
+            }
+
+            Employee employee = new Employee(employeeRequest.homeAddress(), employeeRequest.name(),
+                    user.getCompany(), homeAddress, employeeRequest.maxCapacity(), employeeRequest.isDriver(), user);
+            employeeRepository.save(employee);
+        }
     }
 }
