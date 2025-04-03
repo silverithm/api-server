@@ -51,7 +51,6 @@ public class SubscriptionScheduler {
                     0
             );
 
-            billingService.ensureBillingKey(user, requestDto);
             PaymentResponse paymentResponse = billingService.requestPayment(requestDto, user.getBillingKey());
 
             if (paymentResponse.status().equals("DONE")) {
