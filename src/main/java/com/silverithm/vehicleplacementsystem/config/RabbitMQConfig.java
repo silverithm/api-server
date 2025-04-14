@@ -68,7 +68,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue dispatchQueue() {
-        return QueueBuilder.durable("dispatch.queue")
+        return QueueBuilder.durable("dispatch.queue.temp")
                 .withArgument("x-dead-letter-exchange", "dispatch.dlx")
                 .withArgument("x-dead-letter-routing-key", "dispatch.dead")
                 .build();
