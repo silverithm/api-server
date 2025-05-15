@@ -445,10 +445,18 @@ public class DispatchService {
                 .setHeader("username", userDetails.getUsername())
                 .build();
 
-        rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
-        log.info("Dispatch request sent to RabbitMQ: {}", requestDispatchDTO);
-
-        return jobId;
+        log.info("Sending message to RabbitMQ queue '{}'. JobId: {}, Username: {}, Message size: {} bytes", 
+                dispatchQueue.getName(), jobId, userDetails.getUsername(), message.getBody().length);
+        try {
+            rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
+            log.info("Dispatch request successfully sent to RabbitMQ: Queue={}, JobId={}, Message content={}", 
+                    dispatchQueue.getName(), jobId, objectMapper.writeValueAsString(requestDispatchDTO));
+            return jobId;
+        } catch (Exception e) {
+            log.error("Failed to send message to RabbitMQ: Queue={}, JobId={}, Error={}", 
+                    dispatchQueue.getName(), jobId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     public Boolean isLimitExceeded(UserDetails userDetails) {

@@ -101,19 +101,32 @@ public class DispatchController {
     public void handleDispatchResponse(Message message) {
 
         String username = message.getMessageProperties().getHeaders().get("username").toString();
+        String jobId = message.getMessageProperties().getHeaders().get("jobId") != null 
+                ? message.getMessageProperties().getHeaders().get("jobId").toString() : "unknown";
+        
+        log.info("Received message from queue 'dispatch-response-queue'. JobId: {}, Username: {}, Message size: {} bytes", 
+                jobId, username, message.getBody().length);
 
         try {
+            log.debug("Message headers: {}", message.getMessageProperties().getHeaders());
+            String messageBody = new String(message.getBody());
+            log.debug("Raw message body: {}", messageBody);
+            
             List<AssignmentResponseDTO> result = objectMapper.readValue(message.getBody(),
                     new TypeReference<List<AssignmentResponseDTO>>() {
                     });
+            
+            log.info("Successfully parsed dispatch response message. JobId: {}, Results count: {}", 
+                    jobId, result.size());
 
             dispatchHistoryService.saveDispatchResult(result, username);
+            log.info("Dispatch result saved successfully for JobId: {}, Username: {}", jobId, username);
         } catch (Exception e) {
-            log.error("배차 응답 처리 중 오류 발생: ", e);
-            String jobId = message.getMessageProperties().getHeaders().get("jobId").toString();
+            log.error("배차 응답 처리 중 오류 발생: JobId={}, Username={}, Error={}", 
+                    jobId, username, e.getMessage(), e);
             dispatchService.decrementDailyRequestCount(username);
             slackService.sendApiFailureNotification("차량 배차 요청 실패", username, e.getMessage(),
-                    message.getBody().toString());
+                    new String(message.getBody()));
             sseService.notifyError(jobId);
         }
     }
@@ -136,5 +149,26 @@ public class DispatchController {
         return dispatchHistoryService.deleteHistory(id, userDetails);
     }
 
+    @GetMapping("/api/v1/rabbitmq/status")
+    public ResponseEntity<String> checkRabbitMQStatus() {
+        try {
+            // 간단한 연결 확인용 메시지
+            Message pingMessage = MessageBuilder
+                    .withBody("ping".getBytes())
+                    .setHeader("type", "health-check")
+                    .build();
+            
+            // 존재하는 큐에 메시지 전송 시도
+            rabbitTemplate.convertAndSend(dispatchQueue.getName(), pingMessage);
+            log.info("RabbitMQ health check ping sent successfully");
+            
+            return ResponseEntity.ok("RabbitMQ connection is working");
+        } catch (Exception e) {
+            log.error("RabbitMQ connection check failed: {}", e.getMessage(), e);
+            return ResponseEntity
+                    .status(503)
+                    .body("RabbitMQ connection issue: " + e.getMessage());
+        }
+    }
 
 }

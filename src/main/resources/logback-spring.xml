@@ -55,4 +55,9 @@
         <appender-ref ref="CONSOLE" />
     </root>
 
+    <!-- RabbitMQ 관련 로거 설정 -->
+    <logger name="org.springframework.amqp" level="DEBUG" />
+    <logger name="org.springframework.amqp.rabbit.listener" level="DEBUG" />
+    <logger name="org.springframework.amqp.rabbit.connection" level="DEBUG" />
+    <logger name="com.silverithm.vehicleplacementsystem.config.RabbitMQConfig" level="DEBUG" />
 </configuration>
