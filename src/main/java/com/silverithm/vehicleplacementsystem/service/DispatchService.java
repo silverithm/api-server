@@ -446,6 +446,7 @@ public class DispatchService {
                 .build();
 
         rabbitTemplate.convertAndSend(dispatchQueue.getName(), message);
+        log.info("Dispatch request sent to RabbitMQ: {}", requestDispatchDTO);
 
         return jobId;
     }
