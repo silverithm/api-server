@@ -84,6 +84,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     testImplementation 'org.springframework.amqp:spring-rabbit-test'
 
+    // Firebase Admin SDK for FCM
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
+    
+    // JSON processing
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
 }
 
 tasks.named('test') {

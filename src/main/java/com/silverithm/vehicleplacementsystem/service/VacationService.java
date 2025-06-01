@@ -24,6 +24,7 @@ public class VacationService {
     
     private final VacationRequestRepository vacationRequestRepository;
     private final VacationLimitRepository vacationLimitRepository;
+    private final NotificationService notificationService;
     
     public VacationCalendarResponseDTO getVacationCalendar(
             LocalDate startDate, 
@@ -189,6 +190,14 @@ public class VacationService {
         
         log.info("[Vacation Service] 휴가 신청 생성 완료: ID={}", saved.getId());
         
+        // 관리자에게 알림 전송 (실제 환경에서는 관리자 FCM 토큰을 조회해야 함)
+        try {
+            sendVacationSubmittedNotificationToAdmins(saved);
+        } catch (Exception e) {
+            log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패는 휴가 신청 자체에는 영향을 주지 않음
+        }
+        
         return VacationRequestDTO.fromEntity(saved);
     }
     
@@ -200,9 +209,16 @@ public class VacationService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + id));
         
         vacation.setStatus(VacationRequest.VacationStatus.APPROVED);
-        vacationRequestRepository.save(vacation);
+        VacationRequest saved = vacationRequestRepository.save(vacation);
         
         log.info("[Vacation Service] 휴가 승인 완료: ID={}", id);
+        
+        // 신청자에게 승인 알림 전송
+        try {
+            sendVacationApprovedNotificationToUser(saved);
+        } catch (Exception e) {
+            log.error("[Vacation Service] 승인 알림 전송 실패: {}", e.getMessage());
+        }
     }
     
     @Transactional
@@ -213,9 +229,16 @@ public class VacationService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + id));
         
         vacation.setStatus(VacationRequest.VacationStatus.REJECTED);
-        vacationRequestRepository.save(vacation);
+        VacationRequest saved = vacationRequestRepository.save(vacation);
         
         log.info("[Vacation Service] 휴가 거부 완료: ID={}", id);
+        
+        // 신청자에게 거부 알림 전송
+        try {
+            sendVacationRejectedNotificationToUser(saved);
+        } catch (Exception e) {
+            log.error("[Vacation Service] 거부 알림 전송 실패: {}", e.getMessage());
+        }
     }
     
     @Transactional
@@ -308,5 +331,72 @@ public class VacationService {
         log.info("[Vacation Service] 휴가 제한 저장 전체 완료: {}건", savedLimits.size());
         
         return savedLimits;
+    }
+    
+    // 알림 전송 헬퍼 메서드들
+    private void sendVacationApprovedNotificationToUser(VacationRequest vacation) {
+        // 실제 환경에서는 사용자의 FCM 토큰을 조회해야 함
+        String userFcmToken = getUserFcmToken(vacation.getUserId(), vacation.getUserName());
+        
+        if (userFcmToken != null) {
+            notificationService.sendVacationApprovedNotification(
+                    userFcmToken,
+                    vacation.getUserId(),
+                    vacation.getUserName(),
+                    vacation.getDate().toString(),
+                    vacation.getId()
+            );
+        } else {
+            log.warn("[Vacation Service] 사용자 FCM 토큰을 찾을 수 없음: {}", vacation.getUserName());
+        }
+    }
+    
+    private void sendVacationRejectedNotificationToUser(VacationRequest vacation) {
+        String userFcmToken = getUserFcmToken(vacation.getUserId(), vacation.getUserName());
+        
+        if (userFcmToken != null) {
+            notificationService.sendVacationRejectedNotification(
+                    userFcmToken,
+                    vacation.getUserId(),
+                    vacation.getUserName(),
+                    vacation.getDate().toString(),
+                    vacation.getId()
+            );
+        } else {
+            log.warn("[Vacation Service] 사용자 FCM 토큰을 찾을 수 없음: {}", vacation.getUserName());
+        }
+    }
+    
+    private void sendVacationSubmittedNotificationToAdmins(VacationRequest vacation) {
+        List<String> adminFcmTokens = getAdminFcmTokens();
+        
+        for (String adminToken : adminFcmTokens) {
+            try {
+                notificationService.sendVacationSubmittedNotification(
+                        adminToken,
+                        "admin", // 관리자 사용자 ID
+                        "관리자", // 관리자 이름
+                        vacation.getUserName(),
+                        vacation.getDate().toString(),
+                        vacation.getId()
+                );
+            } catch (Exception e) {
+                log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
+            }
+        }
+    }
+    
+    // TODO: 실제 환경에서는 사용자 관리 시스템과 연동하여 FCM 토큰을 조회해야 함
+    private String getUserFcmToken(String userId, String userName) {
+        // 개발 환경에서는 테스트 토큰 반환
+        log.debug("[Vacation Service] 사용자 FCM 토큰 조회: userId={}, userName={}", userId, userName);
+        return "test-user-token-" + userId;
+    }
+    
+    // TODO: 실제 환경에서는 관리자 목록과 FCM 토큰을 조회해야 함  
+    private List<String> getAdminFcmTokens() {
+        // 개발 환경에서는 테스트 토큰 목록 반환
+        log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
+        return List.of("test-admin-token-1", "test-admin-token-2");
     }
 } 
