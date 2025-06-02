@@ -1,9 +1,11 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.MemberJoinRequest;
 import com.silverithm.vehicleplacementsystem.entity.Notification;
+import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +25,23 @@ public class MemberService {
     
     private final MemberRepository memberRepository;
     private final MemberJoinRequestRepository memberJoinRequestRepository;
+    private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
+    
+    public List<CompanyListDTO> getAllCompanies() {
+        log.info("[Member Service] 모든 회사 조회");
+        
+        List<Company> companies = companyRepository.findAll();
+        
+        return companies.stream()
+                .map(CompanyListDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
     
     @Transactional
     public MemberJoinRequestResponseDTO submitJoinRequest(MemberJoinRequestDTO requestDTO) {
-        log.info("[Member Service] 회원가입 요청: username={}, email={}", requestDTO.getUsername(), requestDTO.getEmail());
+        log.info("[Member Service] 회원가입 요청: username={}, email={}, companyId={}", 
+                requestDTO.getUsername(), requestDTO.getEmail(), requestDTO.getCompanyId());
         
         // 중복 확인
         if (memberRepository.existsByUsername(requestDTO.getUsername())) {
@@ -44,6 +58,13 @@ public class MemberService {
         
         if (memberJoinRequestRepository.existsByEmail(requestDTO.getEmail())) {
             throw new IllegalArgumentException("이미 가입 요청된 이메일입니다: " + requestDTO.getEmail());
+        }
+        
+        // 회사 검증
+        Company company = null;
+        if (requestDTO.getCompanyId() != null) {
+            company = companyRepository.findById(requestDTO.getCompanyId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
         }
         
         // Role enum 변환
@@ -70,6 +91,7 @@ public class MemberService {
                 .department(requestDTO.getDepartment())
                 .position(requestDTO.getPosition())
                 .fcmToken(requestDTO.getFcmToken())
+                .company(company)
                 .status(MemberJoinRequest.RequestStatus.PENDING)
                 .build();
         
@@ -140,6 +162,7 @@ public class MemberService {
                 .fcmToken(joinRequest.getFcmToken())
                 .department(joinRequest.getDepartment())
                 .position(joinRequest.getPosition())
+                .company(joinRequest.getCompany())
                 .build();
         
         Member savedMember = memberRepository.save(member);

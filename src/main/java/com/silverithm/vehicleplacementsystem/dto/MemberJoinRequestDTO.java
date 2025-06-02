@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Data
@@ -36,4 +37,7 @@ public class MemberJoinRequestDTO {
     private String department;
     private String position;
     private String fcmToken;
+    
+    // 회사 선택 (기존 API 호환성을 위해 선택사항)
+    private Long companyId;
 } 

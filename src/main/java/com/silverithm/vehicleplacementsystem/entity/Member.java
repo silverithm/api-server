@@ -54,6 +54,10 @@ public class Member {
     @Column
     private String position;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
+    
     @Column(nullable = false)
     private LocalDateTime createdAt;
     

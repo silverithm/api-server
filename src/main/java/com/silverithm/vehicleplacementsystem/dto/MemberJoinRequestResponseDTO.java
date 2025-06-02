@@ -22,6 +22,7 @@ public class MemberJoinRequestResponseDTO {
     private String requestedRole;
     private String department;
     private String position;
+    private CompanyListDTO company;
     private String status;
     private String rejectReason;
     private Long approvedBy;
@@ -39,6 +40,7 @@ public class MemberJoinRequestResponseDTO {
                 .requestedRole(entity.getRequestedRole().name().toLowerCase())
                 .department(entity.getDepartment())
                 .position(entity.getPosition())
+                .company(entity.getCompany() != null ? CompanyListDTO.fromEntity(entity.getCompany()) : null)
                 .status(entity.getStatus().name().toLowerCase())
                 .rejectReason(entity.getRejectReason())
                 .approvedBy(entity.getApprovedBy())

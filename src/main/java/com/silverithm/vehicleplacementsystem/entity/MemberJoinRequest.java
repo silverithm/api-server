@@ -50,6 +50,10 @@ public class MemberJoinRequest {
     @Column
     private String fcmToken;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
+    
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status;
