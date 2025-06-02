@@ -29,6 +29,7 @@ public class MemberService {
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
+    private final SlackService slackService;
     
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 모든 회사 조회");
@@ -176,6 +177,22 @@ public class MemberService {
         memberJoinRequestRepository.save(joinRequest);
         
         log.info("[Member Service] 가입 승인 완료: memberId={}, requestId={}", savedMember.getId(), requestId);
+        
+        // 슬랙 알림 전송
+        try {
+            String companyName = joinRequest.getCompany() != null ? joinRequest.getCompany().getName() : "미지정";
+            slackService.sendMemberApprovalNotification(
+                    joinRequest.getEmail(), 
+                    joinRequest.getName(), 
+                    companyName,
+                    joinRequest.getDepartment(),
+                    joinRequest.getPosition(),
+                    joinRequest.getRequestedRole().name().toLowerCase()
+            );
+            log.info("[Member Service] 멤버 승인 슬랙 알림 전송 완료: {}", joinRequest.getName());
+        } catch (Exception e) {
+            log.error("[Member Service] 슬랙 알림 전송 실패: {}", e.getMessage());
+        }
         
         // 신청자에게 승인 알림 전송
         try {

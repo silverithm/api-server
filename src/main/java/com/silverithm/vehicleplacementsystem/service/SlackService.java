@@ -51,17 +51,48 @@ public class SlackService {
     }
 
     /**
-     * 회원가입 성공 알림 전송
+     * 회원가입 성공 알림 전송 (관리자용)
      */
     public void sendSignupSuccessNotification(String email, String userName, String companyName) {
         try {
             String message = String.format(
-                    "{\"text\":\":tada: *새 회원 가입* :tada:\\n" +
+                    "{\"text\":\":crown: *새 관리자 가입* :crown:\\n" +
                             "• 사용자 이메일: %s\\n" +
                             "• 사용자 이름: %s\\n" +
                             "• 회사명: %s\\n" +
                             "• 가입일시: %s\"}",
                     email, userName, companyName, java.time.LocalDateTime.now());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> request = new HttpEntity<>(message, headers);
+
+            restTemplate.postForObject(signupUrl, request, String.class);
+        } catch (Exception e) {
+            log.error("슬랙 알림 전송 실패: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 멤버 가입 승인 알림 전송 (직원용)
+     */
+    public void sendMemberApprovalNotification(String email, String userName, String companyName, 
+                                               String department, String position, String role) {
+        try {
+            String message = String.format(
+                    "{\"text\":\":busts_in_silhouette: *새 직원 가입 승인* :busts_in_silhouette:\\n" +
+                            "• 사용자 이메일: %s\\n" +
+                            "• 사용자 이름: %s\\n" +
+                            "• 소속 회사: %s\\n" +
+                            "• 부서: %s\\n" +
+                            "• 직급: %s\\n" +
+                            "• 역할: %s\\n" +
+                            "• 승인일시: %s\"}",
+                    email, userName, companyName, 
+                    department != null ? department : "미지정",
+                    position != null ? position : "미지정",
+                    getRoleDisplayName(role),
+                    java.time.LocalDateTime.now());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -100,5 +131,18 @@ public class SlackService {
         } catch (Exception e) {
             log.error("슬랙 알림 전송 실패: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * 역할명을 한글로 변환
+     */
+    private String getRoleDisplayName(String role) {
+        return switch (role.toUpperCase()) {
+            case "CAREGIVER" -> "요양보호사";
+            case "OFFICE" -> "사무직";
+            case "USER" -> "일반 사용자";
+            case "ADMIN" -> "관리자";
+            default -> role;
+        };
     }
 }
