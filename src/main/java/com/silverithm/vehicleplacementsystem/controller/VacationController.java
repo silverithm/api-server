@@ -30,14 +30,11 @@ public class VacationController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "all") String roleFilter,
-            @RequestParam(required = false) String nameFilter,
-            @RequestParam(required = false) String _t,  // 캐시 무효화용
-            @RequestParam(required = false) String _r,  // 요청 ID
-            @RequestParam(defaultValue = "0") String _retry) {  // 재시도 횟수
+            @RequestParam(required = false) String nameFilter) {
         
         try {
-            log.info("[Vacation API] 휴가 캘린더 요청 - ID: {}, 시도: {}, 날짜: {} ~ {}, role: {}, name: {}", 
-                    _r, _retry, startDate, endDate, roleFilter, nameFilter);
+            log.info("[Vacation API] 휴가 캘린더 요청: {} ~ {}, role: {}, name: {}", 
+                    startDate, endDate, roleFilter, nameFilter);
             
             // 날짜 형식 검증
             if (!isValidDateFormat(startDate) || !isValidDateFormat(endDate)) {
@@ -52,8 +49,8 @@ public class VacationController {
             VacationCalendarResponseDTO response = vacationService.getVacationCalendar(
                     start, end, roleFilter, nameFilter);
             
-            log.info("[Vacation API] 휴가 캘린더 응답 완료 - ID: {}, 날짜 수: {}", 
-                    _r, response.getDates().size());
+            log.info("[Vacation API] 휴가 캘린더 응답 완료: 날짜 수={}", 
+                    response.getDates().size());
             
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -294,8 +291,7 @@ public class VacationController {
                     .body(Map.of(
                             "success", true,
                             "message", savedLimits.size() + "개의 휴가 제한이 저장되었습니다.",
-                            "limits", savedLimits,
-                            "timestamp", System.currentTimeMillis()
+                            "limits", savedLimits
                     ));
                     
         } catch (Exception e) {
@@ -304,8 +300,7 @@ public class VacationController {
                     .headers(getCorsHeaders())
                     .body(Map.of(
                             "error", "휴가 제한 저장 중 오류가 발생했습니다",
-                            "message", e.getMessage(),
-                            "timestamp", System.currentTimeMillis()
+                            "message", e.getMessage()
                     ));
         }
     }
