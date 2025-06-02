@@ -64,6 +64,9 @@ public class Member {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
     
+    @Column
+    private LocalDateTime lastLoginAt;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

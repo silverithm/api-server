@@ -24,6 +24,44 @@ public class MemberController {
     private final MemberService memberService;
     
     /**
+     * 멤버 로그인
+     */
+    @PostMapping("/signin")
+    public ResponseEntity<MemberSigninResponseDTO> signin(@RequestBody MemberSigninDTO signinDTO) {
+        try {
+            return ResponseEntity.ok(memberService.signin(signinDTO));
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 로그인 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    /**
+     * FCM 토큰 업데이트
+     */
+    @PutMapping("/{id}/fcm-token")
+    public ResponseEntity<Map<String, String>> updateFcmToken(
+            @PathVariable Long id,
+            @Valid @RequestBody FCMTokenUpdateDTO tokenUpdateDTO) {
+        
+        try {
+            log.info("[Member API] FCM 토큰 업데이트: memberId={}", id);
+            
+            memberService.updateFcmToken(id, tokenUpdateDTO);
+            
+            return ResponseEntity.ok(Map.of("message", "FCM 토큰이 업데이트되었습니다"));
+            
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] FCM 토큰 업데이트 실패: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[Member API] FCM 토큰 업데이트 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "FCM 토큰 업데이트 중 오류가 발생했습니다"));
+        }
+    }
+    
+    /**
      * 회사 목록 조회
      */
     @GetMapping("/companies")

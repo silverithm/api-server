@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestReposit
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class MemberService {
     private final MemberJoinRequestRepository memberJoinRequestRepository;
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
+    private final PasswordEncoder passwordEncoder;
     
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 모든 회사 조회");
@@ -83,7 +85,7 @@ public class MemberService {
         // 가입 요청 생성
         MemberJoinRequest joinRequest = MemberJoinRequest.builder()
                 .username(requestDTO.getUsername())
-                .password(requestDTO.getPassword()) // 실제 환경에서는 암호화 필요
+                .password(passwordEncoder.encode(requestDTO.getPassword())) // 비밀번호 암호화
                 .name(requestDTO.getName())
                 .email(requestDTO.getEmail())
                 .phoneNumber(requestDTO.getPhoneNumber())
@@ -153,7 +155,7 @@ public class MemberService {
         // 회원 생성
         Member member = Member.builder()
                 .username(joinRequest.getUsername())
-                .password(joinRequest.getPassword()) // 실제 환경에서는 암호화 필요
+                .password(joinRequest.getPassword()) // 이미 암호화된 비밀번호
                 .name(joinRequest.getName())
                 .email(joinRequest.getEmail())
                 .phoneNumber(joinRequest.getPhoneNumber())
@@ -394,5 +396,50 @@ public class MemberService {
     private List<String> getAdminFcmTokens() {
         log.debug("[Member Service] 관리자 FCM 토큰 목록 조회");
         return List.of("test-admin-token-1", "test-admin-token-2");
+    }
+    
+    @Transactional
+    public MemberSigninResponseDTO signin(MemberSigninDTO signinDTO) {
+        log.info("[Member Service] 로그인 요청: username={}", signinDTO.getUsername());
+        
+        Member member = memberRepository.findByUsername(signinDTO.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+        
+        // 비밀번호 검증 (실제 환경에서는 암호화된 비밀번호 비교 필요)
+        if (!passwordEncoder.matches(signinDTO.getPassword(), member.getPassword())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다");
+        }
+        
+        // 계정 상태 확인
+        if (member.getStatus() != Member.MemberStatus.ACTIVE) {
+            String statusMessage = switch (member.getStatus()) {
+                case INACTIVE -> "비활성화된 계정입니다";
+                case SUSPENDED -> "정지된 계정입니다";
+                default -> "사용할 수 없는 계정입니다";
+            };
+            throw new IllegalArgumentException(statusMessage);
+        }
+        
+        // 로그인 성공 처리
+        member.setLastLoginAt(LocalDateTime.now());
+        
+        memberRepository.save(member);
+        
+        log.info("[Member Service] 로그인 성공: {} (ID: {})", signinDTO.getUsername(), member.getId());
+        
+        return MemberSigninResponseDTO.from(member);
+    }
+    
+    @Transactional
+    public void updateFcmToken(Long memberId, FCMTokenUpdateDTO tokenUpdateDTO) {
+        log.info("[Member Service] FCM 토큰 업데이트: memberId={}", memberId);
+        
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        
+        member.setFcmToken(tokenUpdateDTO.getFcmToken());
+        memberRepository.save(member);
+        
+        log.info("[Member Service] FCM 토큰 업데이트 완료: memberId={}", memberId);
     }
 } 
