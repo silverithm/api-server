@@ -1,11 +1,15 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
+import com.silverithm.vehicleplacementsystem.entity.Member;
+import com.silverithm.vehicleplacementsystem.service.MemberService;
 import com.silverithm.vehicleplacementsystem.service.VacationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,17 +28,19 @@ import java.util.Map;
 public class VacationController {
     
     private final VacationService vacationService;
+    private final MemberService memberService;
     
     @GetMapping("/calendar")
     public ResponseEntity<VacationCalendarResponseDTO> getVacationCalendar(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "all") String roleFilter,
-            @RequestParam(required = false) String nameFilter) {
+            @RequestParam(required = false) String nameFilter,
+            @RequestParam Long companyId) {
         
         try {
-            log.info("[Vacation API] 휴가 캘린더 요청: {} ~ {}, role: {}, name: {}", 
-                    startDate, endDate, roleFilter, nameFilter);
+            log.info("[Vacation API] 휴가 캘린더 요청: companyId={}, {} ~ {}, role: {}, name: {}", 
+                    companyId, startDate, endDate, roleFilter, nameFilter);
             
             // 날짜 형식 검증
             if (!isValidDateFormat(startDate) || !isValidDateFormat(endDate)) {
@@ -47,7 +53,7 @@ public class VacationController {
             LocalDate end = LocalDate.parse(endDate);
             
             VacationCalendarResponseDTO response = vacationService.getVacationCalendar(
-                    start, end, roleFilter, nameFilter);
+                    companyId, start, end, roleFilter, nameFilter);
             
             log.info("[Vacation API] 휴가 캘린더 응답 완료: 날짜 수={}", 
                     response.getDates().size());
@@ -73,10 +79,11 @@ public class VacationController {
     public ResponseEntity<VacationDateResponseDTO> getVacationForDate(
             @PathVariable String date,
             @RequestParam(defaultValue = "caregiver") String role,
-            @RequestParam(required = false) String nameFilter) {
+            @RequestParam(required = false) String nameFilter,
+            @RequestParam Long companyId) {
         
         try {
-            log.info("[Vacation API] 날짜 {} 휴가 요청: role={}, nameFilter={}", date, role, nameFilter);
+            log.info("[Vacation API] 날짜 {} 휴가 요청: companyId={}, role={}, nameFilter={}", date, companyId, role, nameFilter);
             
             // 날짜 형식 검증
             if (!isValidDateFormat(date)) {
@@ -88,7 +95,7 @@ public class VacationController {
             LocalDate localDate = LocalDate.parse(date);
             
             VacationDateResponseDTO response = vacationService.getVacationForDate(
-                    localDate, role, nameFilter);
+                    companyId, localDate, role, nameFilter);
             
             log.info("[Vacation API] 날짜 {} 응답 완료: {}명의 휴가자", date, response.getTotalVacationers());
             
@@ -111,13 +118,14 @@ public class VacationController {
     
     @PostMapping("/submit")
     public ResponseEntity<Map<String, Object>> createVacationRequest(
-            @Valid @RequestBody VacationCreateRequestDTO requestDTO) {
+            @Valid @RequestBody VacationCreateRequestDTO requestDTO,
+            @RequestParam Long companyId) {
         
         try {
-            log.info("[Vacation API] 휴가 신청 생성 요청: {}, 날짜: {}", 
-                    requestDTO.getUserName(), requestDTO.getDate());
+            log.info("[Vacation API] 휴가 신청 생성 요청: companyId={}, {}, 날짜: {}", 
+                    companyId, requestDTO.getUserName(), requestDTO.getDate());
             
-            VacationRequestDTO result = vacationService.createVacationRequest(requestDTO);
+            VacationRequestDTO result = vacationService.createVacationRequest(companyId, requestDTO);
             
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -227,11 +235,11 @@ public class VacationController {
     }
     
     @GetMapping("/requests")
-    public ResponseEntity<Map<String, List<VacationRequestDTO>>> getAllVacationRequests() {
+    public ResponseEntity<Map<String, List<VacationRequestDTO>>> getAllVacationRequests(@RequestParam Long companyId) {
         try {
-            log.info("[Vacation API] 모든 휴가 요청 조회");
+            log.info("[Vacation API] 모든 휴가 요청 조회: companyId={}", companyId);
             
-            List<VacationRequestDTO> requests = vacationService.getAllVacationRequests();
+            List<VacationRequestDTO> requests = vacationService.getAllVacationRequests(companyId);
             
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -248,7 +256,8 @@ public class VacationController {
     @GetMapping("/limits")
     public ResponseEntity<Map<String, List<VacationLimitDTO>>> getVacationLimits(
             @RequestParam String start,
-            @RequestParam String end) {
+            @RequestParam String end,
+            @RequestParam Long companyId) {
         
         try {
             // 날짜 형식 검증
@@ -258,12 +267,12 @@ public class VacationController {
                         .build();
             }
             
-            log.info("[Vacation API] 휴가 제한 조회: {} ~ {}", start, end);
+            log.info("[Vacation API] 휴가 제한 조회: companyId={}, {} ~ {}", companyId, start, end);
             
             LocalDate startDate = LocalDate.parse(start);
             LocalDate endDate = LocalDate.parse(end);
             
-            List<VacationLimitDTO> limits = vacationService.getVacationLimits(startDate, endDate);
+            List<VacationLimitDTO> limits = vacationService.getVacationLimits(companyId, startDate, endDate);
             
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -279,12 +288,13 @@ public class VacationController {
     
     @PostMapping("/limits")
     public ResponseEntity<Map<String, Object>> saveVacationLimits(
-            @RequestBody VacationLimitRequestDTO requestDTO) {
+            @RequestBody VacationLimitRequestDTO requestDTO,
+            @RequestParam Long companyId) {
         
         try {
-            log.info("[Vacation API] 휴가 제한 저장 요청: {}건", requestDTO.getLimits().size());
+            log.info("[Vacation API] 휴가 제한 저장 요청: companyId={}, {}건", companyId, requestDTO.getLimits().size());
             
-            List<VacationLimitDTO> savedLimits = vacationService.saveVacationLimits(requestDTO);
+            List<VacationLimitDTO> savedLimits = vacationService.saveVacationLimits(companyId, requestDTO);
             
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())

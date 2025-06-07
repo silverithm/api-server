@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "vacation_limits", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"date", "role"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"date", "role", "company_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,6 +33,10 @@ public class VacationLimit {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private VacationRequest.Role role;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
     
     @Column(nullable = false)
     private LocalDateTime createdAt;

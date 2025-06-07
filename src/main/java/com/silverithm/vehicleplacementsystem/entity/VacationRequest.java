@@ -49,6 +49,10 @@ public class VacationRequest {
     @Column
     private String type;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
+    
     @Column(nullable = false)
     private LocalDateTime createdAt;
     

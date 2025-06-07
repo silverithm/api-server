@@ -1,8 +1,10 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.VacationLimit;
 import com.silverithm.vehicleplacementsystem.entity.VacationRequest;
+import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationLimitRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,20 +26,25 @@ public class VacationService {
     
     private final VacationRequestRepository vacationRequestRepository;
     private final VacationLimitRepository vacationLimitRepository;
+    private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
     
     public VacationCalendarResponseDTO getVacationCalendar(
+            Long companyId,
             LocalDate startDate, 
             LocalDate endDate, 
             String roleFilter, 
             String nameFilter) {
         
-        log.info("[Vacation Service] 휴가 캘린더 요청: {} ~ {}, role={}, name={}", 
-                startDate, endDate, roleFilter, nameFilter);
+        log.info("[Vacation Service] 휴가 캘린더 요청: companyId={}, {} ~ {}, role={}, name={}", 
+                companyId, startDate, endDate, roleFilter, nameFilter);
         
-        // 휴가 신청 데이터 조회
-        List<VacationRequest> vacations = vacationRequestRepository.findByDateBetween(startDate, endDate);
-        List<VacationLimit> limits = vacationLimitRepository.findByDateBetween(startDate, endDate);
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        // 회사별 휴가 신청 데이터 조회
+        List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDateBetween(company, startDate, endDate);
+        List<VacationLimit> limits = vacationLimitRepository.findByCompanyAndDateBetween(company, startDate, endDate);
         
         // 역할별 필터링
         if (!"all".equals(roleFilter)) {
@@ -101,18 +108,21 @@ public class VacationService {
             }
         });
         
-        log.info("[Vacation Service] 응답 완료: 날짜 수={}", dateMap.size());
+        log.info("[Vacation Service] 응답 완료: 회사 {}, 날짜 수={}", company.getName(), dateMap.size());
         
         return VacationCalendarResponseDTO.builder()
                 .dates(dateMap)
                 .build();
     }
     
-    public VacationDateResponseDTO getVacationForDate(LocalDate date, String role, String nameFilter) {
-        log.info("[Vacation Service] 날짜 {} 휴가 요청: role={}, nameFilter={}", date, role, nameFilter);
+    public VacationDateResponseDTO getVacationForDate(Long companyId, LocalDate date, String role, String nameFilter) {
+        log.info("[Vacation Service] 날짜 {} 휴가 요청: companyId={}, role={}, nameFilter={}", date, companyId, role, nameFilter);
         
-        // 휴가 신청 조회
-        List<VacationRequest> vacations = vacationRequestRepository.findByDate(date);
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        // 회사별 휴가 신청 조회
+        List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDate(company, date);
         
         // 역할별 필터링
         if (!"all".equals(role)) {
@@ -138,16 +148,16 @@ public class VacationService {
                 .filter(v -> v.getStatus() != VacationRequest.VacationStatus.REJECTED)
                 .count();
         
-        // 휴가 제한 조회
+        // 회사별 휴가 제한 조회
         Integer maxPeople = null;
         if (!"all".equals(role)) {
             VacationRequest.Role roleEnum = VacationRequest.Role.valueOf(role.toUpperCase());
-            maxPeople = vacationLimitRepository.findByDateAndRole(date, roleEnum)
+            maxPeople = vacationLimitRepository.findByCompanyAndDateAndRole(company, date, roleEnum)
                     .map(VacationLimit::getMaxPeople)
                     .orElse(3);
         }
         
-        log.info("[Vacation Service] 날짜 {} 응답: {}명의 휴가자, 제한={}", date, totalVacationers, maxPeople);
+        log.info("[Vacation Service] 날짜 {} 응답: 회사 {}, {}명의 휴가자, 제한={}", date, company.getName(), totalVacationers, maxPeople);
         
         return VacationDateResponseDTO.builder()
                 .date(date.toString())
@@ -158,8 +168,11 @@ public class VacationService {
     }
     
     @Transactional
-    public VacationRequestDTO createVacationRequest(VacationCreateRequestDTO requestDTO) {
-        log.info("[Vacation Service] 휴가 신청 생성: {}, 날짜: {}", requestDTO.getUserName(), requestDTO.getDate());
+    public VacationRequestDTO createVacationRequest(Long companyId, VacationCreateRequestDTO requestDTO) {
+        log.info("[Vacation Service] 휴가 신청 생성: companyId={}, {}, 날짜: {}", companyId, requestDTO.getUserName(), requestDTO.getDate());
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
         
         // Role enum 변환
         VacationRequest.Role role;
@@ -183,12 +196,13 @@ public class VacationService {
                 .password(requestDTO.getPassword())
                 .type(requestDTO.getType() != null ? requestDTO.getType() : "regular")
                 .userId(userId)
+                .company(company)
                 .status(VacationRequest.VacationStatus.PENDING)
                 .build();
         
         VacationRequest saved = vacationRequestRepository.save(entity);
         
-        log.info("[Vacation Service] 휴가 신청 생성 완료: ID={}", saved.getId());
+        log.info("[Vacation Service] 휴가 신청 생성 완료: 회사 {}, ID={}", company.getName(), saved.getId());
         
         // 관리자에게 알림 전송 (실제 환경에서는 관리자 FCM 토큰을 조회해야 함)
         try {
@@ -264,24 +278,30 @@ public class VacationService {
         log.info("[Vacation Service] 휴가 삭제 완료: ID={}", id);
     }
     
-    public List<VacationRequestDTO> getAllVacationRequests() {
-        log.info("[Vacation Service] 모든 휴가 요청 조회");
+    public List<VacationRequestDTO> getAllVacationRequests(Long companyId) {
+        log.info("[Vacation Service] 모든 휴가 요청 조회: companyId={}", companyId);
         
-        List<VacationRequest> vacations = vacationRequestRepository.findAll();
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
         
-        log.info("[Vacation Service] 휴가 요청 조회 완료: {}건", vacations.size());
+        List<VacationRequest> vacations = vacationRequestRepository.findByCompanyOrderByCreatedAtDesc(company);
+        
+        log.info("[Vacation Service] 휴가 요청 조회 완료: 회사 {}, {}건", company.getName(), vacations.size());
         
         return vacations.stream()
                 .map(VacationRequestDTO::fromEntity)
                 .collect(Collectors.toList());
     }
     
-    public List<VacationLimitDTO> getVacationLimits(LocalDate startDate, LocalDate endDate) {
-        log.info("[Vacation Service] 휴가 제한 조회: {} ~ {}", startDate, endDate);
+    public List<VacationLimitDTO> getVacationLimits(Long companyId, LocalDate startDate, LocalDate endDate) {
+        log.info("[Vacation Service] 휴가 제한 조회: companyId={}, {} ~ {}", companyId, startDate, endDate);
         
-        List<VacationLimit> limits = vacationLimitRepository.findByDateBetween(startDate, endDate);
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
         
-        log.info("[Vacation Service] 휴가 제한 조회 완료: {}건", limits.size());
+        List<VacationLimit> limits = vacationLimitRepository.findByCompanyAndDateBetween(company, startDate, endDate);
+        
+        log.info("[Vacation Service] 휴가 제한 조회 완료: 회사 {}, {}건", company.getName(), limits.size());
         
         return limits.stream()
                 .map(VacationLimitDTO::fromEntity)
@@ -289,8 +309,11 @@ public class VacationService {
     }
     
     @Transactional
-    public List<VacationLimitDTO> saveVacationLimits(VacationLimitRequestDTO requestDTO) {
-        log.info("[Vacation Service] 휴가 제한 저장: {}건", requestDTO.getLimits().size());
+    public List<VacationLimitDTO> saveVacationLimits(Long companyId, VacationLimitRequestDTO requestDTO) {
+        log.info("[Vacation Service] 휴가 제한 저장: companyId={}, {}건", companyId, requestDTO.getLimits().size());
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
         
         List<VacationLimitDTO> savedLimits = new ArrayList<>();
         
@@ -300,8 +323,8 @@ public class VacationService {
                 VacationRequest.Role role = VacationRequest.Role.valueOf(
                         (limitDTO.getRole() != null ? limitDTO.getRole() : "caregiver").toUpperCase());
                 
-                // 기존 제한이 있는지 확인
-                VacationLimit existingLimit = vacationLimitRepository.findByDateAndRole(date, role)
+                // 기존 제한이 있는지 확인 (회사별로)
+                VacationLimit existingLimit = vacationLimitRepository.findByCompanyAndDateAndRole(company, date, role)
                         .orElse(null);
                 
                 if (existingLimit != null) {
@@ -315,12 +338,13 @@ public class VacationService {
                             .date(date)
                             .maxPeople(limitDTO.getMaxPeople())
                             .role(role)
+                            .company(company)
                             .build();
                     VacationLimit saved = vacationLimitRepository.save(newLimit);
                     savedLimits.add(VacationLimitDTO.fromEntity(saved));
                 }
                 
-                log.info("[Vacation Service] 휴가 제한 저장 완료: {}, 최대 {}명", date, limitDTO.getMaxPeople());
+                log.info("[Vacation Service] 휴가 제한 저장 완료: 회사 {}, {}, 최대 {}명", company.getName(), date, limitDTO.getMaxPeople());
                 
             } catch (Exception e) {
                 log.error("[Vacation Service] 휴가 제한 저장 실패: {}", limitDTO, e);
@@ -328,7 +352,7 @@ public class VacationService {
             }
         }
         
-        log.info("[Vacation Service] 휴가 제한 저장 전체 완료: {}건", savedLimits.size());
+        log.info("[Vacation Service] 휴가 제한 저장 전체 완료: 회사 {}, {}건", company.getName(), savedLimits.size());
         
         return savedLimits;
     }
