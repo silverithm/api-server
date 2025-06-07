@@ -5,11 +5,14 @@ import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.MemberJoinRequest;
 import com.silverithm.vehicleplacementsystem.entity.Notification;
+import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,7 @@ public class MemberService {
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
     private final SlackService slackService;
+    private final JwtTokenProvider jwtTokenProvider;
     
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 모든 회사 조회");
@@ -73,9 +77,9 @@ public class MemberService {
         // Role enum 변환
         Member.Role role;
         try {
-            role = Member.Role.valueOf(requestDTO.getRequestedRole().toUpperCase());
+            role = Member.Role.valueOf(requestDTO.getRole().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("잘못된 역할입니다: " + requestDTO.getRequestedRole());
+            throw new IllegalArgumentException("잘못된 역할입니다: " + requestDTO.getRole());
         }
         
         // 관리자 역할은 직접 요청할 수 없음
@@ -101,14 +105,7 @@ public class MemberService {
         MemberJoinRequest saved = memberJoinRequestRepository.save(joinRequest);
         
         log.info("[Member Service] 회원가입 요청 생성 완료: ID={}", saved.getId());
-        
-        // 관리자에게 알림 전송
-        try {
-            sendJoinRequestNotificationToAdmins(saved);
-        } catch (Exception e) {
-            log.error("[Member Service] 관리자 알림 전송 실패: {}", e.getMessage());
-        }
-        
+
         return MemberJoinRequestResponseDTO.fromEntity(saved);
     }
     
@@ -437,6 +434,10 @@ public class MemberService {
             throw new IllegalArgumentException(statusMessage);
         }
         
+        // JWT 토큰 생성
+        UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(member.getUsername(),
+                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())));
+        
         // 로그인 성공 처리
         member.setLastLoginAt(LocalDateTime.now());
         
@@ -444,7 +445,7 @@ public class MemberService {
         
         log.info("[Member Service] 로그인 성공: {} (ID: {})", signinDTO.getUsername(), member.getId());
         
-        return MemberSigninResponseDTO.from(member);
+        return MemberSigninResponseDTO.from(member, tokenInfo);
     }
     
     @Transactional

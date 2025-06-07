@@ -112,6 +112,10 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/employee/uploadEmployeeExcel").permitAll()
                                 .requestMatchers("api/v1/signup").permitAll()
                                 .requestMatchers("api/v1/refresh-token").permitAll()
+                                .requestMatchers("/api/v1/members/companies").permitAll()
+                                .requestMatchers("/api/v1/members/signin").permitAll()
+                                .requestMatchers("/api/v1/members/join-request").permitAll()
+                                .requestMatchers("/api/v1/members/{id}/fcm-token").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
                         UsernamePasswordAuthenticationFilter.class);

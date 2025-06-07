@@ -15,7 +15,7 @@ import jakarta.validation.constraints.Size;
 public class MemberJoinRequestDTO {
     
     @NotBlank(message = "사용자명은 필수입니다")
-    @Size(min = 4, max = 20, message = "사용자명은 4-20자여야 합니다")
+    @Size(min = 4, max = 50, message = "사용자명은 4-50자여야 합니다")
     private String username;
     
     @NotBlank(message = "비밀번호는 필수입니다")
@@ -32,12 +32,13 @@ public class MemberJoinRequestDTO {
     private String phoneNumber;
     
     @NotBlank(message = "역할은 필수입니다")
-    private String requestedRole;
+    private String role;
     
     private String department;
     private String position;
     private String fcmToken;
     
     // 회사 선택 (기존 API 호환성을 위해 선택사항)
+    @NotNull(message = "회사 ID는 필수입니다")
     private Long companyId;
 } 

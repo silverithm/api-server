@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/members")
+@RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -87,7 +87,7 @@ public class MemberController {
             @Valid @RequestBody MemberJoinRequestDTO requestDTO) {
         
         try {
-            log.info("[Member API] 회원가입 요청: {}", requestDTO.getUsername());
+            log.info("[Member API] 회원가입 요청: username={}, role={}", requestDTO.getUsername(), requestDTO.getRole());
             
             MemberJoinRequestResponseDTO response = memberService.submitJoinRequest(requestDTO);
             

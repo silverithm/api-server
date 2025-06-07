@@ -13,10 +13,11 @@ public record MemberSigninResponseDTO(
         String department,
         String position,
         CompanyListDTO company,
-        LocalDateTime lastLoginAt
+        LocalDateTime lastLoginAt,
+        UserResponseDTO.TokenInfo tokenInfo
 ) {
     
-    public static MemberSigninResponseDTO from(Member member) {
+    public static MemberSigninResponseDTO from(Member member, UserResponseDTO.TokenInfo tokenInfo) {
         return new MemberSigninResponseDTO(
                 member.getId(),
                 member.getUsername(),
@@ -27,7 +28,8 @@ public record MemberSigninResponseDTO(
                 member.getDepartment(),
                 member.getPosition(),
                 member.getCompany() != null ? CompanyListDTO.fromEntity(member.getCompany()) : null,
-                member.getLastLoginAt()
+                member.getLastLoginAt(),
+                tokenInfo
         );
     }
 } 
