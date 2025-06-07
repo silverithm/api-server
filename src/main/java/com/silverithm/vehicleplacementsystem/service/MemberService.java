@@ -119,11 +119,44 @@ public class MemberService {
                 .collect(Collectors.toList());
     }
     
+    // 회사별 가입 요청 조회 메서드 추가
+    public List<MemberJoinRequestResponseDTO> getAllJoinRequestsByCompany(Long companyId) {
+        log.info("[Member Service] 회사별 모든 가입 요청 조회: companyId={}", companyId);
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        List<MemberJoinRequest> requests = memberJoinRequestRepository.findByCompanyOrderByCreatedAtDesc(company);
+        
+        log.info("[Member Service] 회사별 가입 요청 조회 완료: 회사 {}, {}건", company.getName(), requests.size());
+        
+        return requests.stream()
+                .map(MemberJoinRequestResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
     public List<MemberJoinRequestResponseDTO> getPendingJoinRequests() {
         log.info("[Member Service] 대기중인 가입 요청 조회");
         
         List<MemberJoinRequest> requests = memberJoinRequestRepository.findByStatusOrderByCreatedAtDesc(
                 MemberJoinRequest.RequestStatus.PENDING);
+        
+        return requests.stream()
+                .map(MemberJoinRequestResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    // 회사별 대기중인 가입 요청 조회 메서드 추가
+    public List<MemberJoinRequestResponseDTO> getPendingJoinRequestsByCompany(Long companyId) {
+        log.info("[Member Service] 회사별 대기중인 가입 요청 조회: companyId={}", companyId);
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        List<MemberJoinRequest> requests = memberJoinRequestRepository.findByCompanyAndStatusOrderByCreatedAtDesc(
+                company, MemberJoinRequest.RequestStatus.PENDING);
+        
+        log.info("[Member Service] 회사별 대기중인 가입 요청 조회 완료: 회사 {}, {}건", company.getName(), requests.size());
         
         return requests.stream()
                 .map(MemberJoinRequestResponseDTO::fromEntity)
@@ -237,6 +270,22 @@ public class MemberService {
                 .collect(Collectors.toList());
     }
     
+    // 회사별 회원 조회 메서드 추가
+    public List<MemberDTO> getAllMembersByCompany(Long companyId) {
+        log.info("[Member Service] 회사별 모든 회원 조회: companyId={}", companyId);
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        List<Member> members = memberRepository.findByCompanyOrderByCreatedAtDesc(company);
+        
+        log.info("[Member Service] 회사별 회원 조회 완료: 회사 {}, {}명", company.getName(), members.size());
+        
+        return members.stream()
+                .map(MemberDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
     public List<MemberDTO> getMembersByRole(String role) {
         log.info("[Member Service] 역할별 회원 조회: role={}", role);
         
@@ -248,11 +297,45 @@ public class MemberService {
                 .collect(Collectors.toList());
     }
     
+    // 회사별 역할별 회원 조회 메서드 추가
+    public List<MemberDTO> getMembersByCompanyAndRole(Long companyId, String role) {
+        log.info("[Member Service] 회사별 역할별 회원 조회: companyId={}, role={}", companyId, role);
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        Member.Role memberRole = Member.Role.valueOf(role.toUpperCase());
+        List<Member> members = memberRepository.findByCompanyAndRole(company, memberRole);
+        
+        log.info("[Member Service] 회사별 역할별 회원 조회 완료: 회사 {}, 역할 {}, {}명", company.getName(), role, members.size());
+        
+        return members.stream()
+                .map(MemberDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
     public List<MemberDTO> getMembersByStatus(String status) {
         log.info("[Member Service] 상태별 회원 조회: status={}", status);
         
         Member.MemberStatus memberStatus = Member.MemberStatus.valueOf(status.toUpperCase());
         List<Member> members = memberRepository.findByStatus(memberStatus);
+        
+        return members.stream()
+                .map(MemberDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    // 회사별 상태별 회원 조회 메서드 추가
+    public List<MemberDTO> getMembersByCompanyAndStatus(Long companyId, String status) {
+        log.info("[Member Service] 회사별 상태별 회원 조회: companyId={}, status={}", companyId, status);
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        Member.MemberStatus memberStatus = Member.MemberStatus.valueOf(status.toUpperCase());
+        List<Member> members = memberRepository.findByCompanyAndStatus(company, memberStatus);
+        
+        log.info("[Member Service] 회사별 상태별 회원 조회 완료: 회사 {}, 상태 {}, {}명", company.getName(), status, members.size());
         
         return members.stream()
                 .map(MemberDTO::fromEntity)

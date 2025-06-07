@@ -103,17 +103,21 @@ public class MemberController {
     }
     
     /**
-     * 모든 가입 요청 조회
+     * 회사별 가입 요청 조회
      */
     @GetMapping("/join-requests")
-    public ResponseEntity<Map<String, List<MemberJoinRequestResponseDTO>>> getAllJoinRequests() {
+    public ResponseEntity<Map<String, List<MemberJoinRequestResponseDTO>>> getAllJoinRequests(
+            @RequestParam Long companyId) {
         try {
-            log.info("[Member API] 모든 가입 요청 조회");
+            log.info("[Member API] 회사별 가입 요청 조회: companyId={}", companyId);
             
-            List<MemberJoinRequestResponseDTO> requests = memberService.getAllJoinRequests();
+            List<MemberJoinRequestResponseDTO> requests = memberService.getAllJoinRequestsByCompany(companyId);
             
             return ResponseEntity.ok(Map.of("requests", requests));
             
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 가입 요청 조회 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("[Member API] 가입 요청 조회 오류:", e);
             return ResponseEntity.internalServerError().build();
@@ -121,17 +125,21 @@ public class MemberController {
     }
     
     /**
-     * 대기중인 가입 요청 조회
+     * 회사별 대기중인 가입 요청 조회
      */
     @GetMapping("/join-requests/pending")
-    public ResponseEntity<Map<String, List<MemberJoinRequestResponseDTO>>> getPendingJoinRequests() {
+    public ResponseEntity<Map<String, List<MemberJoinRequestResponseDTO>>> getPendingJoinRequests(
+            @RequestParam Long companyId) {
         try {
-            log.info("[Member API] 대기중인 가입 요청 조회");
+            log.info("[Member API] 회사별 대기중인 가입 요청 조회: companyId={}", companyId);
             
-            List<MemberJoinRequestResponseDTO> requests = memberService.getPendingJoinRequests();
+            List<MemberJoinRequestResponseDTO> requests = memberService.getPendingJoinRequestsByCompany(companyId);
             
             return ResponseEntity.ok(Map.of("requests", requests));
             
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 대기중인 가입 요청 조회 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("[Member API] 대기중인 가입 요청 조회 오류:", e);
             return ResponseEntity.internalServerError().build();
@@ -192,24 +200,25 @@ public class MemberController {
     }
     
     /**
-     * 회원 목록 조회 (역할/상태 필터 지원)
+     * 회사별 회원 목록 조회 (역할/상태 필터 지원)
      */
     @GetMapping
     public ResponseEntity<Map<String, List<MemberDTO>>> getMembers(
+            @RequestParam Long companyId,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String status) {
         
         try {
-            log.info("[Member API] 회원 목록 조회: role={}, status={}", role, status);
+            log.info("[Member API] 회사별 회원 목록 조회: companyId={}, role={}, status={}", companyId, role, status);
             
             List<MemberDTO> members;
             
             if (role != null) {
-                members = memberService.getMembersByRole(role);
+                members = memberService.getMembersByCompanyAndRole(companyId, role);
             } else if (status != null) {
-                members = memberService.getMembersByStatus(status);
+                members = memberService.getMembersByCompanyAndStatus(companyId, status);
             } else {
-                members = memberService.getAllMembers();
+                members = memberService.getAllMembersByCompany(companyId);
             }
             
             return ResponseEntity.ok(Map.of("members", members));
