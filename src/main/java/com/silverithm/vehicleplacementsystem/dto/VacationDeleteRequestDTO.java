@@ -9,6 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class VacationDeleteRequestDTO {
     
-    private String password;
     private Boolean isAdmin;
 } 

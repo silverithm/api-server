@@ -193,7 +193,6 @@ public class VacationService {
                 .date(requestDTO.getDate())
                 .reason(requestDTO.getReason())
                 .role(role)
-                .password(requestDTO.getPassword())
                 .type(requestDTO.getType() != null ? requestDTO.getType() : "regular")
                 .userId(userId)
                 .company(company)
@@ -261,17 +260,6 @@ public class VacationService {
         
         VacationRequest vacation = vacationRequestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + id));
-        
-        // 관리자가 아닌 경우 비밀번호 검증
-        if (deleteRequest.getIsAdmin() == null || !deleteRequest.getIsAdmin()) {
-            if (deleteRequest.getPassword() == null || deleteRequest.getPassword().trim().isEmpty()) {
-                throw new IllegalArgumentException("비밀번호가 필요합니다");
-            }
-            
-            if (!vacation.getPassword().equals(deleteRequest.getPassword())) {
-                throw new IllegalArgumentException("비밀번호가 일치하지 않습니다");
-            }
-        }
         
         vacationRequestRepository.delete(vacation);
         
@@ -422,5 +410,76 @@ public class VacationService {
         // 개발 환경에서는 테스트 토큰 목록 반환
         log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
         return List.of("test-admin-token-1", "test-admin-token-2");
+    }
+    
+    // 멤버 개인용 휴무 관련 메서드들
+    
+    /**
+     * 멤버 개인의 모든 휴무 신청 조회 (userId와 userName 모두 필수)
+     */
+    public List<VacationRequestDTO> getMyVacationRequests(Long companyId, String userId, String userName) {
+        log.info("[Vacation Service] 개인 휴무 신청 조회: companyId={}, userId={}, userName={}", companyId, userId, userName);
+        
+        // userId와 userName 모두 필수
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다");
+        }
+        if (userName == null || userName.trim().isEmpty()) {
+            throw new IllegalArgumentException("사용자 이름이 필요합니다");
+        }
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        // userId와 userName 모두 일치하는 휴무 신청만 조회
+        List<VacationRequest> myVacations = vacationRequestRepository.findByCompanyAndUserNameAndDateBetween(
+                company, userName, LocalDate.of(1900, 1, 1), LocalDate.of(2100, 12, 31))
+                .stream()
+                .filter(v -> userId.equals(v.getUserId()) && userName.equals(v.getUserName()))
+                .collect(Collectors.toList());
+        
+        // 최신순으로 정렬
+        myVacations.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        
+        log.info("[Vacation Service] 개인 휴무 신청 조회 완료: 회사 {}, 사용자 {}({}), {}건", 
+                company.getName(), userName, userId, myVacations.size());
+        
+        return myVacations.stream()
+                .map(VacationRequestDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 멤버 개인의 휴무 신청 삭제 (userId와 userName 모두 필수)
+     */
+    @Transactional
+    public void deleteMyVacationRequest(Long vacationId, String userId, String userName) {
+        log.info("[Vacation Service] 개인 휴무 삭제 요청: vacationId={}, userId={}, userName={}", 
+                vacationId, userId, userName);
+        
+        // userId와 userName 모두 필수
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다");
+        }
+        if (userName == null || userName.trim().isEmpty()) {
+            throw new IllegalArgumentException("사용자 이름이 필요합니다");
+        }
+        
+        VacationRequest vacation = vacationRequestRepository.findById(vacationId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + vacationId));
+        
+        // userId와 userName 모두 일치하는지 확인
+        if (!userId.equals(vacation.getUserId()) || !userName.equals(vacation.getUserName())) {
+            throw new IllegalArgumentException("본인의 휴가 신청만 삭제할 수 있습니다");
+        }
+        
+        // 이미 승인된 휴가는 삭제 불가 (선택사항)
+        if (vacation.getStatus() == VacationRequest.VacationStatus.APPROVED) {
+            throw new IllegalArgumentException("이미 승인된 휴가는 삭제할 수 없습니다. 관리자에게 문의하세요.");
+        }
+        
+        vacationRequestRepository.delete(vacation);
+        
+        log.info("[Vacation Service] 개인 휴무 삭제 완료: vacationId={}, 사용자={}({})", vacationId, userName, userId);
     }
 } 

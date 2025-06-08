@@ -322,6 +322,76 @@ public class VacationController {
                 .build();
     }
     
+    // 멤버 개인용 휴무 API
+    
+    /**
+     * 내 휴무 신청 전체 조회
+     */
+    @GetMapping("/my/requests")
+    public ResponseEntity<Map<String, Object>> getMyVacationRequests(
+            @RequestParam Long companyId,
+            @RequestParam String userName,
+            @RequestParam String userId) {
+        
+        try {
+            log.info("[Vacation API] 개인 휴무 신청 조회: companyId={}, userName={}, userId={}", 
+                    companyId, userName, userId);
+            
+            List<VacationRequestDTO> myVacations = vacationService.getMyVacationRequests(companyId, userId, userName);
+            
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "data", myVacations,
+                            "total", myVacations.size()
+                    ));
+                    
+        } catch (IllegalArgumentException e) {
+            log.error("[Vacation API] 개인 휴무 조회 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Vacation API] 개인 휴무 조회 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "휴무 신청 조회 중 오류가 발생했습니다."));
+        }
+    }
+    
+    /**
+     * 내 휴무 신청 삭제
+     */
+    @DeleteMapping("/my/requests/{vacationId}")
+    public ResponseEntity<Map<String, String>> deleteMyVacationRequest(
+            @PathVariable Long vacationId,
+            @RequestParam String userName,
+            @RequestParam String userId) {
+        
+        try {
+            log.info("[Vacation API] 개인 휴무 삭제 요청: vacationId={}, userName={}, userId={}", 
+                    vacationId, userName, userId);
+            
+            vacationService.deleteMyVacationRequest(vacationId, userId, userName);
+            
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("message", "휴무 신청이 삭제되었습니다"));
+                    
+        } catch (IllegalArgumentException e) {
+            log.error("[Vacation API] 개인 휴무 삭제 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Vacation API] 개인 휴무 삭제 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "휴무 삭제 중 오류가 발생했습니다"));
+        }
+    }
+    
     private HttpHeaders getCorsHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Access-Control-Allow-Origin", "*");

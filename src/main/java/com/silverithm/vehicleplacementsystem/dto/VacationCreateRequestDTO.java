@@ -12,22 +12,19 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VacationCreateRequestDTO {
-    
+
     @NotBlank(message = "사용자 이름은 필수입니다")
     private String userName;
-    
+
     @NotNull(message = "날짜는 필수입니다")
     private LocalDate date;
-    
+
     private String reason;
-    
+
     @NotBlank(message = "직원 역할은 필수입니다")
     private String role;
-    
-    @NotBlank(message = "비밀번호는 필수입니다")
-    private String password;
-    
+
     private String type;
-    
+
     private String userId;
 } 
