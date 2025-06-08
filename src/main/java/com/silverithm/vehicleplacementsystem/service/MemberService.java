@@ -55,21 +55,21 @@ public class MemberService {
         Company company = companyRepository.findById(requestDTO.getCompanyId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
         
-        // 회사별 중복 확인
-        if (memberRepository.existsByCompanyAndUsername(company, requestDTO.getUsername())) {
-            throw new IllegalArgumentException("해당 회사에 이미 존재하는 사용자명입니다: " + requestDTO.getUsername());
+        // 전역 중복 확인
+        if (memberRepository.existsByUsername(requestDTO.getUsername())) {
+            throw new IllegalArgumentException("이미 존재하는 사용자명입니다: " + requestDTO.getUsername());
         }
         
-        if (memberRepository.existsByCompanyAndEmail(company, requestDTO.getEmail())) {
-            throw new IllegalArgumentException("해당 회사에 이미 존재하는 이메일입니다: " + requestDTO.getEmail());
+        if (memberRepository.existsByEmail(requestDTO.getEmail())) {
+            throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + requestDTO.getEmail());
         }
         
-        if (memberJoinRequestRepository.existsByCompanyAndUsername(company, requestDTO.getUsername())) {
-            throw new IllegalArgumentException("해당 회사에 이미 가입 요청된 사용자명입니다: " + requestDTO.getUsername());
+        if (memberJoinRequestRepository.existsByUsername(requestDTO.getUsername())) {
+            throw new IllegalArgumentException("이미 가입 요청된 사용자명입니다: " + requestDTO.getUsername());
         }
         
-        if (memberJoinRequestRepository.existsByCompanyAndEmail(company, requestDTO.getEmail())) {
-            throw new IllegalArgumentException("해당 회사에 이미 가입 요청된 이메일입니다: " + requestDTO.getEmail());
+        if (memberJoinRequestRepository.existsByEmail(requestDTO.getEmail())) {
+            throw new IllegalArgumentException("이미 가입 요청된 이메일입니다: " + requestDTO.getEmail());
         }
         
         // Role enum 변환
@@ -172,13 +172,13 @@ public class MemberService {
             throw new IllegalArgumentException("이미 처리된 요청입니다");
         }
         
-        // 최종 중복 체크 (다른 관리자가 동시에 승인했을 수 있음) - 회사별로 확인
-        if (memberRepository.existsByCompanyAndUsername(joinRequest.getCompany(), joinRequest.getUsername())) {
-            throw new IllegalArgumentException("해당 회사에 이미 존재하는 사용자명입니다");
+        // 최종 중복 체크 (다른 관리자가 동시에 승인했을 수 있음) - 전역 확인
+        if (memberRepository.existsByUsername(joinRequest.getUsername())) {
+            throw new IllegalArgumentException("이미 존재하는 사용자명입니다");
         }
         
-        if (memberRepository.existsByCompanyAndEmail(joinRequest.getCompany(), joinRequest.getEmail())) {
-            throw new IllegalArgumentException("해당 회사에 이미 존재하는 이메일입니다");
+        if (memberRepository.existsByEmail(joinRequest.getEmail())) {
+            throw new IllegalArgumentException("이미 존재하는 이메일입니다");
         }
         
         // 회원 생성
