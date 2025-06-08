@@ -34,6 +34,7 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final SlackService slackService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final EmailService emailService;
     
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 모든 회사 조회");
@@ -227,6 +228,19 @@ public class MemberService {
         } catch (Exception e) {
             log.error("[Member Service] 승인 알림 전송 실패: {}", e.getMessage());
         }
+        
+        // 신청자에게 승인 이메일 전송
+        try {
+            String companyName = joinRequest.getCompany() != null ? joinRequest.getCompany().getName() : "회사";
+            emailService.sendJoinApprovalEmail(
+                    joinRequest.getEmail(),
+                    joinRequest.getName(),
+                    companyName
+            );
+            log.info("[Member Service] 가입 승인 이메일 전송 완료: {}", joinRequest.getEmail());
+        } catch (Exception e) {
+            log.error("[Member Service] 가입 승인 이메일 전송 실패: {}", e.getMessage());
+        }
     }
     
     @Transactional
@@ -242,18 +256,24 @@ public class MemberService {
         
         // 가입 요청 거부 처리
         joinRequest.setStatus(MemberJoinRequest.RequestStatus.REJECTED);
-        joinRequest.setApprovedBy(adminId);
         joinRequest.setRejectReason(processDTO.getRejectReason());
         joinRequest.setProcessedAt(LocalDateTime.now());
         memberJoinRequestRepository.save(joinRequest);
         
-        log.info("[Member Service] 가입 거부 완료: requestId={}", requestId);
+        log.info("[Member Service] 가입 거부 완료: requestId={}, 사유={}", requestId, processDTO.getRejectReason());
         
-        // 신청자에게 거부 알림 전송
+        // 신청자에게 거부 이메일 전송
         try {
-            sendJoinRejectedNotificationToUser(joinRequest);
+            String companyName = joinRequest.getCompany() != null ? joinRequest.getCompany().getName() : "회사";
+            emailService.sendJoinRejectionEmail(
+                    joinRequest.getEmail(),
+                    joinRequest.getName(),
+                    companyName,
+                    processDTO.getRejectReason()
+            );
+            log.info("[Member Service] 가입 거부 이메일 전송 완료: {}", joinRequest.getEmail());
         } catch (Exception e) {
-            log.error("[Member Service] 거부 알림 전송 실패: {}", e.getMessage());
+            log.error("[Member Service] 가입 거부 이메일 전송 실패: {}", e.getMessage());
         }
     }
     

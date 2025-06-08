@@ -61,4 +61,148 @@ public class EmailService {
     public void sendEmailAsync(String toEmail, String subject, String body) {
         sendEmail(toEmail, subject, body);
     }
+
+    // 회원가입 승인 이메일 전송
+    public void sendJoinApprovalEmail(String toEmail, String userName, String companyName) {
+        try {
+            String subject = "🎉 회원가입 승인 완료 - " + companyName;
+            String htmlContent = createJoinApprovalTemplate(userName, companyName);
+            
+            MimeMessage message = emailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+
+            emailSender.send(message);
+            
+            log.info("[Email Service] 가입 승인 이메일 전송 완료: {}", toEmail);
+        } catch (Exception e) {
+            log.error("[Email Service] 가입 승인 이메일 전송 실패: {}", e.getMessage());
+            throw new CustomException("이메일 전송 실패", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    // 회원가입 거부 이메일 전송
+    public void sendJoinRejectionEmail(String toEmail, String userName, String companyName, String rejectReason) {
+        try {
+            String subject = "❌ 회원가입 거부 알림 - " + companyName;
+            String htmlContent = createJoinRejectionTemplate(userName, companyName, rejectReason);
+            
+            MimeMessage message = emailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+
+            emailSender.send(message);
+            
+            log.info("[Email Service] 가입 거부 이메일 전송 완료: {}", toEmail);
+        } catch (Exception e) {
+            log.error("[Email Service] 가입 거부 이메일 전송 실패: {}", e.getMessage());
+            throw new CustomException("이메일 전송 실패", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    // 가입 승인 HTML 템플릿
+    private String createJoinApprovalTemplate(String userName, String companyName) {
+        return String.format("""
+                <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="margin: 0; font-size: 28px;">🎉 회원가입 승인!</h1>
+                    </div>
+                    
+                    <div style="background-color: #ffffff; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333; margin-bottom: 20px;">안녕하세요, %s님!</h2>
+                        
+                        <div style="background-color: #f8f9fa; padding: 25px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;">
+                            <p style="font-size: 16px; line-height: 1.6; margin: 0; color: #333;">
+                                <strong>%s</strong>에서의 회원가입이 <span style="color: #28a745; font-weight: bold;">승인</span>되었습니다!
+                            </p>
+                        </div>
+                        
+                        <div style="margin: 30px 0;">
+                            <h3 style="color: #333; margin-bottom: 15px;">다음 단계</h3>
+                            <ul style="color: #666; line-height: 1.8;">
+                                <li>가입하신 계정으로 로그인하실 수 있습니다</li>
+                                <li>서비스 이용 중 문의사항이 있으시면 관리자에게 연락해주세요</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px;">
+                                <p style="margin: 0; color: #1976d2; font-weight: bold;">
+                                    환영합니다! 좋은 서비스를 제공하겠습니다.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;">
+                        
+                        <p style="color: #999; font-size: 14px; text-align: center; margin: 0;">
+                            이 메일은 자동 발송된 메일입니다. 회신하지 마세요.<br>
+                            © 2024 Silverithm. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+                """, userName, companyName);
+    }
+    
+    // 가입 거부 HTML 템플릿
+    private String createJoinRejectionTemplate(String userName, String companyName, String rejectReason) {
+        return String.format("""
+                <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+                    <div style="background: linear-gradient(135deg, #ff6b6b 0%%, #ee5a24 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="margin: 0; font-size: 28px;">❌ 회원가입 거부</h1>
+                    </div>
+                    
+                    <div style="background-color: #ffffff; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                        <h2 style="color: #333; margin-bottom: 20px;">안녕하세요, %s님</h2>
+                        
+                        <div style="background-color: #fff5f5; padding: 25px; border-radius: 8px; border-left: 4px solid #e53e3e; margin: 20px 0;">
+                            <p style="font-size: 16px; line-height: 1.6; margin: 0; color: #333;">
+                                죄송합니다. <strong>%s</strong>에서의 회원가입이 <span style="color: #e53e3e; font-weight: bold;">거부</span>되었습니다.
+                            </p>
+                        </div>
+                        
+                        %s
+                        
+                        <div style="margin: 30px 0;">
+                            <h3 style="color: #333; margin-bottom: 15px;">추가 문의</h3>
+                            <p style="color: #666; line-height: 1.6;">
+                                가입 거부 사유에 대해 문의사항이 있으시거나 재신청을 원하시는 경우, 
+                                회사 관리자에게 직접 연락해주시기 바랍니다.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; border: 1px solid #ffeaa7;">
+                                <p style="margin: 0; color: #856404; font-weight: bold;">
+                                    다시 신청해주세요! 언제든 재신청 가능합니다.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;">
+                        
+                        <p style="color: #999; font-size: 14px; text-align: center; margin: 0;">
+                            이 메일은 자동 발송된 메일입니다. 회신하지 마세요.<br>
+                            © 2024 Silverithm. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+                """, userName, companyName, 
+                rejectReason != null && !rejectReason.trim().isEmpty() 
+                    ? String.format("""
+                        <div style="margin: 20px 0;">
+                            <h3 style="color: #333; margin-bottom: 15px;">거부 사유</h3>
+                            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6;">
+                                <p style="color: #495057; line-height: 1.6; margin: 0;">%s</p>
+                            </div>
+                        </div>
+                        """, rejectReason)
+                    : "");
+    }
 }
