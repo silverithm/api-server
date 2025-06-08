@@ -95,12 +95,14 @@ public class UserService {
             findUser.update(tokenInfo.getRefreshToken());
 
             if (findUser.getSubscription() == null) {
-                return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getName(),
+                return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getId(),
+                        findUser.getCompany().getName(),
                         findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                         tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey());
             }
 
-            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getName(),
+            return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getId(),
+                    findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
 
