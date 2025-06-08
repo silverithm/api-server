@@ -38,7 +38,6 @@ public class MemberJoinRequestDTO {
     private String position;
     private String fcmToken;
     
-    // 회사 선택 (기존 API 호환성을 위해 선택사항)
     @NotNull(message = "회사 ID는 필수입니다")
     private Long companyId;
 } 

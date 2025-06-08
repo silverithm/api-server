@@ -52,6 +52,10 @@ public interface MemberJoinRequestRepository extends JpaRepository<MemberJoinReq
     
     boolean existsByEmail(String email);
     
+    boolean existsByCompanyAndUsername(Company company, String username);
+    
+    boolean existsByCompanyAndEmail(Company company, String email);
+    
     Long countByStatus(MemberJoinRequest.RequestStatus status);
     
     Long countByCompanyAndStatus(Company company, MemberJoinRequest.RequestStatus status);

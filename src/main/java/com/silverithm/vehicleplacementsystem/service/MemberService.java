@@ -50,28 +50,25 @@ public class MemberService {
         log.info("[Member Service] 회원가입 요청: username={}, email={}, companyId={}", 
                 requestDTO.getUsername(), requestDTO.getEmail(), requestDTO.getCompanyId());
         
-        // 중복 확인
-        if (memberRepository.existsByUsername(requestDTO.getUsername())) {
-            throw new IllegalArgumentException("이미 존재하는 사용자명입니다: " + requestDTO.getUsername());
-        }
-        
-        if (memberRepository.existsByEmail(requestDTO.getEmail())) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + requestDTO.getEmail());
-        }
-        
-        if (memberJoinRequestRepository.existsByUsername(requestDTO.getUsername())) {
-            throw new IllegalArgumentException("이미 가입 요청된 사용자명입니다: " + requestDTO.getUsername());
-        }
-        
-        if (memberJoinRequestRepository.existsByEmail(requestDTO.getEmail())) {
-            throw new IllegalArgumentException("이미 가입 요청된 이메일입니다: " + requestDTO.getEmail());
-        }
-        
         // 회사 검증
-        Company company = null;
-        if (requestDTO.getCompanyId() != null) {
-            company = companyRepository.findById(requestDTO.getCompanyId())
-                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
+        Company company = companyRepository.findById(requestDTO.getCompanyId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
+        
+        // 회사별 중복 확인
+        if (memberRepository.existsByCompanyAndUsername(company, requestDTO.getUsername())) {
+            throw new IllegalArgumentException("해당 회사에 이미 존재하는 사용자명입니다: " + requestDTO.getUsername());
+        }
+        
+        if (memberRepository.existsByCompanyAndEmail(company, requestDTO.getEmail())) {
+            throw new IllegalArgumentException("해당 회사에 이미 존재하는 이메일입니다: " + requestDTO.getEmail());
+        }
+        
+        if (memberJoinRequestRepository.existsByCompanyAndUsername(company, requestDTO.getUsername())) {
+            throw new IllegalArgumentException("해당 회사에 이미 가입 요청된 사용자명입니다: " + requestDTO.getUsername());
+        }
+        
+        if (memberJoinRequestRepository.existsByCompanyAndEmail(company, requestDTO.getEmail())) {
+            throw new IllegalArgumentException("해당 회사에 이미 가입 요청된 이메일입니다: " + requestDTO.getEmail());
         }
         
         // Role enum 변환
@@ -104,7 +101,7 @@ public class MemberService {
         
         MemberJoinRequest saved = memberJoinRequestRepository.save(joinRequest);
         
-        log.info("[Member Service] 회원가입 요청 생성 완료: ID={}", saved.getId());
+        log.info("[Member Service] 회원가입 요청 생성 완료: 회사 {}, ID={}", company.getName(), saved.getId());
 
         return MemberJoinRequestResponseDTO.fromEntity(saved);
     }
@@ -174,13 +171,13 @@ public class MemberService {
             throw new IllegalArgumentException("이미 처리된 요청입니다");
         }
         
-        // 최종 중복 체크 (다른 관리자가 동시에 승인했을 수 있음)
-        if (memberRepository.existsByUsername(joinRequest.getUsername())) {
-            throw new IllegalArgumentException("이미 존재하는 사용자명입니다");
+        // 최종 중복 체크 (다른 관리자가 동시에 승인했을 수 있음) - 회사별로 확인
+        if (memberRepository.existsByCompanyAndUsername(joinRequest.getCompany(), joinRequest.getUsername())) {
+            throw new IllegalArgumentException("해당 회사에 이미 존재하는 사용자명입니다");
         }
         
-        if (memberRepository.existsByEmail(joinRequest.getEmail())) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다");
+        if (memberRepository.existsByCompanyAndEmail(joinRequest.getCompany(), joinRequest.getEmail())) {
+            throw new IllegalArgumentException("해당 회사에 이미 존재하는 이메일입니다");
         }
         
         // 회원 생성
@@ -360,7 +357,7 @@ public class MemberService {
         
         // 이메일 중복 체크 (본인 제외)
         if (updateDTO.getEmail() != null && !updateDTO.getEmail().equals(member.getEmail())) {
-            if (memberRepository.existsByEmail(updateDTO.getEmail())) {
+            if (memberRepository.existsByEmailAndCompanyId(updateDTO.getEmail(), member.getCompany().getId())) {
                 throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + updateDTO.getEmail());
             }
         }

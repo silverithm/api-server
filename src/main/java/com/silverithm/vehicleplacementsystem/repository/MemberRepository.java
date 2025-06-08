@@ -46,6 +46,12 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByUsername(String username);
     
     boolean existsByEmail(String email);
+
+    boolean existsByEmailAndCompanyId(String email, Long companyId);
+    
+    boolean existsByCompanyAndUsername(Company company, String username);
+    
+    boolean existsByCompanyAndEmail(Company company, String email);
     
     Long countByRole(Member.Role role);
     
