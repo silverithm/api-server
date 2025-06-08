@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.Member;
+import com.silverithm.vehicleplacementsystem.entity.VacationRequest;
 import com.silverithm.vehicleplacementsystem.service.MemberService;
 import com.silverithm.vehicleplacementsystem.service.VacationService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -320,6 +323,39 @@ public class VacationController {
         return ResponseEntity.ok()
                 .headers(getCorsHeaders())
                 .build();
+    }
+    
+    /**
+     * 휴무 기간 타입 목록 조회 (연차/반차)
+     */
+    @GetMapping("/durations")
+    public ResponseEntity<Map<String, Object>> getVacationDurations() {
+        try {
+            log.info("[Vacation API] 휴무 기간 타입 목록 조회");
+            
+            List<Map<String, Object>> durations = new ArrayList<>();
+            for (VacationRequest.VacationDuration duration : VacationRequest.VacationDuration.values()) {
+                Map<String, Object> durationInfo = new HashMap<>();
+                durationInfo.put("value", duration.name());
+                durationInfo.put("displayName", duration.getDisplayName());
+                durationInfo.put("description", duration.getDescription());
+                durationInfo.put("days", duration.getDays());
+                durations.add(durationInfo);
+            }
+            
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "data", durations
+                    ));
+                    
+        } catch (Exception e) {
+            log.error("[Vacation API] 휴무 기간 타입 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "휴무 기간 타입 조회 중 오류가 발생했습니다."));
+        }
     }
     
     // 멤버 개인용 휴무 API

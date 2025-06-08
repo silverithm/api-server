@@ -194,6 +194,7 @@ public class VacationService {
                 .reason(requestDTO.getReason())
                 .role(role)
                 .type(requestDTO.getType() != null ? requestDTO.getType() : "regular")
+                .duration(requestDTO.getDuration() != null ? requestDTO.getDuration().name() : "FULL_DAY")
                 .userId(userId)
                 .company(company)
                 .status(VacationRequest.VacationStatus.PENDING)

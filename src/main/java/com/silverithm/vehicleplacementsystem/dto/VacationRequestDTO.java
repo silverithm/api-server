@@ -23,6 +23,9 @@ public class VacationRequestDTO {
     private String reason;
     private String userId;
     private String type;
+    private String duration;
+    private String durationDisplayName;
+    private double durationDays;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -36,6 +39,9 @@ public class VacationRequestDTO {
                 .reason(entity.getReason())
                 .userId(entity.getUserId())
                 .type(entity.getType())
+                .duration(entity.getDuration())
+                .durationDisplayName(entity.getDurationEnum().getDisplayName())
+                .durationDays(entity.getDurationEnum().getDays())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

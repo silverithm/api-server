@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
+import com.silverithm.vehicleplacementsystem.entity.VacationRequest;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,6 +26,8 @@ public class VacationCreateRequestDTO {
     private String role;
 
     private String type;
+
+    private VacationRequest.VacationDuration duration;
 
     private String userId;
 } 
