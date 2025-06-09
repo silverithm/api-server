@@ -152,4 +152,15 @@ public class JwtTokenProvider {
         }
         return null;
     }
+
+    //JWT 토큰에서 사용자명(subject)을 추출하는 메서드
+    public String getUsernameFromToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            return claims.getSubject();
+        } catch (Exception e) {
+            log.error("JWT 토큰에서 사용자명 추출 실패", e);
+            return null;
+        }
+    }
 }

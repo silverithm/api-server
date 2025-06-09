@@ -4,8 +4,9 @@ import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -58,6 +59,31 @@ public class MemberController {
             log.error("[Member API] FCM 토큰 업데이트 서버 오류:", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "FCM 토큰 업데이트 중 오류가 발생했습니다"));
+        }
+    }
+    
+    /**
+     * 회원탈퇴
+     */
+    @PostMapping("/withdrawal")
+    public ResponseEntity<Map<String, String>> withdrawMember(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        try {
+            log.info("[Member API] 회원탈퇴 요청: username={}", userDetails.getUsername());
+            
+            memberService.withdrawMember(userDetails.getUsername());
+            
+            return ResponseEntity.ok(Map.of("message", "회원탈퇴가 완료되었습니다"));
+            
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 회원탈퇴 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Member API] 회원탈퇴 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "회원탈퇴 중 오류가 발생했습니다"));
         }
     }
     

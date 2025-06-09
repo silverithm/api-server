@@ -560,4 +560,80 @@ public class MemberService {
         
         log.info("[Member Service] FCM 토큰 업데이트 완료: memberId={}", memberId);
     }
+    
+    /**
+     * 회원탈퇴 처리
+     */
+    @Transactional
+    public void withdrawMember(String username) {
+        log.info("[Member Service] 회원탈퇴 요청: username={}", username);
+        
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + username));
+        
+        // 이미 탈퇴한 회원인지 확인
+        if (member.getStatus() == Member.MemberStatus.DELETED) {
+            throw new IllegalArgumentException("이미 탈퇴한 회원입니다");
+        }
+        
+        // 관리자는 탈퇴할 수 없음 (최소 1명의 관리자 유지)
+        if (member.getRole() == Member.Role.ADMIN) {
+            long adminCount = memberRepository.countByRoleAndStatus(Member.Role.ADMIN, Member.MemberStatus.ACTIVE);
+            if (adminCount <= 1) {
+                throw new IllegalArgumentException("관리자는 최소 1명 이상 유지되어야 합니다. 다른 관리자를 지정한 후 탈퇴해주세요.");
+            }
+        }
+        
+        // 상태를 DELETED로 변경 (실제 삭제하지 않고 논리적 삭제)
+        member.setStatus(Member.MemberStatus.DELETED);
+        
+        // 개인정보 마스킹 처리 (선택사항)
+        member.setEmail(member.getEmail().replaceAll("(.{2}).*@", "$1***@"));
+        member.setPhoneNumber(member.getPhoneNumber() != null ? 
+                member.getPhoneNumber().replaceAll("(\\d{3})(\\d{4})(\\d{4})", "$1-****-$3") : null);
+        member.setFcmToken(null); // FCM 토큰 제거
+        
+        memberRepository.save(member);
+        
+        log.info("[Member Service] 회원탈퇴 완료: username={}", username);
+        
+        // 관리자에게 탈퇴 알림 (옵션)
+        try {
+            sendMemberWithdrawalNotificationToAdmins(member);
+        } catch (Exception e) {
+            log.error("[Member Service] 탈퇴 알림 전송 실패: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * 관리자에게 회원탈퇴 알림 전송
+     */
+    private void sendMemberWithdrawalNotificationToAdmins(Member member) {
+        List<String> adminFcmTokens = getAdminFcmTokens();
+        
+        for (String adminToken : adminFcmTokens) {
+            try {
+                FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
+                        .recipientToken(adminToken)
+                        .title("회원탈퇴 알림")
+                        .message(member.getName() + "님이 회원탈퇴했습니다.")
+                        .recipientUserId("admin")
+                        .recipientUserName("관리자")
+                        .type("member_withdrawal")
+                        .relatedEntityId(member.getId())
+                        .relatedEntityType("member")
+                        .data(Map.of(
+                                "type", "member_withdrawal",
+                                "memberId", String.valueOf(member.getId()),
+                                "memberName", member.getName(),
+                                "username", member.getUsername()
+                        ))
+                        .build();
+                
+                notificationService.sendAndSaveNotification(request);
+            } catch (Exception e) {
+                log.error("[Member Service] 관리자 탈퇴 알림 전송 실패: {}", e.getMessage());
+            }
+        }
+    }
 } 

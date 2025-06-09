@@ -57,6 +57,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     
     Long countByStatus(Member.MemberStatus status);
     
+    Long countByRoleAndStatus(Member.Role role, Member.MemberStatus status);
+    
     Long countByCompanyAndRole(Company company, Member.Role role);
     
     Long countByCompanyAndStatus(Company company, Member.MemberStatus status);
