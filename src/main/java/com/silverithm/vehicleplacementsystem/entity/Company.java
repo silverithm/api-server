@@ -29,6 +29,9 @@ public class Company extends BaseEntity {
 
     private String addressName;
 
+    @Column(name = "expose", nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private Boolean expose = true;
+
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "latitude", column = @Column(name = "company_latitude")),

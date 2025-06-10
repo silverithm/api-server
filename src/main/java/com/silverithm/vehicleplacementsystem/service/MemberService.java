@@ -37,9 +37,9 @@ public class MemberService {
     private final EmailService emailService;
     
     public List<CompanyListDTO> getAllCompanies() {
-        log.info("[Member Service] 모든 회사 조회");
+        log.info("[Member Service] 노출된 회사 조회");
         
-        List<Company> companies = companyRepository.findAll();
+        List<Company> companies = companyRepository.findByExposeTrue();
         
         return companies.stream()
                 .map(CompanyListDTO::fromEntity)
