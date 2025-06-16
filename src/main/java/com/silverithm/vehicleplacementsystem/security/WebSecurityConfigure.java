@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import com.silverithm.vehicleplacementsystem.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -54,10 +55,12 @@ public class WebSecurityConfigure {
             CorsConfiguration config = new CorsConfiguration();
             config.setAllowedHeaders(Collections.singletonList("*"));
             config.setAllowedMethods(Collections.singletonList("*"));
-            config.setAllowedOriginPatterns(Collections.singletonList("http://localhost:3000"));
-            config.setAllowedOrigins(Collections.singletonList("https://silverithm.netlify.app/"));
-            config.setAllowedOrigins(Collections.singletonList("https://www.silverithm.co.kr/"));
-            config.setAllowedOrigins(Collections.singletonList("https://carev.netlify.app/"));
+            config.setAllowedOrigins(Arrays.asList(
+                    "http://localhost:3000",
+                    "https://silverithm.netlify.app",
+                    "https://www.silverithm.co.kr",
+                    "https://carev.netlify.app"
+            ));
             config.setAllowCredentials(true);
             return config;
         };
