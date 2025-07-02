@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.orm.hibernate5.SpringSessionContext;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -282,17 +285,15 @@ public class UserService {
 
         log.info("refresh Toekn !!! : " + new Date());
 
-        AppUser user = userRepository.findByRefreshToken(tokenRefreshRequest.refreshToken())
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+        String userName = jwtTokenProvider.getUsernameFromToken(tokenRefreshRequest.refreshToken());
+        Authentication authentication = jwtTokenProvider.getAuthentication(tokenRefreshRequest.refreshToken());
 
-        if (!jwtTokenProvider.validateToken(user.getRefreshToken())) {
+        if (!jwtTokenProvider.validateToken(tokenRefreshRequest.refreshToken())) {
             throw new CustomException("Invalid Refresh Token", HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
-        UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(user.getEmail(),
-                Collections.singleton(user.getUserRole()));
-
-        user.updateRefreshToken(tokenInfo.getRefreshToken());
+        UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(userName,
+                authentication.getAuthorities());
 
         return tokenInfo;
     }
@@ -311,6 +312,7 @@ public class UserService {
 
     /**
      * JWT 토큰 유효성 검증
+     *
      * @param token 검증할 JWT 토큰
      * @return TokenValidationResponse 토큰 검증 결과
      */
@@ -339,7 +341,7 @@ public class UserService {
 
             String userEmail = claims.getSubject();
             Date expiration = claims.getExpiration();
-            
+
             // 토큰 만료 시간 확인
             if (expiration.before(new Date())) {
                 return TokenValidationResponse.fail("만료된 토큰입니다.");
@@ -381,19 +383,20 @@ public class UserService {
 
     /**
      * HTTP 요청에서 토큰을 추출하여 검증
+     *
      * @param request HTTP 요청
      * @return TokenValidationResponse 토큰 검증 결과
      */
     public TokenValidationResponse validateTokenFromRequest(HttpServletRequest request) {
         try {
             String token = jwtTokenProvider.resolveToken(request);
-            
+
             if (token == null) {
                 return TokenValidationResponse.fail("요청에서 토큰을 찾을 수 없습니다.");
             }
 
             return validateToken(token);
-            
+
         } catch (Exception e) {
             log.error("요청에서 토큰 검증 중 오류 발생: ", e);
             return TokenValidationResponse.fail("토큰 검증 중 오류가 발생했습니다.");

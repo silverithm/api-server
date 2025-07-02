@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.jwt;
 
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -14,6 +15,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -142,7 +144,6 @@ public class JwtTokenProvider {
         try {
             return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(accessToken).getBody();
         } catch (ExpiredJwtException e) {
-            // ???
             return e.getClaims();
         }
     }
@@ -163,8 +164,8 @@ public class JwtTokenProvider {
             Claims claims = parseClaims(token);
             return claims.getSubject();
         } catch (Exception e) {
-            log.error("JWT 토큰에서 사용자명 추출 실패", e);
-            return null;
+            log.error("Failed to extract username from token", e);
+            throw new CustomException("토큰에서 사용자명을 추출하는 데 실패했습니다.", HttpStatus.BAD_REQUEST);
         }
     }
 }
