@@ -105,12 +105,12 @@ public class UserController {
         return ResponseEntity.ok().body(userService.refreshToken(tokenRefreshRequest));
     }
 
-    @GetMapping("/api/v1/users/dispatch-limit")
+    @GetMapping("api/v1/users/dispatch-limit")
     public ResponseEntity<Integer> getDailyDispatchLimit(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok().body(userService.getDailyDispatchLimit(userDetails.getUsername()));
     }
 
-    @GetMapping("/api/v1/user/subscription")
+    @GetMapping("api/v1/user/subscription")
     public ResponseEntity<SubscriptionResponseDTO> getUserSubscription(
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok().body(userService.getUserSubscription(userDetails.getUsername()));
@@ -121,7 +121,7 @@ public class UserController {
      * @param tokenValidationRequest 검증할 토큰이 포함된 요청
      * @return 토큰 검증 결과
      */
-    @PostMapping("/api/v1/validate-token")
+    @PostMapping("api/v1/validate-token")
     public ResponseEntity<TokenValidationResponse> validateToken(
             @Valid @RequestBody TokenValidationRequest tokenValidationRequest) {
         TokenValidationResponse response = userService.validateToken(tokenValidationRequest.getToken());
@@ -139,7 +139,7 @@ public class UserController {
      * @param request HTTP 요청 (Authorization Header에서 토큰 추출)
      * @return 토큰 검증 결과
      */
-    @GetMapping("/api/v1/validate-token")
+    @GetMapping("api/v1/validate-token")
     public ResponseEntity<TokenValidationResponse> validateTokenFromHeader(HttpServletRequest request) {
         TokenValidationResponse response = userService.validateTokenFromRequest(request);
         
