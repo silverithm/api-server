@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
 import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
+import com.silverithm.vehicleplacementsystem.dto.TokenValidationResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
@@ -306,6 +307,95 @@ public class UserService {
         }
 
         return new SubscriptionResponseDTO(user.getSubscription());
+    }
+
+    /**
+     * JWT 토큰 유효성 검증
+     * @param token 검증할 JWT 토큰
+     * @return TokenValidationResponse 토큰 검증 결과
+     */
+    public TokenValidationResponse validateToken(String token) {
+        try {
+            // 토큰이 null이거나 빈 문자열인지 확인
+            if (token == null || token.trim().isEmpty()) {
+                return TokenValidationResponse.fail("토큰이 제공되지 않았습니다.");
+            }
+
+            // JWT 토큰 기본 형식 검증
+            if (!jwtTokenProvider.validateToken(token)) {
+                return TokenValidationResponse.fail("유효하지 않은 토큰입니다.");
+            }
+
+            // 토큰이 블랙리스트에 있는지 확인 (로그아웃된 토큰인지)
+            if (redisUtils.hasKeyBlackList(token)) {
+                return TokenValidationResponse.fail("로그아웃된 토큰입니다.");
+            }
+
+            // 토큰 파싱하여 클레임 정보 추출
+            Claims claims = Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            String userEmail = claims.getSubject();
+            Date expiration = claims.getExpiration();
+            
+            // 토큰 만료 시간 확인
+            if (expiration.before(new Date())) {
+                return TokenValidationResponse.fail("만료된 토큰입니다.");
+            }
+
+            // 사용자 정보 조회
+            AppUser user = userRepository.findByEmail(userEmail)
+                    .orElse(null);
+
+            if (user == null) {
+                return TokenValidationResponse.fail("존재하지 않는 사용자입니다.");
+            }
+
+            // 토큰 검증 성공
+            return TokenValidationResponse.success(
+                    user.getEmail(),
+                    user.getUsername(),
+                    user.getId(),
+                    expiration.getTime()
+            );
+
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return TokenValidationResponse.fail("만료된 토큰입니다.");
+        } catch (io.jsonwebtoken.UnsupportedJwtException e) {
+            return TokenValidationResponse.fail("지원되지 않는 토큰 형식입니다.");
+        } catch (io.jsonwebtoken.MalformedJwtException e) {
+            return TokenValidationResponse.fail("잘못된 형식의 토큰입니다.");
+        } catch (io.jsonwebtoken.security.SignatureException e) {
+            return TokenValidationResponse.fail("토큰 서명이 유효하지 않습니다.");
+        } catch (IllegalArgumentException e) {
+            return TokenValidationResponse.fail("토큰이 올바르지 않습니다.");
+        } catch (Exception e) {
+            log.error("토큰 검증 중 오류 발생: ", e);
+            return TokenValidationResponse.fail("토큰 검증 중 오류가 발생했습니다.");
+        }
+    }
+
+    /**
+     * HTTP 요청에서 토큰을 추출하여 검증
+     * @param request HTTP 요청
+     * @return TokenValidationResponse 토큰 검증 결과
+     */
+    public TokenValidationResponse validateTokenFromRequest(HttpServletRequest request) {
+        try {
+            String token = jwtTokenProvider.resolveToken(request);
+            
+            if (token == null) {
+                return TokenValidationResponse.fail("요청에서 토큰을 찾을 수 없습니다.");
+            }
+
+            return validateToken(token);
+            
+        } catch (Exception e) {
+            log.error("요청에서 토큰 검증 중 오류 발생: ", e);
+            return TokenValidationResponse.fail("토큰 검증 중 오류가 발생했습니다.");
+        }
     }
 }
 

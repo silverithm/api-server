@@ -6,6 +6,8 @@ import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.TokenRefreshRequest;
 import com.silverithm.vehicleplacementsystem.dto.TokenResponse;
+import com.silverithm.vehicleplacementsystem.dto.TokenValidationRequest;
+import com.silverithm.vehicleplacementsystem.dto.TokenValidationResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
@@ -109,8 +111,45 @@ public class UserController {
     }
 
     @GetMapping("/api/v1/user/subscription")
-    public ResponseEntity<SubscriptionResponseDTO> getUserSubscription(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<SubscriptionResponseDTO> getUserSubscription(
+            @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok().body(userService.getUserSubscription(userDetails.getUsername()));
     }
+
+    /**
+     * 토큰 검증 API (Request Body로 토큰 전달)
+     * @param tokenValidationRequest 검증할 토큰이 포함된 요청
+     * @return 토큰 검증 결과
+     */
+    @PostMapping("/api/v1/validate-token")
+    public ResponseEntity<TokenValidationResponse> validateToken(
+            @Valid @RequestBody TokenValidationRequest tokenValidationRequest) {
+        TokenValidationResponse response = userService.validateToken(tokenValidationRequest.getToken());
+        
+        // 토큰이 유효하지 않은 경우 400 Bad Request, 유효한 경우 200 OK
+        if (!response.isValid()) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        return ResponseEntity.ok().body(response);
+    }
+
+    /**
+     * 토큰 검증 API (Authorization Header에서 토큰 추출)
+     * @param request HTTP 요청 (Authorization Header에서 토큰 추출)
+     * @return 토큰 검증 결과
+     */
+    @GetMapping("/api/v1/validate-token")
+    public ResponseEntity<TokenValidationResponse> validateTokenFromHeader(HttpServletRequest request) {
+        TokenValidationResponse response = userService.validateTokenFromRequest(request);
+        
+        // 토큰이 유효하지 않은 경우 400 Bad Request, 유효한 경우 200 OK
+        if (!response.isValid()) {
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        return ResponseEntity.ok().body(response);
+    }
+
 
 }
