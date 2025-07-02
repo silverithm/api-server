@@ -109,7 +109,7 @@ public class JwtTokenProvider {
 
         if (claims.get(AUTHORITIES_KEY) == null) {
             //TODO:: Change Custom Exception
-            throw new RuntimeException("권한 정보가 없는 토큰입니다.");
+            throw new CustomException("권한 정보가 없는 토큰입니다.", HttpStatus.UNAUTHORIZED);
         }
 
         //클레임에서 권한 정보 가져오기

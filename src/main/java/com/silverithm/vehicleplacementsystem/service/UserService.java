@@ -289,7 +289,7 @@ public class UserService {
         Authentication authentication = jwtTokenProvider.getAuthentication(tokenRefreshRequest.refreshToken());
 
         if (!jwtTokenProvider.validateToken(tokenRefreshRequest.refreshToken())) {
-            throw new CustomException("Invalid Refresh Token", HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomException("Invalid Refresh Token", HttpStatus.UNAUTHORIZED);
         }
 
         UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(userName,
