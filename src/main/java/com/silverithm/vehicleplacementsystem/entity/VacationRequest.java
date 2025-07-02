@@ -96,7 +96,8 @@ public class VacationRequest {
     public enum VacationDuration {
         FULL_DAY("연차", "하루 종일", 1.0),
         HALF_DAY_AM("오전 반차", "오전 반일", 0.5),
-        HALF_DAY_PM("오후 반차", "오후 반일", 0.5);
+        HALF_DAY_PM("오후 반차", "오후 반일", 0.5),
+        UNUSED("미사용", "미사용", 0.0);
 
         private final String displayName;
         private final String description;
