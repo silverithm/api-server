@@ -345,7 +345,7 @@ public class UserService {
                 return TokenValidationResponse.fail("만료된 토큰입니다.");
             }
 
-            System.out.println("userEmail: "+userEmail);
+            log.info("userEmail: {}", userEmail);
 
             // 사용자 정보 조회
             AppUser user = userRepository.findByEmail(userEmail)
