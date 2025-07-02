@@ -120,6 +120,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/members/signin").permitAll()
                                 .requestMatchers("/api/v1/members/join-request").permitAll()
                                 .requestMatchers("/api/v1/members/{id}/fcm-token").permitAll()
+                                .requestMatchers("/api/v1/validate-token").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
                         UsernamePasswordAuthenticationFilter.class);
