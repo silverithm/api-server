@@ -35,12 +35,12 @@ import java.util.stream.Collectors;
 @Component
 public class JwtTokenProvider {
 
-    //    public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L;
-//    public static final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;
+    public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L;
+    public static final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;
     // 30 seconds
-    public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 1000L;
-    // 2 minutes
-    public static final long REFRESH_TOKEN_EXPIRE_TIME = 2 * 60 * 1000L;
+//    public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 1000L;
+//    // 2 minutes
+//    public static final long REFRESH_TOKEN_EXPIRE_TIME = 2 * 60 * 1000L;
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String AUTHORITIES_KEY = "auth";
