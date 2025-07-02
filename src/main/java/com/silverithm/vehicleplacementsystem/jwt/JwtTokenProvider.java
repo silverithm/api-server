@@ -85,6 +85,7 @@ public class JwtTokenProvider {
 
         //Generate RefreshToken
         String refreshToken = Jwts.builder()
+                .claim(AUTHORITIES_KEY, authorities)
                 .claim("type", TYPE_REFRESH)
                 .setIssuedAt(now)   //토큰 발행 시간 정보
                 .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_EXPIRE_TIME)) //토큰 만료 시간 설정
