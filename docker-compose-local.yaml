@@ -13,6 +13,7 @@ services:
     volumes:
       - ./logs:/logs
       - ./cfg/promtail.yaml:/etc/promtail/config.yml
+      - mysql-slow-log:/var/log/mysql
     command: -config.file=/etc/promtail/config.yml
     networks:
       - silverithm_network
@@ -61,7 +62,17 @@ services:
     restart: always
     networks:
       - silverithm_network
-    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+    command: [
+      'mysqld',
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_unicode_ci',
+      '--slow_query_log=1',
+      '--long_query_time=1',
+      '--slow_query_log_file=/var/log/mysql/mysql-slow.log'
+    ]
+    volumes:
+      - db-data:/var/lib/mysql
+      - mysql-slow-log:/var/log/mysql
 
   redis:
     container_name: silverithm_redis
@@ -109,8 +120,8 @@ services:
       SPRING_MAIL_PORT: 587
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: 'true'
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: 'true'
       JAVA_OPTS: >
         -XX:MaxRAMPercentage=80.0
         -XX:InitialRAMPercentage=70.0
@@ -127,6 +138,7 @@ services:
 
 volumes:
   db-data:
+  mysql-slow-log:
 
 networks:
   silverithm_network:

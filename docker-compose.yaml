@@ -35,8 +35,13 @@ services:
     volumes:
       - ./cfg/grafana/provisioning:/etc/grafana/provisioning
       - ./cfg/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - grafana-data:/var/lib/grafana
     env_file:
+      - .env
       - ./cfg/grafana/grafana.env
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SLACK_MONITORING_WEBHOOK_URL=${SLACK_MONITORING_WEBHOOK_URL}
     networks:
       - silverithm_network
   zipkin:
@@ -58,10 +63,11 @@ services:
       - "3307:3306"
     volumes:
       - db-data:/var/lib/mysql
+      - ./logs/mysql:/var/log/mysql
     restart: always
     networks:
       - silverithm_network
-    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--slow-query-log=1', '--slow-query-log-file=/var/log/mysql/mysql-slow.log', '--long-query-time=1' ]
 
   redis:
     container_name: silverithm_redis
@@ -91,6 +97,7 @@ services:
       - ./logs:/logs
     ports:
       - "8080:8080"
+      - "9101:9101"
     deploy:
       resources:
         limits:
@@ -108,8 +115,8 @@ services:
       SPRING_MAIL_PORT: 587
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
       JAVA_OPTS: >
         -XX:MaxRAMPercentage=80.0
         -XX:InitialRAMPercentage=70.0
@@ -153,6 +160,7 @@ services:
 
 volumes:
   db-data:
+  grafana-data:
 
 networks:
   silverithm_network:

@@ -23,3 +23,20 @@ scrape_configs:
         labels:
           job: error
           __path__: /logs/error/*.log
+  - job_name: mysql_slow_query
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: mysql_slow_query
+          __path__: /logs/mysql/mysql-slow.log
+    pipeline_stages:
+      - multiline:
+          firstline: '^# Time: '
+          max_wait_time: 3s
+      - regex:
+          expression: '^# Time: (?P<time>.*)\n# User@Host: (?P<user>.*)@(?P<host>.*) Id: (?P<id>.*)\n# Query_time: (?P<query_time>.*)  Lock_time: (?P<lock_time>.*) Rows_sent: (?P<rows_sent>.*)  Rows_examined: (?P<rows_examined>.*)\n(?P<query>.*);'
+      - labels:
+          user:
+          host:
+          query_time:
