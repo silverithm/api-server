@@ -1,37 +1,32 @@
 # 🔔 Grafana Slack 알림 설정 가이드
 
-## 1. Slack 웹훅 URL 생성
+## 1. Slack 앱 생성
+1. [Slack API](https://api.slack.com/apps) 접속
+2. "Create New App" 클릭
+3. "From scratch" 선택
+4. 앱 이름 입력 (예: "Silverithm Monitoring")
+5. 워크스페이스 선택
 
-### 1단계: Slack 앱 생성
-1. [Slack API](https://api.slack.com/apps) 페이지로 이동
-2. "Create New App" > "From scratch" 클릭
-3. 앱 이름: `Silverithm Monitoring`
-4. 워크스페이스 선택 후 "Create App" 클릭
-
-### 2단계: Incoming Webhooks 활성화
-1. 좌측 메뉴에서 "Incoming Webhooks" 클릭
+## 2. 웹훅 설정
+1. 생성된 앱에서 "Incoming Webhooks" 클릭
 2. "Activate Incoming Webhooks" 토글을 ON으로 변경
 3. "Add New Webhook to Workspace" 클릭
-4. 알림을 받을 채널 선택: `#서버-상태-알림`
-5. "Allow" 클릭하여 권한 승인
+4. 알림을 받을 채널 선택
+5. "Allow" 클릭
 
-### 3단계: 웹훅 URL 복사
+## 3. 웹훅 URL 복사
 - 생성된 웹훅 URL을 복사 (예: `https://hooks.slack.com/services/T.../B.../...`)
 
-## 2. 환경변수 설정
-
-### .env 파일 생성/수정
-프로젝트 루트에 `.env` 파일을 생성하고 다음 내용 추가:
+## 4. 환경변수 설정
+`.env` 파일에 다음과 같이 설정:
 
 ```bash
-# Slack 알림 설정 - "서버-상태-알림" 채널
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/***REMOVED***
-
-# 각 용도별 Slack 웹훅 URL (모니터링은 위의 URL 사용, 다른 용도는 별도 채널 URL 사용 가능)
+# Slack 웹훅 URLs (실제 URL로 교체 필요)
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+SLACK_MONITORING_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/MONITORING/URL
 SLACK_PAYMENT_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/PAYMENT/WEBHOOK_URL
-SLACK_SIGNUP_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SIGNUP/WEBHOOK_URL  
+SLACK_SIGNUP_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SIGNUP/WEBHOOK_URL
 SLACK_API_FAILURE_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/API_FAILURE/WEBHOOK_URL
-SLACK_MONITORING_WEBHOOK_URL=https://hooks.slack.com/services/***REMOVED***
 
 # 기존 환경변수들
 MYSQL_NAME=silverithm
@@ -50,13 +45,25 @@ MAIL_USERNAME=your_email@gmail.com
 MAIL_PASSWORD=your_email_password
 ```
 
-## 3. Grafana 재시작
+## 5. 테스트
+```bash
+curl -X POST YOUR_WEBHOOK_URL \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "테스트 메시지입니다."}'
+```
+
+## 보안 주의사항
+- ⚠️ **절대로 실제 웹훅 URL을 Git에 커밋하지 마세요!**
+- 웹훅 URL이 노출되면 Slack에서 보안상 비활성화됩니다
+- `.env` 파일은 `.gitignore`에 포함되어 있어야 합니다
+
+## 6. Grafana 재시작
 
 ```bash
 docker-compose restart grafana
 ```
 
-## 4. 알림 규칙
+## 7. 알림 규칙
 
 설정된 알림 규칙들:
 
@@ -79,7 +86,7 @@ docker-compose restart grafana
 - **아이콘**: `:warning:` (경고), `:red_circle:` (위험), `:information_source:` (정보)
 - **반복 주기**: 12시간 (중복 알림 방지)
 
-## 5. 테스트
+## 8. 테스트
 
 알림이 제대로 작동하는지 테스트하려면:
 
@@ -87,7 +94,7 @@ docker-compose restart grafana
 2. 1분 후 Slack에서 "서버 다운" 알림 확인
 3. 서버 재시작: `docker-compose start app`
 
-## 6. 문제 해결
+## 9. 문제 해결
 
 ### Slack 메시지가 오지 않는 경우:
 1. Grafana UI에서 Alerting > Contact points 확인
@@ -108,7 +115,7 @@ monitoring.error.rate.threshold=5          # 에러율 임계값 (%)
 monitoring.response.time.threshold=2       # 응답시간 임계값 (초)
 ```
 
-## 7. 모니터링 기능 상세
+## 10. 모니터링 기능 상세
 
 ### 🔍 실시간 모니터링
 - **주기**: 5분마다 자동 체크

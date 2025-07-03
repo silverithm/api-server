@@ -1,0 +1,17 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: slack-webhook
+    receivers:
+      - uid: slack-webhook-uid
+        type: slack
+        settings:
+          url: "YOUR_SLACK_WEBHOOK_URL_HERE"
+          text: |
+            🚨 **서버 알림**
+            {{ range .Alerts }}
+            • **상태**: {{ .Status }}
+            • **요약**: {{ .Annotations.summary }}
+            • **시간**: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+            {{ end }} 

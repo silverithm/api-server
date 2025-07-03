@@ -23,6 +23,34 @@ scrape_configs:
         labels:
           job: error
           __path__: /logs/error/*.log
+  - job_name: slow_query_app
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: slow_query_app
+          __path__: /logs/info/*.log
+    pipeline_stages:
+      - match:
+          selector: '{job="slow_query_app"}'
+          stages:
+            - regex:
+                expression: '.*SLOW_QUERY_DETECTED: (?P<slow_query_data>.*)'
+            - json:
+                expressions:
+                  type: type
+                  query: query
+                  execution_time_ms: execution_time_ms
+                  api_endpoint: api_endpoint
+                  http_method: http_method
+                  user_agent: user_agent
+                  timestamp: timestamp
+                source: slow_query_data
+            - labels:
+                type:
+                api_endpoint:
+                http_method:
+                execution_time_ms:
   - job_name: mysql_slow_query
     static_configs:
       - targets:
@@ -35,8 +63,11 @@ scrape_configs:
           firstline: '^# Time: '
           max_wait_time: 3s
       - regex:
-          expression: '^# Time: (?P<time>.*)\n# User@Host: (?P<user>.*)@(?P<host>.*) Id: (?P<id>.*)\n# Query_time: (?P<query_time>.*)  Lock_time: (?P<lock_time>.*) Rows_sent: (?P<rows_sent>.*)  Rows_examined: (?P<rows_examined>.*)\n(?P<query>.*);'
+          expression: '^# Time: (?P<time>.*)\n# User@Host: (?P<user>.*)@(?P<host>.*) Id: (?P<id>.*)\n# Query_time: (?P<query_time>[0-9.]+).*Lock_time: (?P<lock_time>[0-9.]+).*Rows_sent: (?P<rows_sent>[0-9]+).*Rows_examined: (?P<rows_examined>[0-9]+).*\n.*\n(?P<query>.*);'
       - labels:
           user:
           host:
           query_time:
+          connection_id: id
+          rows_sent:
+          rows_examined:
