@@ -30,7 +30,7 @@ public class SubscriptionScheduler {
     }
 
 
-    @Scheduled(cron = "0 0 6 * * *")
+//    @Scheduled(cron = "0 0 6 * * *")
     public void processScheduledPayments() {
         LocalDateTime currentDate = LocalDateTime.now();
         log.info("🔄 스케줄러 실행됨 - 현재 시간: {}", currentDate);  // 스케줄러 실행 여부 확인
