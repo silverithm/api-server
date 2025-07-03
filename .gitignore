@@ -70,3 +70,8 @@ init-letsencrypt.sh
 data
 
 db_backup
+
+# Git cleanup and backup files
+..bfg-report/
+.git.backup/
+sensitive-strings.txt
