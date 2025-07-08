@@ -383,7 +383,7 @@ public class VacationService {
                 .findByCompanyAndDateInAndRoleIn(company, dates, roles)
                 .stream()
                 .collect(Collectors.toMap(
-                        limit -> limit.getDate() + "-" + limit.getRole(),
+                        limit -> limit.getDate() + "_" + limit.getRole(),
                         Function.identity()
                 ));
 
@@ -402,7 +402,7 @@ public class VacationService {
                 toSave.add(existingLimit);
             } else {
                 // 새 엔티티 생성
-                String[] parts = key.split("-");
+                String[] parts = key.split("_");
                 LocalDate date = LocalDate.parse(parts[0]);
                 VacationRequest.Role role = VacationRequest.Role.valueOf(parts[1]);
 
