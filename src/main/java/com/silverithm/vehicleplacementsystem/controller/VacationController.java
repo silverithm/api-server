@@ -297,7 +297,7 @@ public class VacationController {
         try {
             log.info("[Vacation API] 휴가 제한 저장 요청: companyId={}, {}건", companyId, requestDTO.getLimits().size());
             
-            List<VacationLimitDTO> savedLimits = vacationService.saveVacationLimits(companyId, requestDTO);
+            List<VacationLimitDTO> savedLimits = vacationService.saveVacationLimitsV2(companyId, requestDTO);
             
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
