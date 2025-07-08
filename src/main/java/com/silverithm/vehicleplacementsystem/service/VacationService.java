@@ -372,7 +372,7 @@ public class VacationService {
 
                 dates.add(date);
                 roles.add(role);
-                requestMap.put(date + "-" + role, limitDTO);
+                requestMap.put(date + "_" + role, limitDTO);
             } catch (Exception e) {
                 log.error("[Vacation Service] 휴가 제한 파싱 실패: {}", limitDTO, e);
             }
