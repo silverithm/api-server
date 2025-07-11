@@ -75,3 +75,6 @@ db_backup
 ..bfg-report/
 .git.backup/
 sensitive-strings.txt
+
+# Firebase service account keys
+src/main/resources/firebase/
