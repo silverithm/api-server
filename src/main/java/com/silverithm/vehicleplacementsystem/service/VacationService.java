@@ -2,9 +2,11 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.VacationLimit;
 import com.silverithm.vehicleplacementsystem.entity.VacationRequest;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
+import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationLimitRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepository;
 import java.util.function.Function;
@@ -28,6 +30,7 @@ public class VacationService {
     private final VacationRequestRepository vacationRequestRepository;
     private final VacationLimitRepository vacationLimitRepository;
     private final CompanyRepository companyRepository;
+    private final MemberRepository memberRepository;
     private final NotificationService notificationService;
 
     public VacationCalendarResponseDTO getVacationCalendar(
@@ -480,18 +483,58 @@ public class VacationService {
         }
     }
 
-    // TODO: 실제 환경에서는 사용자 관리 시스템과 연동하여 FCM 토큰을 조회해야 함
     private String getUserFcmToken(String userId, String userName) {
-        // 개발 환경에서는 테스트 토큰 반환
         log.debug("[Vacation Service] 사용자 FCM 토큰 조회: userId={}, userName={}", userId, userName);
-        return "test-user-token-" + userId;
+        
+        try {
+            // userId 또는 userName으로 Member 조회
+            Member member = null;
+            
+            // 먼저 userId로 조회 시도 (userId가 username일 가능성)
+            if (userId != null && !userId.isEmpty()) {
+                member = memberRepository.findByUsername(userId).orElse(null);
+            }
+            
+            // userId로 찾지 못했으면 userName으로 조회 시도
+            if (member == null && userName != null && !userName.isEmpty()) {
+                member = memberRepository.findByName(userName).orElse(null);
+            }
+            
+            // Member를 찾았으면 FCM 토큰 반환
+            if (member != null && member.getFcmToken() != null) {
+                log.debug("[Vacation Service] FCM 토큰 조회 성공: userId={}, userName={}", userId, userName);
+                return member.getFcmToken();
+            } else {
+                log.warn("[Vacation Service] FCM 토큰을 찾을 수 없음: userId={}, userName={}", userId, userName);
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("[Vacation Service] FCM 토큰 조회 중 오류 발생: userId={}, userName={}", userId, userName, e);
+            return null;
+        }
     }
 
-    // TODO: 실제 환경에서는 관리자 목록과 FCM 토큰을 조회해야 함  
     private List<String> getAdminFcmTokens() {
-        // 개발 환경에서는 테스트 토큰 목록 반환
         log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
-        return List.of("test-admin-token-1", "test-admin-token-2");
+        
+        try {
+            // ADMIN, MANAGER 권한을 가진 Member들의 FCM 토큰 조회
+            List<Member> adminMembers = memberRepository.findByRoleInAndFcmTokenIsNotNull(
+                    List.of(Member.Role.ADMIN, Member.Role.MANAGER)
+            );
+            
+            List<String> adminTokens = adminMembers.stream()
+                    .map(Member::getFcmToken)
+                    .filter(token -> token != null && !token.isEmpty())
+                    .collect(Collectors.toList());
+            
+            log.debug("[Vacation Service] 관리자 FCM 토큰 조회 완료: {} 개", adminTokens.size());
+            return adminTokens;
+            
+        } catch (Exception e) {
+            log.error("[Vacation Service] 관리자 FCM 토큰 조회 중 오류 발생", e);
+            return List.of(); // 빈 리스트 반환
+        }
     }
 
     // 멤버 개인용 휴무 관련 메서드들

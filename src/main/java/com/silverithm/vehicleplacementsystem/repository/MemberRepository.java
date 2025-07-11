@@ -62,4 +62,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     Long countByCompanyAndRole(Company company, Member.Role role);
     
     Long countByCompanyAndStatus(Company company, Member.MemberStatus status);
+    
+    // FCM 토큰 관련 메서드
+    List<Member> findByRoleInAndFcmTokenIsNotNull(List<Member.Role> roles);
+    
+    Optional<Member> findByName(String name);
 } 
