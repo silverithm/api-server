@@ -39,7 +39,7 @@ public class MemberService {
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 노출된 회사 조회");
         
-        List<Company> companies = companyRepository.findByExposeTrue();
+        List<Company> companies = companyRepository.findByExposeTrueWithUsers();
         
         return companies.stream()
                 .map(CompanyListDTO::fromEntity)
