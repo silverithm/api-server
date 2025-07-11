@@ -497,6 +497,9 @@ public class VacationService {
             if (member != null && member.getFcmToken() != null) {
                 log.debug("[Vacation Service] FCM 토큰 조회 성공: userId={}, userName={}", userId, userName);
                 return member.getFcmToken();
+            }else{
+                log.warn("[Vacation Service] FCM 토큰이 없습니다: userId={}, userName={}", userId, userName);
+                return null; // FCM 토큰이 없는 경우 null 반환
             }
         } catch (Exception e) {
             log.error("[Vacation Service] FCM 토큰 조회 중 오류 발생: userId={}, userName={}", userId, userName, e);
