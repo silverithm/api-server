@@ -223,11 +223,11 @@ public class MemberService {
         }
         
         // 신청자에게 승인 알림 전송
-        try {
-            sendJoinApprovedNotificationToUser(joinRequest);
-        } catch (Exception e) {
-            log.error("[Member Service] 승인 알림 전송 실패: {}", e.getMessage());
-        }
+//        try {
+//            sendJoinApprovedNotificationToUser(joinRequest);
+//        } catch (Exception e) {
+//            log.error("[Member Service] 승인 알림 전송 실패: {}", e.getMessage());
+//        }
         
         // 신청자에게 승인 이메일 전송
         try {
@@ -263,11 +263,11 @@ public class MemberService {
         log.info("[Member Service] 가입 거부 완료: requestId={}, 사유={}", requestId, processDTO.getRejectReason());
         
         // 신청자에게 거부 알림 전송
-        try {
-            sendJoinRejectedNotificationToUser(joinRequest);
-        } catch (Exception e) {
-            log.error("[Member Service] 거부 알림 전송 실패: {}", e.getMessage());
-        }
+//        try {
+//            sendJoinRejectedNotificationToUser(joinRequest);
+//        } catch (Exception e) {
+//            log.error("[Member Service] 거부 알림 전송 실패: {}", e.getMessage());
+//        }
         
         // 신청자에게 거부 이메일 전송
         try {
