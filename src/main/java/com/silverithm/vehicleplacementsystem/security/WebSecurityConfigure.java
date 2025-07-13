@@ -60,7 +60,8 @@ public class WebSecurityConfigure {
                     "https://silverithm.netlify.app",
                     "https://www.silverithm.co.kr",
                     "https://carev.netlify.app",
-                    "https://www.carev.kr"
+                    "https://www.carev.kr",
+                    "https://carev.kr"
             ));
             config.setAllowCredentials(true);
             return config;
