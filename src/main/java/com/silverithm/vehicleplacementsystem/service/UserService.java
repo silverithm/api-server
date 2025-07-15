@@ -187,7 +187,7 @@ public class UserService {
     }
 
     public FindPasswordResponse findPassword(String email) {
-        AppUser findUser = userRepository.findByEmail(email)
+        AppUser findUser = userRepository.findActiveByEmail(email)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
 
         String temporaryPassword = createTemporaryPassword(findUser);
@@ -233,7 +233,7 @@ public class UserService {
     }
 
     public void changePassword(PasswordChangeRequest passwordChangeRequest) {
-        AppUser findUser = userRepository.findByEmail(passwordChangeRequest.email())
+        AppUser findUser = userRepository.findActiveByEmail(passwordChangeRequest.email())
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
 
         if (!passwordEncoder.matches(passwordChangeRequest.currentPassword(), findUser.getPassword())) {
@@ -248,7 +248,7 @@ public class UserService {
 
     @Transactional
     public void updateCompanyName(UpdateCompanyNameDTO updateCompanyNameDTO, String userEmail) {
-        AppUser findUser = userRepository.findByEmail(userEmail)
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
         findUser.updateCompanyName(updateCompanyNameDTO.companyName());
     }
@@ -257,7 +257,7 @@ public class UserService {
     public UpdateCompanyAddressResponse updateCompanyAddress(UpdateCompanyAddressDTO updateCompanyAddressDTO,
                                                              String userEmail)
             throws Exception {
-        AppUser findUser = userRepository.findByEmail(userEmail)
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
         Location companyLocation = geocodingService.getAddressCoordinates(updateCompanyAddressDTO.companyAddress());
         findUser.updateCompanyAddress(companyLocation, updateCompanyAddressDTO.companyAddress());
@@ -300,7 +300,7 @@ public class UserService {
 
 
     public SubscriptionResponseDTO getUserSubscription(String userEmail) {
-        AppUser user = userRepository.findByEmail(userEmail)
+        AppUser user = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
 
         if (user.getSubscription() == null) {
@@ -350,7 +350,7 @@ public class UserService {
             log.info("userEmail: {}", userEmail);
 
             // 사용자 정보 조회
-            AppUser user = userRepository.findByEmail(userEmail)
+            AppUser user = userRepository.findActiveByEmail(userEmail)
                     .orElse(null);
 
             if (user == null) {
@@ -405,7 +405,7 @@ public class UserService {
 
     @Transactional
     public void deleteUser(String userEmail) {
-        AppUser findUser = userRepository.findByEmail(userEmail)
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
         findUser.getCompany().updateExpose(false);
         findUser.softDelete();
