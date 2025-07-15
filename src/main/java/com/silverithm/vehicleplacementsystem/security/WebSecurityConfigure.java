@@ -76,7 +76,7 @@ public class WebSecurityConfigure {
                 String email = authentication.getName();
                 String password = authentication.getCredentials().toString();
 
-                AppUser user = userRepository.findByEmail(email)
+                AppUser user = userRepository.findActiveByEmail(email)
                         .orElseThrow(() -> new CustomException("User not found", HttpStatus.UNPROCESSABLE_ENTITY));
 
                 if (passwordEncoder().matches(password, user.getPassword())) {
