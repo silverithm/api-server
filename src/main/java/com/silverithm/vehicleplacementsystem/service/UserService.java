@@ -83,11 +83,11 @@ public class UserService {
     }
 
 
-    @Transactional
+    @Transactional(readOnly = true)
     public SigninResponseDTO signin(UserSigninDTO userSigninDTO) {
         try {
 
-            AppUser findUser = userRepository.findByEmailAndDeletedAtIsNull(userSigninDTO.getEmail())
+            AppUser findUser = userRepository.findActiveByEmail(userSigninDTO.getEmail())
                     .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
 
             authenticationManager.authenticate(
