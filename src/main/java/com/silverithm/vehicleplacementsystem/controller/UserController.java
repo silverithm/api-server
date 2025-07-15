@@ -57,19 +57,19 @@ public class UserController {
         return userService.signup(userDataDTO);
     }
 
-    @DeleteMapping("api/v1/users")
+    @DeleteMapping("/api/v1/users")
     public ResponseEntity<String> deleteUser(@AuthenticationPrincipal UserDetails userDetails) {
         userService.deleteUser(userDetails.getUsername());
         return ResponseEntity.ok().body("success");
     }
 
 
-    @PostMapping("api/v1/find/password")
+    @PostMapping("/api/v1/find/password")
     public ResponseEntity<FindPasswordResponse> findPassword(@RequestParam String email) {
         return ResponseEntity.ok().body(userService.findPassword(email));
     }
 
-    @PostMapping("api/v1/change/password")
+    @PostMapping("/api/v1/change/password")
     public ResponseEntity<String> changePassword(@RequestBody PasswordChangeRequest passwordChangeRequest) {
         userService.changePassword(passwordChangeRequest);
         return ResponseEntity.ok().body("success");
