@@ -20,6 +20,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Data;
 import lombok.Getter;
@@ -39,7 +40,7 @@ public class AppUser extends BaseEntity {
 
     private String username;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String email;
 
     private String password;
@@ -61,6 +62,9 @@ public class AppUser extends BaseEntity {
     private Subscription subscription;
 
     private String billingKey;
+
+    private LocalDateTime deletedAt;
+
 
 
     public AppUser(String name, String email, String encode, UserRole role, String refreshToken,
@@ -132,6 +136,10 @@ public class AppUser extends BaseEntity {
 
     public void updateCustomerKey(String customerKey) {
         this.customerKey = customerKey;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
     }
 
 

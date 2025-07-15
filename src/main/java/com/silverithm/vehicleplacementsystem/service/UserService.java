@@ -87,7 +87,7 @@ public class UserService {
     public SigninResponseDTO signin(UserSigninDTO userSigninDTO) {
         try {
 
-            AppUser findUser = userRepository.findByEmail(userSigninDTO.getEmail())
+            AppUser findUser = userRepository.findByEmailAndDeletedAtIsNull(userSigninDTO.getEmail())
                     .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
 
             authenticationManager.authenticate(
@@ -135,7 +135,7 @@ public class UserService {
     }
 
     private void validateEmailNotExists(String email) throws Exception {
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
             throw new CustomException("Useremail is already in use", HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
@@ -401,6 +401,14 @@ public class UserService {
             log.error("요청에서 토큰 검증 중 오류 발생: ", e);
             return TokenValidationResponse.fail("토큰 검증 중 오류가 발생했습니다.");
         }
+    }
+
+    @Transactional
+    public void deleteUser(String userEmail) {
+        AppUser findUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
+        findUser.getCompany().updateExpose(false);
+        findUser.softDelete();
     }
 }
 

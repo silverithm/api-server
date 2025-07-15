@@ -63,4 +63,8 @@ public class Company extends BaseEntity {
         this.addressName = addressName;
         this.companyAddress = companyAddress;
     }
+
+    public void updateExpose(boolean expose) {
+        this.expose = expose;
+    }
 }

@@ -24,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -55,6 +56,13 @@ public class UserController {
     public TokenInfo signup(@RequestBody UserDataDTO userDataDTO) throws Exception {
         return userService.signup(userDataDTO);
     }
+
+    @DeleteMapping("api/v1/users")
+    public ResponseEntity<String> deleteUser(@AuthenticationPrincipal UserDetails userDetails) {
+        userService.deleteUser(userDetails.getUsername());
+        return ResponseEntity.ok().body("success");
+    }
+
 
     @PostMapping("api/v1/find/password")
     public ResponseEntity<FindPasswordResponse> findPassword(@RequestParam String email) {

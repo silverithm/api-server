@@ -20,4 +20,12 @@ public interface UserRepository extends JpaRepository<AppUser, Long>, UserReposi
     boolean existsByCustomerKey(String customerKey);
 
     Optional<AppUser> findByRefreshToken(String refreshToken);
+
+    Optional<AppUser> findByEmailAndDeletedAtIsNull(
+            String email);
+
+    boolean existsByEmailAndDeletedAtIsNull(
+            String email);
+
+    Optional<AppUser> findByUsernameAndDeletedAtIsNull(String username);
 }
