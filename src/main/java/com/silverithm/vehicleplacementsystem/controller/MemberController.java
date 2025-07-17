@@ -331,6 +331,26 @@ public class MemberController {
         }
     }
 
+    @PostMapping("/change/password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody PasswordChangeRequest passwordChangeRequest) {
+        try {
+            log.info("[Member API] 비밀번호 변경 요청: username={}", userDetails.getUsername());
+            memberService.changePassword(userDetails.getUsername(), passwordChangeRequest);
+            return ResponseEntity.ok(Map.of("message", "비밀번호가 변경되었습니다"));
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 비밀번호 변경 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Member API] 비밀번호 변경 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "비밀번호 변경 중 오류가 발생했습니다"));
+        }
+    }
+
+
     @PutMapping("/role")
     public ResponseEntity<Map<String, String>> updateMemberRole(@AuthenticationPrincipal UserDetails userDetails,
                                                                 @RequestParam String role) {
