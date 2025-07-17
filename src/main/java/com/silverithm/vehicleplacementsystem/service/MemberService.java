@@ -695,6 +695,7 @@ public class MemberService {
         emailService.sendEmailAsync(email, subject, content);
     }
 
+    @Transactional
     public void updateMemberRole(String username, String role) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + username));
