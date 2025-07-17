@@ -77,7 +77,15 @@ public class Member {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-    
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
+    public void updateRole(Role role) {
+        this.role = role;
+    }
+
     public enum Role {
         ADMIN,      // 관리자
         CAREGIVER,  // 요양보호사
