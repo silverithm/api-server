@@ -226,7 +226,7 @@ public class UserService {
 
     // 이메일 전송
     private void sendTemporaryPasswordEmail(String email, String temporaryPassword) {
-        String subject = "실버리즘 임시 비밀번호 발급";
+        String subject = "케어브이 임시 비밀번호 발급";
         String content = temporaryPassword;
 
         emailService.sendEmailAsync(email, subject, content);
