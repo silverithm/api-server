@@ -704,9 +704,14 @@ public class MemberService {
     }
 
     @Transactional
-    public void changePassword(String username, MemberPasswordChangeRequest passwordChangeRequest) {
+    public void changePassword(String username, PasswordChangeRequest passwordChangeRequest) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + username));
+
+        if (!passwordEncoder.matches(passwordChangeRequest.currentPassword(), member.getPassword())) {
+            throw new CustomException("Invalid current password", HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
         String newEncodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());
         member.updatePassword(newEncodedPassword);
     }

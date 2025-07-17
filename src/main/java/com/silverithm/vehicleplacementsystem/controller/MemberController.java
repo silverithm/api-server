@@ -334,7 +334,7 @@ public class MemberController {
     @PostMapping("/change/password")
     public ResponseEntity<Map<String, String>> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody MemberPasswordChangeRequest passwordChangeRequest) {
+            @Valid @RequestBody PasswordChangeRequest passwordChangeRequest) {
         try {
             log.info("[Member API] 비밀번호 변경 요청: username={}", userDetails.getUsername());
             memberService.changePassword(userDetails.getUsername(), passwordChangeRequest);
