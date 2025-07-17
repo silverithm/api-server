@@ -320,10 +320,10 @@ public class MemberController {
     }
 
     @PostMapping("/find/password")
-    public ResponseEntity<FindPasswordResponse> findPassword(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<FindPasswordResponse> findPassword(@RequestParam String email) {
         try {
-            log.info("[Member API] 비밀번호 찾기 요청: username={}", userDetails.getUsername());
-            return ResponseEntity.ok().body(memberService.findPassword(userDetails.getUsername()));
+            log.info("[Member API] 비밀번호 찾기 요청: username={}", email);
+            return ResponseEntity.ok().body(memberService.findPassword(email));
         } catch (Exception e) {
             log.error("[Member API] 비밀번호 찾기 요청 오류:", e);
             return ResponseEntity.internalServerError()
