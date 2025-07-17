@@ -703,7 +703,7 @@ public class MemberService {
     }
 
     @Transactional
-    public void changePassword(String username, PasswordChangeRequest passwordChangeRequest) {
+    public void changePassword(String username, MemberPasswordChangeRequest passwordChangeRequest) {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + username));
         String newEncodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());
