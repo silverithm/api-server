@@ -649,6 +649,7 @@ public class MemberService {
     }
 
 
+    @Transactional
     public FindPasswordResponse findPassword(String email) {
         Member member = memberRepository.findActiveMember(email)
                 .orElseThrow(() -> new CustomException("해당 이메일로 가입된 사용자가 없습니다.", HttpStatus.NOT_FOUND));
