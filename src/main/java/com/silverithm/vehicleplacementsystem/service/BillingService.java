@@ -52,51 +52,116 @@ public class BillingService {
     }
 
     public PaymentResponse requestPayment(SubscriptionRequestDTO requestDto, String billingKey) {
+        return requestPaymentWithRetry(requestDto, billingKey, 3);
+    }
 
-        try {
-            // Base64 인코딩
-            String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
-            String orderId = UUID.randomUUID().toString();
+    private PaymentResponse requestPaymentWithRetry(SubscriptionRequestDTO requestDto, String billingKey, int maxRetries) {
+        int attempts = 0;
+        Exception lastException = null;
 
-            // HTTP 요청 헤더 설정
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Basic " + encodedAuth);
-            headers.setContentType(MediaType.APPLICATION_JSON);
+        while (attempts < maxRetries) {
+            attempts++;
+            try {
+                log.info("💳 결제 시도 ({}/{}) - 사용자: {}, 금액: {}원", attempts, maxRetries, requestDto.getCustomerName(), requestDto.getAmount());
+                
+                // 빌링키 유효성 검증
+                if (billingKey == null || billingKey.trim().isEmpty()) {
+                    throw new CustomException("유효하지 않은 빌링키입니다.", HttpStatus.BAD_REQUEST);
+                }
 
-            // 요청 바디 생성
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("customerKey", requestDto.getCustomerKey());
-            requestBody.put("amount", requestDto.getAmount());
-            requestBody.put("orderId", orderId);
-            requestBody.put("orderName", requestDto.getOrderName());
-            requestBody.put("customerEmail", requestDto.getCustomerEmail());
-            requestBody.put("customerName", requestDto.getCustomerName());
-            requestBody.put("taxFreeAmount", requestDto.getTaxFreeAmount());
+                // Base64 인코딩
+                String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
+                String orderId = UUID.randomUUID().toString();
 
-            // HTTP 엔티티 생성
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+                // HTTP 요청 헤더 설정
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("Authorization", "Basic " + encodedAuth);
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("Idempotency-Key", orderId);
 
-            // 토스 API 호출
-            ResponseEntity<PaymentResponse> response = restTemplate.exchange(
-                    "https://api.tosspayments.com/v1/billing/" + billingKey, HttpMethod.POST, entity,
-                    PaymentResponse.class);
+                // 요청 바디 생성
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("customerKey", requestDto.getCustomerKey());
+                requestBody.put("amount", requestDto.getAmount());
+                requestBody.put("orderId", orderId);
+                requestBody.put("orderName", requestDto.getOrderName());
+                requestBody.put("customerEmail", requestDto.getCustomerEmail());
+                requestBody.put("customerName", requestDto.getCustomerName());
+                requestBody.put("taxFreeAmount", requestDto.getTaxFreeAmount());
 
-            slackService.sendPaymentSuccessNotification(orderId, requestDto.getCustomerName(), requestDto.getAmount());
+                // HTTP 엔티티 생성
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            return response.getBody();
+                // 토스 API 호출
+                ResponseEntity<PaymentResponse> response = restTemplate.exchange(
+                        "https://api.tosspayments.com/v1/billing/" + billingKey, HttpMethod.POST, entity,
+                        PaymentResponse.class);
 
-        } catch (HttpClientErrorException e) {
-            if (e.getStatusCode().is5xxServerError()) {
-                throw new CustomException("토스 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
+                PaymentResponse paymentResponse = response.getBody();
+                
+                if (paymentResponse != null && "DONE".equals(paymentResponse.status())) {
+                    log.info("✅ 결제 성공 - 주문ID: {}, 사용자: {}, 금액: {}원", orderId, requestDto.getCustomerName(), requestDto.getAmount());
+                    slackService.sendPaymentSuccessNotification(orderId, requestDto.getCustomerName(), requestDto.getAmount());
+                    return paymentResponse;
+                } else {
+                    log.warn("⚠️ 결제 응답 상태 이상 - 상태: {}, 사용자: {}", 
+                            paymentResponse != null ? paymentResponse.status() : "NULL", requestDto.getCustomerName());
+                    return paymentResponse;
+                }
+
+            } catch (HttpClientErrorException e) {
+                lastException = e;
+                log.error("❌ 결제 API 오류 ({}/{}) - 상태코드: {}, 사용자: {}, 응답: {}", 
+                        attempts, maxRetries, e.getStatusCode(), requestDto.getCustomerName(), e.getResponseBodyAsString());
+                
+                if (e.getStatusCode().is4xxClientError()) {
+                    // 4xx 에러는 재시도하지 않음
+                    slackService.sendApiFailureNotification("결제 실패 (클라이언트 오류)", requestDto.getCustomerEmail(), 
+                            e.getResponseBodyAsString(), requestDto.toString());
+                    throw new CustomException("결제 실패: " + e.getResponseBodyAsString(), HttpStatus.BAD_REQUEST);
+                }
+                
+                if (e.getStatusCode().is5xxServerError() && attempts < maxRetries) {
+                    // 5xx 에러는 재시도
+                    log.warn("🔄 서버 오류로 인한 재시도 대기 중... ({}/{})", attempts, maxRetries);
+                    try {
+                        Thread.sleep(1000 * attempts); // 지수 백오프
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new CustomException("결제 처리가 중단되었습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+                    }
+                } else {
+                    slackService.sendApiFailureNotification("결제 실패 (서버 오류)", requestDto.getCustomerEmail(), 
+                            e.getResponseBodyAsString(), requestDto.toString());
+                    throw new CustomException("토스 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
+                }
+                
+            } catch (Exception e) {
+                lastException = e;
+                log.error("💥 결제 처리 중 예외 발생 ({}/{}) - 사용자: {}, 오류: {}", 
+                        attempts, maxRetries, requestDto.getCustomerName(), e.getMessage(), e);
+                
+                if (attempts < maxRetries) {
+                    log.warn("🔄 예외로 인한 재시도 대기 중... ({}/{})", attempts, maxRetries);
+                    try {
+                        Thread.sleep(1000 * attempts);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new CustomException("결제 처리가 중단되었습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+                    }
+                } else {
+                    slackService.sendApiFailureNotification("결제 실패 (시스템 오류)", requestDto.getCustomerEmail(), 
+                            e.getMessage(), requestDto.toString());
+                    throw new CustomException("서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+                }
             }
-            slackService.sendApiFailureNotification("결제 실패", requestDto.getCustomerEmail(), e.getResponseBodyAsString(),
-                    requestDto.toString());
-            throw new CustomException("결제 실패: " + e.getResponseBodyAsString(), HttpStatus.BAD_REQUEST);
-        } catch (Exception e) {
-            slackService.sendApiFailureNotification("결제 실패", requestDto.getCustomerEmail(), e.getMessage().toString(),
-                    requestDto.toString());
-            throw new CustomException("서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
+
+        // 모든 재시도 실패
+        log.error("💥 모든 결제 재시도 실패 - 사용자: {}", requestDto.getCustomerName());
+        slackService.sendApiFailureNotification("결제 최종 실패", requestDto.getCustomerEmail(), 
+                lastException != null ? lastException.getMessage() : "알 수 없는 오류", requestDto.toString());
+        throw new CustomException("결제 처리에 실패했습니다. 고객센터에 문의해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     public BillingResponse requestBillingKey(SubscriptionRequestDTO requestDto) {
@@ -130,4 +195,5 @@ public class BillingService {
             throw new CustomException("빌링키 발급 실패: " + e.getResponseBodyAsString(), HttpStatus.SERVICE_UNAVAILABLE);
         }
     }
+
 }

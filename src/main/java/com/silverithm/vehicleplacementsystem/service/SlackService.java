@@ -259,6 +259,29 @@ public class SlackService {
 
 
     /**
+     * 일반 슬랙 메시지 전송
+     */
+    public void sendSlackMessage(String message) {
+        if (monitoringUrl == null) {
+            log.warn("모니터링 Slack 웹훅 URL이 설정되지 않았습니다.");
+            return;
+        }
+
+        try {
+            String payload = String.format("{\"text\":\"%s\"}", message.replace("\"", "\\\""));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(monitoringUrl, request, String.class);
+            log.info("슬랙 메시지 전송 완료");
+        } catch (Exception e) {
+            log.error("슬랙 메시지 전송 실패: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
      * 일반 시스템 알림 전송
      */
     public void sendSystemAlert(String title, String message, String severity) {

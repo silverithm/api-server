@@ -142,5 +142,8 @@ public class AppUser extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public void setSubscription(Subscription subscription) {
+        this.subscription = subscription;
+    }
 
 }

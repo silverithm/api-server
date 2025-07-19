@@ -325,6 +325,8 @@ public class MemberController {
             log.info("[Member API] 비밀번호 찾기 요청: username={}", email);
             return ResponseEntity.ok().body(Map.of("message", memberService.findPassword(email)));
         } catch (Exception e) {
+
+
             log.error("[Member API] 비밀번호 찾기 요청 오류:", e);
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", new FindPasswordResponse("비밀번호 찾기 중 오류가 발생했습니다")));

@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
+import com.silverithm.vehicleplacementsystem.service.BillingService;
 import com.silverithm.vehicleplacementsystem.service.SubscriptionService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class SubscriptionController {
     private final SubscriptionService subscriptionService;
+    private final BillingService billingService;
 
     @PostMapping
     public ResponseEntity<SubscriptionResponseDTO> createOrUpdateSubscription(
@@ -41,6 +43,12 @@ public class SubscriptionController {
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionResponseDTO> getSubscription(@PathVariable Long id) {
         return ResponseEntity.ok(subscriptionService.getSubscription(id));
+    }
+
+    @GetMapping()
+    public ResponseEntity<SubscriptionResponseDTO> getMySubscription(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subscriptionService.getMySubscription(userDetails));
     }
 
     @PutMapping("/cancel")

@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Subscription;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionBillingType;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
+import com.silverithm.vehicleplacementsystem.entity.SubscriptionType;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.SubscriptionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -109,5 +110,32 @@ public class SubscriptionService {
     public List<SubscriptionResponseDTO> getActiveSubscriptions() {
         return subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE).stream().map(SubscriptionResponseDTO::new)
                 .collect(Collectors.toList());
+    }
+
+    public SubscriptionResponseDTO getMySubscription(UserDetails userDetails) {
+        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
+                        HttpStatus.NOT_FOUND));
+
+        if (user.getSubscription() == null) {
+            // 구독이 없으면 무료 구독으로 가정
+            LocalDateTime userCreatedAt = user.getCreatedAt();
+            LocalDateTime freeSubscriptionEndDate = userCreatedAt.plusDays(30);
+
+            // 임시 무료 구독 객체 생성 (DB에 저장하지 않음)
+            Subscription freeSubscription = Subscription.builder()
+                    .planName(SubscriptionType.FREE)
+                    .billingType(SubscriptionBillingType.MONTHLY)
+                    .startDate(userCreatedAt)
+                    .endDate(freeSubscriptionEndDate)
+                    .status(SubscriptionStatus.ACTIVE)
+                    .amount(0)
+                    .user(user)
+                    .build();
+
+            return new SubscriptionResponseDTO(freeSubscription);
+        }
+
+        return new SubscriptionResponseDTO(user.getSubscription());
     }
 }

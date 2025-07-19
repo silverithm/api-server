@@ -56,6 +56,10 @@ public class Subscription extends BaseEntity{
         this.status = status;
     }
 
+    public void updateStartDate(LocalDateTime startDate) {
+        this.startDate = startDate;
+    }
+
     @Builder
     public Subscription(SubscriptionType planName, SubscriptionBillingType billingType, LocalDateTime startDate,
                         LocalDateTime endDate, SubscriptionStatus status, Integer amount, AppUser user) {
