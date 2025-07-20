@@ -27,4 +27,14 @@ public interface PaymentFailureLogRepository extends JpaRepository<PaymentFailur
                                                                                  @Param("startDate") LocalDateTime startDate,
                                                                                  @Param("endDate") LocalDateTime endDate,
                                                                                  Pageable pageable);
+    
+    @Query("SELECT p FROM PaymentFailureLog p WHERE p.user.id = :userId AND p.failureReason = :reason ORDER BY p.createdAt DESC")
+    List<PaymentFailureLog> findRecentFailuresByUserAndReason(@Param("userId") Long userId, 
+                                                               @Param("reason") PaymentFailureReason reason, 
+                                                               Pageable pageable);
+    
+    @Query("SELECT COUNT(p) FROM PaymentFailureLog p WHERE p.user.id = :userId AND p.failureReason = :reason AND p.createdAt >= :sinceDate")
+    Long countRecentFailuresByUserAndReason(@Param("userId") Long userId, 
+                                            @Param("reason") PaymentFailureReason reason, 
+                                            @Param("sinceDate") LocalDateTime sinceDate);
 }

@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.PaymentFailureReason;
+import com.silverithm.vehicleplacementsystem.repository.PaymentFailureLogRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -24,15 +25,17 @@ public class SubscriptionScheduler {
     private final UserRepository userRepository;
     private final SlackService slackService;
     private final PaymentFailureService paymentFailureService;
+    private final PaymentFailureLogRepository paymentFailureLogRepository;
 
     public SubscriptionScheduler(SubscriptionService subscriptionService, BillingService billingService,
                                  UserRepository userRepository, SlackService slackService, 
-                                 PaymentFailureService paymentFailureService) {
+                                 PaymentFailureService paymentFailureService, PaymentFailureLogRepository paymentFailureLogRepository) {
         this.subscriptionService = subscriptionService;
         this.billingService = billingService;
         this.userRepository = userRepository;
         this.slackService = slackService;
         this.paymentFailureService = paymentFailureService;
+        this.paymentFailureLogRepository = paymentFailureLogRepository;
     }
 
 
@@ -115,6 +118,9 @@ public class SubscriptionScheduler {
                 String.format("Scheduled payment failure - Code: %s", failureCode)
             );
             
+            // 연속 실패 검사 및 구독 비활성화
+            checkConsecutiveFailuresAndDeactivate(user, reason);
+            
             String message = String.format("🚨 정기결제 실패 알림\n사용자: %s\n이메일: %s\n실패 코드: %s\n실패 사유: %s", 
                     user.getUsername(), user.getEmail(), 
                     slackData.get("failure_code"), slackData.get("failure_message"));
@@ -135,6 +141,9 @@ public class SubscriptionScheduler {
                 user.getSubscription().getPlanName(), user.getSubscription().getBillingType(),
                 String.format("Scheduled payment exception: %s", e.getClass().getSimpleName())
             );
+            
+            // 연속 실패 검사 및 구독 비활성화
+            checkConsecutiveFailuresAndDeactivate(user, PaymentFailureReason.OTHER);
             
             String message = String.format("💥 정기결제 시스템 오류\n사용자: %s\n이메일: %s\n오류: %s", 
                     user.getUsername(), user.getEmail(), e.getMessage());
@@ -171,6 +180,38 @@ public class SubscriptionScheduler {
                 return PaymentFailureReason.PAYMENT_GATEWAY_ERROR;
             default:
                 return PaymentFailureReason.OTHER;
+        }
+    }
+    
+    private void checkConsecutiveFailuresAndDeactivate(AppUser user, PaymentFailureReason reason) {
+        try {
+            // 최근 7일간 같은 원인으로 실패한 횟수 조회
+            LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+            Long consecutiveFailures = paymentFailureLogRepository.countRecentFailuresByUserAndReason(
+                user.getId(), reason, sevenDaysAgo);
+            
+            log.info("연속 실패 검사 - 사용자: {}, 실패 원인: {}, 최근 7일간 실패 횟수: {}", 
+                    user.getEmail(), reason, consecutiveFailures);
+            
+            if (consecutiveFailures >= 3) {
+                // 3번 이상 연속 실패 시 구독 비활성화
+                subscriptionService.deactivateSubscriptionDueToPaymentFailures(
+                    user, 
+                    String.format("연속 결제 실패 (%s) %d회", reason.getDescription(), consecutiveFailures)
+                );
+                
+                // 슬랙 알림 전송
+                String deactivationMessage = String.format(
+                    "⚠️ 구독 자동 비활성화\n사용자: %s\n이메일: %s\n실패 원인: %s\n연속 실패 횟수: %d회\n비활성화 사유: 최근 7일간 같은 원인으로 3회 이상 결제 실패", 
+                    user.getUsername(), user.getEmail(), reason.getDescription(), consecutiveFailures
+                );
+                
+                slackService.sendSlackMessage(deactivationMessage);
+                log.warn("구독 자동 비활성화 완료 - 사용자: {}, 원인: {}, 실패 횟수: {}", 
+                        user.getEmail(), reason.getDescription(), consecutiveFailures);
+            }
+        } catch (Exception e) {
+            log.error("연속 실패 검사 중 오류 발생 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
         }
     }
 }

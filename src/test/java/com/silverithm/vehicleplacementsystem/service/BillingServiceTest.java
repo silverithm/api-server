@@ -36,6 +36,9 @@ class BillingServiceTest {
     @Mock
     private SlackService slackService;
 
+    @Mock
+    private PaymentFailureService paymentFailureService;
+
     @InjectMocks
     private BillingService billingService;
 

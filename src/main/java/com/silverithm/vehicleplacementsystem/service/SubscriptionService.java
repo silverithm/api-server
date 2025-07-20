@@ -166,4 +166,12 @@ public class SubscriptionService {
 
         return new SubscriptionResponseDTO(savedSubscription);
     }
+
+    @Transactional
+    public void deactivateSubscriptionDueToPaymentFailures(AppUser user, String reason) {
+        if (user.getSubscription() != null && user.getSubscription().isActivated()) {
+            user.getSubscription().updateStatus(SubscriptionStatus.INACTIVE);
+            log.warn("구독 비활성화: 사용자={}, 원인={}", user.getEmail(), reason);
+        }
+    }
 }
