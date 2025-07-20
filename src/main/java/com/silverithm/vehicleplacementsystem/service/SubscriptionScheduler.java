@@ -26,16 +26,19 @@ public class SubscriptionScheduler {
     private final SlackService slackService;
     private final PaymentFailureService paymentFailureService;
     private final PaymentFailureLogRepository paymentFailureLogRepository;
+    private final BillingKeyEncryptionService billingKeyEncryptionService;
 
     public SubscriptionScheduler(SubscriptionService subscriptionService, BillingService billingService,
                                  UserRepository userRepository, SlackService slackService, 
-                                 PaymentFailureService paymentFailureService, PaymentFailureLogRepository paymentFailureLogRepository) {
+                                 PaymentFailureService paymentFailureService, PaymentFailureLogRepository paymentFailureLogRepository,
+                                 BillingKeyEncryptionService billingKeyEncryptionService) {
         this.subscriptionService = subscriptionService;
         this.billingService = billingService;
         this.userRepository = userRepository;
         this.slackService = slackService;
         this.paymentFailureService = paymentFailureService;
         this.paymentFailureLogRepository = paymentFailureLogRepository;
+        this.billingKeyEncryptionService = billingKeyEncryptionService;
     }
 
 
@@ -58,19 +61,21 @@ public class SubscriptionScheduler {
                     continue;
                 }
 
+                String decryptedBillingKey = billingKeyEncryptionService.decryptBillingKey(user.getBillingKey());
+                
                 SubscriptionRequestDTO requestDto = SubscriptionRequestDTO.of(
                         user.getSubscription().getPlanName(),
                         user.getSubscription().getBillingType(),
                         user.getSubscription().getAmount(),
                         user.getCustomerKey(),
-                        user.getBillingKey(),
+                        decryptedBillingKey,
                         user.getSubscription().getPlanName().name() + "_" + user.getSubscription().getBillingType().name(),
                         user.getEmail(),
                         user.getUsername(),
                         0
                 );
 
-                PaymentResponse paymentResponse = billingService.requestPayment(requestDto, user.getBillingKey());
+                PaymentResponse paymentResponse = billingService.requestPayment(requestDto, decryptedBillingKey);
 
                 if (paymentResponse.status().equals("DONE")) {
                     log.info("✅ 스케줄링 결제 성공: {} (금액: {}원)", user.getUsername(), requestDto.getAmount());

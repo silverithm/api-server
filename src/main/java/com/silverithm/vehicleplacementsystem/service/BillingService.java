@@ -37,19 +37,21 @@ public class BillingService {
     private final UserRepository userRepository;
     private final SlackService slackService;
     private final PaymentFailureService paymentFailureService;
+    private final BillingKeyEncryptionService billingKeyEncryptionService;
 
     @Transactional
     public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
         BillingResponse billingResponse = requestBillingKey(requestDto);
-        user.updateBillingKey(billingResponse.billingKey());
+        String encryptedBillingKey = billingKeyEncryptionService.encryptBillingKey(billingResponse.billingKey());
+        user.updateBillingKey(encryptedBillingKey);
 
-        log.info(billingResponse.toString() + " " + user.getUsername());
-        log.info(user.getBillingKey() + " " + user.getUsername());
+        log.info("빌링키 발급 및 암호화 완료 - 사용자: {}", user.getUsername());
     }
 
 
-    public void processPayment(SubscriptionRequestDTO requestDto, String billingKey) {
-        requestPayment(requestDto, billingKey);
+    public void processPayment(SubscriptionRequestDTO requestDto, String encryptedBillingKey) {
+        String decryptedBillingKey = billingKeyEncryptionService.decryptBillingKey(encryptedBillingKey);
+        requestPayment(requestDto, decryptedBillingKey);
         log.info("결제 성공" + requestDto.getCustomerName());
     }
 

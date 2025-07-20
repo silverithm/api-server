@@ -48,6 +48,7 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
     private final FreeSubscriptionHistoryRepository freeSubscriptionHistoryRepository;
+    private final BillingKeyEncryptionService billingKeyEncryptionService;
 
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
