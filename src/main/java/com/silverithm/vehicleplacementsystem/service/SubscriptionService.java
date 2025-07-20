@@ -117,7 +117,12 @@ public class SubscriptionService {
                 .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
-        return new SubscriptionResponseDTO(user.getSubscription());
+
+
+
+        return Optional.ofNullable(user.getSubscription())
+                .map(SubscriptionResponseDTO::new)
+                .orElseThrow(() -> new CustomException("No subscription found", HttpStatus.NOT_FOUND));
     }
 
     public SubscriptionResponseDTO createFreeSubscription(UserDetails userDetails) {

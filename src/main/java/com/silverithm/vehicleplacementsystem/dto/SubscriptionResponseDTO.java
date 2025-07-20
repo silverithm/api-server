@@ -18,10 +18,6 @@ public class SubscriptionResponseDTO {
     private Integer amount;
 
     public SubscriptionResponseDTO(Subscription subscription) {
-        if (subscription == null) {
-            return;
-        }
-
         this.id = subscription.getId();
         this.planName = subscription.getPlanName();
         this.billingType = subscription.getBillingType();
