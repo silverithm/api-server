@@ -5,11 +5,13 @@ import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.FreeSubscriptionHistory;
 import com.silverithm.vehicleplacementsystem.entity.Subscription;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionBillingType;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionType;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
+import com.silverithm.vehicleplacementsystem.repository.FreeSubscriptionHistoryRepository;
 import com.silverithm.vehicleplacementsystem.repository.SubscriptionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.time.LocalDate;
@@ -45,6 +47,7 @@ public class SubscriptionService {
     private final SubscriptionTransactionService subscriptionTransactionService;
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
+    private final FreeSubscriptionHistoryRepository freeSubscriptionHistoryRepository;
 
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
@@ -117,11 +120,10 @@ public class SubscriptionService {
                 .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
-
-
+        boolean hasUsedFreeSubscription = freeSubscriptionHistoryRepository.existsByUserId(user.getId());
 
         return Optional.ofNullable(user.getSubscription())
-                .map(SubscriptionResponseDTO::new)
+                .map(subscription -> new SubscriptionResponseDTO(subscription, hasUsedFreeSubscription))
                 .orElseThrow(() -> new CustomException("No subscription found", HttpStatus.NOT_FOUND));
     }
 
@@ -133,6 +135,11 @@ public class SubscriptionService {
         // 이미 구독이 있는 경우 예외 처리
         if (user.getSubscription() != null) {
             throw new CustomException("User already has a subscription", HttpStatus.BAD_REQUEST);
+        }
+
+        // 무료 요금제를 한번이라도 사용한 이력이 있는지 확인
+        if (freeSubscriptionHistoryRepository.existsByUserId(user.getId())) {
+            throw new CustomException("User has already used free subscription before", HttpStatus.BAD_REQUEST);
         }
 
         LocalDateTime startDate = LocalDateTime.now();
@@ -148,6 +155,15 @@ public class SubscriptionService {
                 .user(user)
                 .build();
 
-        return new SubscriptionResponseDTO(subscriptionRepository.save(freeSubscription));
+        Subscription savedSubscription = subscriptionRepository.save(freeSubscription);
+
+        // 무료 구독 이력 저장
+        FreeSubscriptionHistory history = FreeSubscriptionHistory.builder()
+                .user(user)
+                .subscriptionId(savedSubscription.getId())
+                .build();
+        freeSubscriptionHistoryRepository.save(history);
+
+        return new SubscriptionResponseDTO(savedSubscription);
     }
 }

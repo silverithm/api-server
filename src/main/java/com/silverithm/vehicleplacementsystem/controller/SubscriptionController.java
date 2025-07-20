@@ -1,12 +1,19 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.dto.PaymentFailureResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionResponseDTO;
+import com.silverithm.vehicleplacementsystem.entity.PaymentFailureReason;
 import com.silverithm.vehicleplacementsystem.service.BillingService;
+import com.silverithm.vehicleplacementsystem.service.PaymentFailureService;
 import com.silverithm.vehicleplacementsystem.service.SubscriptionService;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SubscriptionController {
     private final SubscriptionService subscriptionService;
     private final BillingService billingService;
+    private final PaymentFailureService paymentFailureService;
 
     @PostMapping
     public ResponseEntity<SubscriptionResponseDTO> createOrUpdateSubscription(
@@ -68,5 +77,27 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getActiveSubscriptions());
     }
 
+    @GetMapping("/payment-failures")
+    public ResponseEntity<Page<PaymentFailureResponseDTO>> getMyPaymentFailures(
+            @AuthenticationPrincipal UserDetails userDetails,
+            Pageable pageable) {
+        return ResponseEntity.ok(paymentFailureService.getMyPaymentFailures(userDetails, pageable));
+    }
 
+    @GetMapping("/payment-failures/by-reason")
+    public ResponseEntity<Page<PaymentFailureResponseDTO>> getMyPaymentFailuresByReason(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam PaymentFailureReason reason,
+            Pageable pageable) {
+        return ResponseEntity.ok(paymentFailureService.getMyPaymentFailuresByReason(userDetails, reason, pageable));
+    }
+
+    @GetMapping("/payment-failures/by-date")
+    public ResponseEntity<Page<PaymentFailureResponseDTO>> getMyPaymentFailuresByDateRange(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            Pageable pageable) {
+        return ResponseEntity.ok(paymentFailureService.getMyPaymentFailuresByDateRange(userDetails, startDate, endDate, pageable));
+    }
 }

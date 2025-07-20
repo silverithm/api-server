@@ -16,6 +16,7 @@ public class SubscriptionResponseDTO {
     private LocalDateTime endDate;
     private SubscriptionStatus status;
     private Integer amount;
+    private Boolean hasUsedFreeSubscription;
 
     public SubscriptionResponseDTO(Subscription subscription) {
         this.id = subscription.getId();
@@ -25,6 +26,17 @@ public class SubscriptionResponseDTO {
         this.endDate = subscription.getEndDate();
         this.status = subscription.getStatus();
         this.amount = subscription.getAmount();
+    }
+    
+    public SubscriptionResponseDTO(Subscription subscription, Boolean hasUsedFreeSubscription) {
+        this.id = subscription.getId();
+        this.planName = subscription.getPlanName();
+        this.billingType = subscription.getBillingType();
+        this.startDate = subscription.getStartDate();
+        this.endDate = subscription.getEndDate();
+        this.status = subscription.getStatus();
+        this.amount = subscription.getAmount();
+        this.hasUsedFreeSubscription = hasUsedFreeSubscription;
     }
 
     public SubscriptionResponseDTO() {
