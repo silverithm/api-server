@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.BillingResponse;
 import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.PaymentFailureReason;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.util.Base64;
@@ -35,6 +36,7 @@ public class BillingService {
     private final RestTemplate restTemplate;
     private final UserRepository userRepository;
     private final SlackService slackService;
+    private final PaymentFailureService paymentFailureService;
 
     @Transactional
     public void ensureBillingKey(AppUser user, SubscriptionRequestDTO requestDto) {
@@ -116,6 +118,13 @@ public class BillingService {
                 
                 if (e.getStatusCode().is4xxClientError()) {
                     // 4xx 에러는 재시도하지 않음
+                    PaymentFailureReason reason = determineFailureReason(e.getResponseBodyAsString());
+                    paymentFailureService.savePaymentFailure(
+                        requestDto.getCustomerEmail(), null, reason,
+                        e.getResponseBodyAsString(), requestDto.getAmount(),
+                        requestDto.getPlanName(), requestDto.getBillingType(),
+                        e.getResponseBodyAsString()
+                    );
                     slackService.sendApiFailureNotification("결제 실패 (클라이언트 오류)", requestDto.getCustomerEmail(), 
                             e.getResponseBodyAsString(), requestDto.toString());
                     throw new CustomException("결제 실패: " + e.getResponseBodyAsString(), HttpStatus.BAD_REQUEST);
@@ -131,6 +140,12 @@ public class BillingService {
                         throw new CustomException("결제 처리가 중단되었습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
                     }
                 } else {
+                    paymentFailureService.savePaymentFailure(
+                        requestDto.getCustomerEmail(), null, PaymentFailureReason.PAYMENT_GATEWAY_ERROR,
+                        e.getResponseBodyAsString(), requestDto.getAmount(),
+                        requestDto.getPlanName(), requestDto.getBillingType(),
+                        e.getResponseBodyAsString()
+                    );
                     slackService.sendApiFailureNotification("결제 실패 (서버 오류)", requestDto.getCustomerEmail(), 
                             e.getResponseBodyAsString(), requestDto.toString());
                     throw new CustomException("토스 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
@@ -150,6 +165,12 @@ public class BillingService {
                         throw new CustomException("결제 처리가 중단되었습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
                     }
                 } else {
+                    paymentFailureService.savePaymentFailure(
+                        requestDto.getCustomerEmail(), null, PaymentFailureReason.OTHER,
+                        e.getMessage(), requestDto.getAmount(),
+                        requestDto.getPlanName(), requestDto.getBillingType(),
+                        "시스템 오류: " + e.getMessage()
+                    );
                     slackService.sendApiFailureNotification("결제 실패 (시스템 오류)", requestDto.getCustomerEmail(), 
                             e.getMessage(), requestDto.toString());
                     throw new CustomException("서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -159,6 +180,12 @@ public class BillingService {
 
         // 모든 재시도 실패
         log.error("💥 모든 결제 재시도 실패 - 사용자: {}", requestDto.getCustomerName());
+        paymentFailureService.savePaymentFailure(
+            requestDto.getCustomerEmail(), null, PaymentFailureReason.OTHER,
+            "모든 재시도 실패", requestDto.getAmount(),
+            requestDto.getPlanName(), requestDto.getBillingType(),
+            lastException != null ? lastException.getMessage() : "알 수 없는 오류"
+        );
         slackService.sendApiFailureNotification("결제 최종 실패", requestDto.getCustomerEmail(), 
                 lastException != null ? lastException.getMessage() : "알 수 없는 오류", requestDto.toString());
         throw new CustomException("결제 처리에 실패했습니다. 고객센터에 문의해주세요.", HttpStatus.SERVICE_UNAVAILABLE);
@@ -193,6 +220,30 @@ public class BillingService {
 
         } catch (HttpClientErrorException e) {
             throw new CustomException("빌링키 발급 실패: " + e.getResponseBodyAsString(), HttpStatus.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private PaymentFailureReason determineFailureReason(String errorResponse) {
+        if (errorResponse == null) {
+            return PaymentFailureReason.OTHER;
+        }
+        
+        String lowerResponse = errorResponse.toLowerCase();
+        
+        if (lowerResponse.contains("limit") || lowerResponse.contains("한도")) {
+            return PaymentFailureReason.CARD_LIMIT_EXCEEDED;
+        } else if (lowerResponse.contains("suspend") || lowerResponse.contains("정지") || lowerResponse.contains("차단")) {
+            return PaymentFailureReason.CARD_SUSPENDED;
+        } else if (lowerResponse.contains("balance") || lowerResponse.contains("잔액") || lowerResponse.contains("부족")) {
+            return PaymentFailureReason.INSUFFICIENT_BALANCE;
+        } else if (lowerResponse.contains("invalid") || lowerResponse.contains("유효하지") || lowerResponse.contains("올바르지")) {
+            return PaymentFailureReason.INVALID_CARD;
+        } else if (lowerResponse.contains("expired") || lowerResponse.contains("만료")) {
+            return PaymentFailureReason.EXPIRED_CARD;
+        } else if (lowerResponse.contains("network") || lowerResponse.contains("네트워크") || lowerResponse.contains("통신")) {
+            return PaymentFailureReason.NETWORK_ERROR;
+        } else {
+            return PaymentFailureReason.PAYMENT_GATEWAY_ERROR;
         }
     }
 

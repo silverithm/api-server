@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.PaymentFailureReason;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -22,13 +23,16 @@ public class SubscriptionScheduler {
     private final BillingService billingService;
     private final UserRepository userRepository;
     private final SlackService slackService;
+    private final PaymentFailureService paymentFailureService;
 
     public SubscriptionScheduler(SubscriptionService subscriptionService, BillingService billingService,
-                                 UserRepository userRepository, SlackService slackService) {
+                                 UserRepository userRepository, SlackService slackService, 
+                                 PaymentFailureService paymentFailureService) {
         this.subscriptionService = subscriptionService;
         this.billingService = billingService;
         this.userRepository = userRepository;
         this.slackService = slackService;
+        this.paymentFailureService = paymentFailureService;
     }
 
 
@@ -102,6 +106,15 @@ public class SubscriptionScheduler {
             slackData.put("failure_code", failureCode);
             slackData.put("failure_message", failureMessage);
             
+            // PaymentFailureLog 저장
+            PaymentFailureReason reason = determineFailureReasonFromCode(failureCode);
+            paymentFailureService.savePaymentFailure(
+                user, user.getSubscription().getId(), reason,
+                failureMessage, user.getSubscription().getAmount(),
+                user.getSubscription().getPlanName(), user.getSubscription().getBillingType(),
+                String.format("Scheduled payment failure - Code: %s", failureCode)
+            );
+            
             String message = String.format("🚨 정기결제 실패 알림\n사용자: %s\n이메일: %s\n실패 코드: %s\n실패 사유: %s", 
                     user.getUsername(), user.getEmail(), 
                     slackData.get("failure_code"), slackData.get("failure_message"));
@@ -115,6 +128,14 @@ public class SubscriptionScheduler {
 
     private void handlePaymentException(AppUser user, Exception e) {
         try {
+            // PaymentFailureLog 저장
+            paymentFailureService.savePaymentFailure(
+                user, user.getSubscription().getId(), PaymentFailureReason.OTHER,
+                e.getMessage(), user.getSubscription().getAmount(),
+                user.getSubscription().getPlanName(), user.getSubscription().getBillingType(),
+                String.format("Scheduled payment exception: %s", e.getClass().getSimpleName())
+            );
+            
             String message = String.format("💥 정기결제 시스템 오류\n사용자: %s\n이메일: %s\n오류: %s", 
                     user.getUsername(), user.getEmail(), e.getMessage());
             
@@ -122,6 +143,34 @@ public class SubscriptionScheduler {
             log.error("💥 결제 예외 알림 전송: {}", user.getUsername());
         } catch (Exception slackException) {
             log.error("슬랙 알림 전송 실패: {}", slackException.getMessage());
+        }
+    }
+    
+    private PaymentFailureReason determineFailureReasonFromCode(String failureCode) {
+        if (failureCode == null) {
+            return PaymentFailureReason.OTHER;
+        }
+        
+        switch (failureCode.toUpperCase()) {
+            case "EXCEED_MAX_CARD_LIMIT":
+            case "EXCEED_DAILY_LIMIT":
+            case "EXCEED_MONTHLY_LIMIT":
+                return PaymentFailureReason.CARD_LIMIT_EXCEEDED;
+            case "INVALID_CARD":
+            case "NOT_FOUND_PAYMENT_SESSION":
+                return PaymentFailureReason.INVALID_CARD;
+            case "EXPIRED_CARD":
+                return PaymentFailureReason.EXPIRED_CARD;
+            case "INSUFFICIENT_FUNDS":
+                return PaymentFailureReason.INSUFFICIENT_BALANCE;
+            case "REJECT_CARD_COMPANY":
+            case "FORBIDDEN_REQUEST":
+                return PaymentFailureReason.CARD_SUSPENDED;
+            case "PROVIDER_ERROR":
+            case "PG_PROVIDER_ERROR":
+                return PaymentFailureReason.PAYMENT_GATEWAY_ERROR;
+            default:
+                return PaymentFailureReason.OTHER;
         }
     }
 }
