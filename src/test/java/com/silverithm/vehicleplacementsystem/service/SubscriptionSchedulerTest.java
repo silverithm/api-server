@@ -9,6 +9,7 @@ import com.silverithm.vehicleplacementsystem.entity.SubscriptionBillingType;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionType;
 import com.silverithm.vehicleplacementsystem.entity.UserRole;
+import com.silverithm.vehicleplacementsystem.repository.PaymentFailureLogRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("구독 스케줄러 테스트")
@@ -38,6 +40,18 @@ class SubscriptionSchedulerTest {
 
     @Mock
     private UserRepository userRepository;
+    
+    @Mock
+    private SlackService slackService;
+    
+    @Mock
+    private PaymentFailureService paymentFailureService;
+    
+    @Mock
+    private PaymentFailureLogRepository paymentFailureLogRepository;
+    
+    @Mock
+    private BillingKeyEncryptionService billingKeyEncryptionService;
 
     @InjectMocks
     private SubscriptionScheduler subscriptionScheduler;
@@ -51,7 +65,11 @@ class SubscriptionSchedulerTest {
     void setUp() {
         testUser = new AppUser("testuser", "test@example.com", "password", UserRole.ROLE_ADMIN,
                               "refresh_token", null, "customer_test_123");
-        testUser.updateBillingKey("billing_test_123");
+        testUser.updateBillingKey("encrypted_billing_key_123");
+        
+        // BillingKeyEncryptionService mock 설정 (lenient로 설정하여 UnnecessaryStubbingException 방지)
+        lenient().when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key_123"))
+                .thenReturn("billing_test_123");
 
         testSubscription = Subscription.builder()
                 .planName(SubscriptionType.BASIC)

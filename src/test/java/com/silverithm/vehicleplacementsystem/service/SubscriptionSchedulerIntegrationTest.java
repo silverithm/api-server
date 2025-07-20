@@ -28,6 +28,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("구독 스케줄러 통합 테스트")
@@ -50,6 +51,9 @@ class SubscriptionSchedulerIntegrationTest {
 
     @Mock
     private PaymentFailureLogRepository paymentFailureLogRepository;
+    
+    @Mock
+    private BillingKeyEncryptionService billingKeyEncryptionService;
 
     @InjectMocks
     private SubscriptionScheduler subscriptionScheduler;
@@ -63,7 +67,11 @@ class SubscriptionSchedulerIntegrationTest {
         testCompany = new Company("Test Company", "서울시 강남구", null);
         testUser = new AppUser("testUser", "test@example.com", "encodedPassword", 
                               UserRole.ROLE_CLIENT, "refreshToken", testCompany, "customerKey");
-        testUser.updateBillingKey("test_billing_key");
+        testUser.updateBillingKey("encrypted_billing_key");
+        
+        // BillingKeyEncryptionService mock 설정 (lenient로 설정하여 UnnecessaryStubbingException 방지)
+        lenient().when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key"))
+                .thenReturn("test_billing_key");
         // Set user ID using reflection since it's typically set by JPA
         try {
             java.lang.reflect.Field idField = testUser.getClass().getDeclaredField("id");
