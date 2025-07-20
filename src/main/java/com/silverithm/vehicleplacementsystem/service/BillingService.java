@@ -219,7 +219,36 @@ public class BillingService {
             return response.getBody();
 
         } catch (HttpClientErrorException e) {
+            log.error("❌ 빌링키 발급 실패 - 사용자: {}, 상태코드: {}, 응답: {}", 
+                    requestDto.getCustomerEmail(), e.getStatusCode(), e.getResponseBodyAsString());
+            
+            PaymentFailureReason reason = determineFailureReason(e.getResponseBodyAsString());
+            paymentFailureService.savePaymentFailure(
+                requestDto.getCustomerEmail(), null, reason,
+                "빌링키 발급 실패: " + e.getResponseBodyAsString(), 0,
+                requestDto.getPlanName(), requestDto.getBillingType(),
+                e.getResponseBodyAsString()
+            );
+            
+            slackService.sendApiFailureNotification("빌링키 발급 실패", requestDto.getCustomerEmail(), 
+                    e.getResponseBodyAsString(), requestDto.toString());
+            
             throw new CustomException("빌링키 발급 실패: " + e.getResponseBodyAsString(), HttpStatus.SERVICE_UNAVAILABLE);
+        } catch (Exception e) {
+            log.error("💥 빌링키 발급 중 예외 발생 - 사용자: {}, 오류: {}", 
+                    requestDto.getCustomerEmail(), e.getMessage(), e);
+            
+            paymentFailureService.savePaymentFailure(
+                requestDto.getCustomerEmail(), null, PaymentFailureReason.OTHER,
+                "빌링키 발급 시스템 오류: " + e.getMessage(), 0,
+                requestDto.getPlanName(), requestDto.getBillingType(),
+                "시스템 오류: " + e.getMessage()
+            );
+            
+            slackService.sendApiFailureNotification("빌링키 발급 시스템 오류", requestDto.getCustomerEmail(), 
+                    e.getMessage(), requestDto.toString());
+            
+            throw new CustomException("빌링키 발급 중 서버 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
