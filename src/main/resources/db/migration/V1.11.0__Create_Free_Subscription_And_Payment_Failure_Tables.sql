@@ -1,5 +1,5 @@
 -- 무료 구독 이력 테이블 생성
-CREATE TABLE free_subscription_history (
+CREATE TABLE IF NOT EXISTS free_subscription_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     subscription_id BIGINT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE free_subscription_history (
 );
 
 -- 결제 실패 로그 테이블 생성
-CREATE TABLE payment_failure_log (
+CREATE TABLE IF NOT EXISTS payment_failure_log (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     subscription_id BIGINT,
