@@ -33,6 +33,12 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.createOrUpdateSubscription(userDetails, requestDto));
     }
 
+    @PostMapping("/free")
+    public ResponseEntity<SubscriptionResponseDTO> createFreeSubscription(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subscriptionService.createFreeSubscription(userDetails));
+    }
+
     @PostMapping("/admin/{userId}")
     public ResponseEntity<SubscriptionResponseDTO> createSubscriptionToUser(
             @RequestBody SubscriptionRequestDTO requestDto, @PathVariable Long userId) {

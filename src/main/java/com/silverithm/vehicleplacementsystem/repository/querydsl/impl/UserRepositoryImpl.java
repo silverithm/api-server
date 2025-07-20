@@ -26,7 +26,8 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
         return queryFactory
                 .selectFrom(appUser)
                 .join(appUser.subscription, subscription)
-                .where(subscription.endDate.loe(currentDate), subscription.status.eq(SubscriptionStatus.ACTIVE))
+                .where(subscription.endDate.loe(currentDate), subscription.status.eq(SubscriptionStatus.ACTIVE),
+                        subscription.billingType.ne(SubscriptionBillingType.FREE))
                 .fetch();
     }
 }

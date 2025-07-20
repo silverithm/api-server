@@ -117,25 +117,32 @@ public class SubscriptionService {
                 .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
-        if (user.getSubscription() == null) {
-            // 구독이 없으면 무료 구독으로 가정
-            LocalDateTime userCreatedAt = user.getCreatedAt();
-            LocalDateTime freeSubscriptionEndDate = userCreatedAt.plusDays(30);
+        return new SubscriptionResponseDTO(user.getSubscription());
+    }
 
-            // 임시 무료 구독 객체 생성 (DB에 저장하지 않음)
-            Subscription freeSubscription = Subscription.builder()
-                    .planName(SubscriptionType.FREE)
-                    .billingType(SubscriptionBillingType.MONTHLY)
-                    .startDate(userCreatedAt)
-                    .endDate(freeSubscriptionEndDate)
-                    .status(SubscriptionStatus.ACTIVE)
-                    .amount(0)
-                    .user(user)
-                    .build();
+    public SubscriptionResponseDTO createFreeSubscription(UserDetails userDetails) {
+        AppUser user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
+                        HttpStatus.NOT_FOUND));
 
-            return new SubscriptionResponseDTO(freeSubscription);
+        // 이미 구독이 있는 경우 예외 처리
+        if (user.getSubscription() != null) {
+            throw new CustomException("User already has a subscription", HttpStatus.BAD_REQUEST);
         }
 
-        return new SubscriptionResponseDTO(user.getSubscription());
+        LocalDateTime startDate = LocalDateTime.now();
+        LocalDateTime endDate = startDate.plusDays(30); // 무료 구독은 30일로 설정
+
+        Subscription freeSubscription = Subscription.builder()
+                .planName(SubscriptionType.FREE)
+                .billingType(SubscriptionBillingType.FREE)
+                .startDate(startDate)
+                .endDate(endDate)
+                .status(SubscriptionStatus.ACTIVE)
+                .amount(0)
+                .user(user)
+                .build();
+
+        return new SubscriptionResponseDTO(subscriptionRepository.save(freeSubscription));
     }
 }
