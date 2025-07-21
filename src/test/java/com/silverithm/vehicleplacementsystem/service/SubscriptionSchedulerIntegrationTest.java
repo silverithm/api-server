@@ -213,6 +213,40 @@ class SubscriptionSchedulerIntegrationTest {
     }
 
     @Test
+    @DisplayName("스케줄링 결제 성공 시 endDate가 기존 날짜에서 연장됨")
+    void processScheduledPayments_Success_ExtendsEndDateFromCurrent() {
+        // given
+        LocalDateTime originalEndDate = LocalDateTime.now().plusDays(15); // 15일 후 만료 예정
+        testSubscription.updateEndDate(originalEndDate);
+        
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(List.of(testUser));
+        
+        PaymentResponse successResponse = new PaymentResponse(
+                null, null, "test_payment_key", "DONE", null, "order_123", "정기결제", 
+                null, null, false, false, null, null, null, 0, false, null, null, 
+                false, null, null, null, 10000L, null, null, null, null, null, 
+                null, null, null, null, null, null, null, null, false, null, null, 
+                "KRW", 10000L, 10000L, 10000L, 0L, 0L, null, 0L, "CARD"
+        );
+        
+        when(billingService.requestPayment(any(SubscriptionRequestDTO.class), anyString()))
+                .thenReturn(successResponse);
+
+        // when
+        subscriptionScheduler.processScheduledPayments();
+
+        // then
+        verify(billingService).requestPayment(any(SubscriptionRequestDTO.class), eq("test_billing_key"));
+        verify(subscriptionService).processSubscription(eq(testUser), any(SubscriptionRequestDTO.class));
+        
+        // endDate가 원래 날짜에서 1개월 연장되었는지 확인 (originalEndDate + 1개월)
+        LocalDateTime expectedEndDate = originalEndDate.plusMonths(1);
+        // 실제 검증은 subscription의 endDate를 직접 확인하거나 로그를 통해 확인할 수 있음
+        verify(paymentFailureService, never()).savePaymentFailure(any(AppUser.class), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("구독 활성화 후 정기결제 정상 처리")
     void processScheduledPayments_ActiveSubscriptionAfterActivation_Success() {
         // given

@@ -22,4 +22,9 @@ public enum SubscriptionBillingType {
                 : LocalDateTime.now().plusYears(1);
     }
 
+    public static LocalDateTime extendEndDate(SubscriptionBillingType billingType, LocalDateTime currentEndDate) {
+        return billingType == SubscriptionBillingType.MONTHLY ? currentEndDate.plusMonths(1)
+                : currentEndDate.plusYears(1);
+    }
+
 }
