@@ -106,7 +106,6 @@ public class SubscriptionService {
         }
 
         subscription.updateStatus(SubscriptionStatus.CANCELLED);
-        subscription.updateEndDate(LocalDateTime.now());
 
         return new SubscriptionResponseDTO(subscription);
     }
@@ -127,12 +126,12 @@ public class SubscriptionService {
         if (user.getSubscription() != null) {
             return new SubscriptionResponseDTO(user.getSubscription(), hasUsedFreeSubscription);
         }
-        
+
         // 현재 구독이 없지만 free subscription history가 있는 경우
         if (hasUsedFreeSubscription) {
             return new SubscriptionResponseDTO(true); // INACTIVE, FREE, hasUsedFreeSubscription=true
         }
-        
+
         // 구독이 없고 free subscription history도 없는 경우
         throw new CustomException("No subscription found", HttpStatus.NOT_FOUND);
     }
