@@ -37,7 +37,13 @@ public class SubscriptionTransactionService {
                 subscription.getUser().getUsername(), subscription.getEndDate(), extendedEndDate);
         subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), extendedEndDate,
                 SubscriptionStatus.ACTIVE);
-        return new SubscriptionResponseDTO(subscription);
+        
+        // 명시적으로 save 호출하여 변경사항 저장
+        Subscription savedSubscription = subscriptionRepository.save(subscription);
+        log.info("Subscription saved successfully for user: {}, endDate: {}", 
+                savedSubscription.getUser().getUsername(), savedSubscription.getEndDate());
+        
+        return new SubscriptionResponseDTO(savedSubscription);
     }
 
     private SubscriptionResponseDTO createSubscription(SubscriptionRequestDTO requestDto, AppUser user) {

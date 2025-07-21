@@ -77,7 +77,8 @@ db_backup
 sensitive-strings.txt
 
 # Firebase service account keys
-src/main/resources/firebase/build_backup/
+src/main/resources/firebase/
+*.json
 
 # Build backup directory
 build_backup/
