@@ -72,6 +72,12 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.cancelSubscription(userDetails));
     }
 
+    @PutMapping("/activate")
+    public ResponseEntity<SubscriptionResponseDTO> activateSubscription(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subscriptionService.activateSubscription(userDetails));
+    }
+
     @GetMapping("/active")
     public ResponseEntity<List<SubscriptionResponseDTO>> getActiveSubscriptions() {
         return ResponseEntity.ok(subscriptionService.getActiveSubscriptions());

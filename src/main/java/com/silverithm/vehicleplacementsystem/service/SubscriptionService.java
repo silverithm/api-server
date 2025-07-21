@@ -110,6 +110,25 @@ public class SubscriptionService {
         return new SubscriptionResponseDTO(subscription);
     }
 
+    @Transactional
+    public SubscriptionResponseDTO activateSubscription(UserDetails userDetails) {
+
+        AppUser user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(
+                () -> new CustomException("User not found with userEmail: " + userDetails.getUsername(),
+                        HttpStatus.NOT_FOUND));
+
+        Subscription subscription = user.getSubscription();
+
+        if (subscription == null) {
+            throw new CustomException("Subscription not found with userId: " + user.getId(), HttpStatus.NOT_FOUND);
+        }
+
+        subscription.updateStatus(SubscriptionStatus.ACTIVE);
+
+        boolean hasUsedFreeSubscription = freeSubscriptionHistoryRepository.existsByUserId(user.getId());
+        return new SubscriptionResponseDTO(subscription, hasUsedFreeSubscription);
+    }
+
     public List<SubscriptionResponseDTO> getActiveSubscriptions() {
         return subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE).stream().map(SubscriptionResponseDTO::new)
                 .collect(Collectors.toList());
