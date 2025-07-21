@@ -58,6 +58,7 @@ public class SubscriptionService {
         return subscriptionTransactionService.processSubscription(user, requestDto);
     }
 
+    @Transactional
     public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
         return subscriptionTransactionService.processSubscription(user, requestDto);
     }
