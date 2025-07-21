@@ -123,9 +123,18 @@ public class SubscriptionService {
 
         boolean hasUsedFreeSubscription = freeSubscriptionHistoryRepository.existsByUserId(user.getId());
 
-        return Optional.ofNullable(user.getSubscription())
-                .map(subscription -> new SubscriptionResponseDTO(subscription, hasUsedFreeSubscription))
-                .orElseThrow(() -> new CustomException("No subscription found", HttpStatus.NOT_FOUND));
+        // 현재 구독이 있는 경우
+        if (user.getSubscription() != null) {
+            return new SubscriptionResponseDTO(user.getSubscription(), hasUsedFreeSubscription);
+        }
+        
+        // 현재 구독이 없지만 free subscription history가 있는 경우
+        if (hasUsedFreeSubscription) {
+            return new SubscriptionResponseDTO(true); // INACTIVE, FREE, hasUsedFreeSubscription=true
+        }
+        
+        // 구독이 없고 free subscription history도 없는 경우
+        throw new CustomException("No subscription found", HttpStatus.NOT_FOUND);
     }
 
     public SubscriptionResponseDTO createFreeSubscription(UserDetails userDetails) {

@@ -44,6 +44,18 @@ public class SubscriptionResponseDTO {
         this.billingType = SubscriptionBillingType.FREE;
         this.status = SubscriptionStatus.INACTIVE;
     }
+    
+    // free subscription history가 있을 때 사용할 생성자
+    public SubscriptionResponseDTO(Boolean hasUsedFreeSubscription) {
+        this.id = null;
+        this.planName = SubscriptionType.FREE;
+        this.billingType = SubscriptionBillingType.FREE;
+        this.startDate = null;
+        this.endDate = null;
+        this.status = SubscriptionStatus.INACTIVE;
+        this.amount = 0;
+        this.hasUsedFreeSubscription = hasUsedFreeSubscription;
+    }
 
 
 }
