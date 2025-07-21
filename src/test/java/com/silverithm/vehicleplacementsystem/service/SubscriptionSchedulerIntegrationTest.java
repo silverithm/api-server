@@ -117,7 +117,7 @@ class SubscriptionSchedulerIntegrationTest {
                 .thenReturn(failureResponse);
         
         // 연속 실패 카운트는 2번으로 설정 (비활성화되지 않도록)
-        when(paymentFailureLogRepository.countRecentFailuresByUserAndReason(
+        when(paymentFailureLogRepository.countRecentScheduledFailuresByUserAndReason(
                 eq(1L), eq(PaymentFailureReason.OTHER), any(LocalDateTime.class)))
                 .thenReturn(2L);
 
@@ -128,7 +128,7 @@ class SubscriptionSchedulerIntegrationTest {
         verify(paymentFailureService).savePaymentFailure(
                 eq(testUser), eq(testSubscription.getId()), eq(PaymentFailureReason.OTHER),
                 anyString(), eq(10000), eq(SubscriptionType.BASIC), eq(SubscriptionBillingType.MONTHLY),
-                anyString()
+                anyString(), eq(true)
         );
         
         verify(slackService).sendSlackMessage(contains("정기결제 실패 알림"));
@@ -157,7 +157,7 @@ class SubscriptionSchedulerIntegrationTest {
                 .thenReturn(failureResponse);
         
         // 3번째 연속 실패로 설정
-        when(paymentFailureLogRepository.countRecentFailuresByUserAndReason(
+        when(paymentFailureLogRepository.countRecentScheduledFailuresByUserAndReason(
                 eq(1L), eq(PaymentFailureReason.OTHER), any(LocalDateTime.class)))
                 .thenReturn(3L);
 
@@ -168,11 +168,11 @@ class SubscriptionSchedulerIntegrationTest {
         verify(paymentFailureService).savePaymentFailure(
                 eq(testUser), eq(testSubscription.getId()), eq(PaymentFailureReason.OTHER),
                 anyString(), eq(10000), eq(SubscriptionType.BASIC), eq(SubscriptionBillingType.MONTHLY),
-                anyString()
+                anyString(), eq(true)
         );
         
         verify(subscriptionService).deactivateSubscriptionDueToPaymentFailures(
-                eq(testUser), contains("연속 결제 실패")
+                eq(testUser), contains("연속 스케줄링 결제 실패")
         );
         
         verify(slackService, times(2)).sendSlackMessage(anyString()); // 실패 알림 + 비활성화 알림
@@ -189,7 +189,7 @@ class SubscriptionSchedulerIntegrationTest {
                 .thenThrow(new RuntimeException("결제 시스템 오류"));
         
         // 2번째 OTHER 실패로 설정 (비활성화되지 않도록)
-        when(paymentFailureLogRepository.countRecentFailuresByUserAndReason(
+        when(paymentFailureLogRepository.countRecentScheduledFailuresByUserAndReason(
                 eq(testUser.getId()), eq(PaymentFailureReason.OTHER), any(LocalDateTime.class)))
                 .thenReturn(2L);
 
@@ -200,7 +200,7 @@ class SubscriptionSchedulerIntegrationTest {
         verify(paymentFailureService).savePaymentFailure(
                 eq(testUser), eq(testSubscription.getId()), eq(PaymentFailureReason.OTHER),
                 eq("결제 시스템 오류"), eq(10000), eq(SubscriptionType.BASIC), eq(SubscriptionBillingType.MONTHLY),
-                contains("Scheduled payment exception")
+                contains("Scheduled payment exception"), eq(true)
         );
         
         verify(slackService).sendSlackMessage(contains("정기결제 시스템 오류"));

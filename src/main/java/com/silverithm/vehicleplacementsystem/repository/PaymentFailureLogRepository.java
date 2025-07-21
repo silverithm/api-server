@@ -37,4 +37,9 @@ public interface PaymentFailureLogRepository extends JpaRepository<PaymentFailur
     Long countRecentFailuresByUserAndReason(@Param("userId") Long userId, 
                                             @Param("reason") PaymentFailureReason reason, 
                                             @Param("sinceDate") LocalDateTime sinceDate);
+    
+    @Query("SELECT COUNT(p) FROM PaymentFailureLog p WHERE p.user.id = :userId AND p.failureReason = :reason AND p.createdAt >= :sinceDate AND p.isScheduledPayment = true")
+    Long countRecentScheduledFailuresByUserAndReason(@Param("userId") Long userId, 
+                                                     @Param("reason") PaymentFailureReason reason, 
+                                                     @Param("sinceDate") LocalDateTime sinceDate);
 }

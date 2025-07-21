@@ -70,6 +70,15 @@ public class PaymentFailureService {
                                    String failureMessage, Integer attemptedAmount, 
                                    SubscriptionType subscriptionType, SubscriptionBillingType billingType, 
                                    String paymentGatewayResponse) {
+        savePaymentFailure(user, subscriptionId, reason, failureMessage, attemptedAmount, 
+                          subscriptionType, billingType, paymentGatewayResponse, false);
+    }
+    
+    @Transactional
+    public void savePaymentFailure(AppUser user, Long subscriptionId, PaymentFailureReason reason, 
+                                   String failureMessage, Integer attemptedAmount, 
+                                   SubscriptionType subscriptionType, SubscriptionBillingType billingType, 
+                                   String paymentGatewayResponse, Boolean isScheduledPayment) {
         
         PaymentFailureLog failureLog = PaymentFailureLog.builder()
                 .user(user)
@@ -80,10 +89,12 @@ public class PaymentFailureService {
                 .subscriptionType(subscriptionType)
                 .billingType(billingType)
                 .paymentGatewayResponse(paymentGatewayResponse)
+                .isScheduledPayment(isScheduledPayment)
                 .build();
         
         paymentFailureLogRepository.save(failureLog);
-        log.info("Payment failure logged for user: {}, reason: {}", user.getEmail(), reason);
+        log.info("Payment failure logged for user: {}, reason: {}, scheduled: {}", 
+                user.getEmail(), reason, isScheduledPayment);
     }
     
     @Transactional
@@ -91,10 +102,19 @@ public class PaymentFailureService {
                                    String failureMessage, Integer attemptedAmount, 
                                    SubscriptionType subscriptionType, SubscriptionBillingType billingType, 
                                    String paymentGatewayResponse) {
+        savePaymentFailure(userEmail, subscriptionId, reason, failureMessage, attemptedAmount, 
+                          subscriptionType, billingType, paymentGatewayResponse, false);
+    }
+    
+    @Transactional
+    public void savePaymentFailure(String userEmail, Long subscriptionId, PaymentFailureReason reason, 
+                                   String failureMessage, Integer attemptedAmount, 
+                                   SubscriptionType subscriptionType, SubscriptionBillingType billingType, 
+                                   String paymentGatewayResponse, Boolean isScheduledPayment) {
         
         AppUser user = findUserByEmail(userEmail);
         savePaymentFailure(user, subscriptionId, reason, failureMessage, attemptedAmount, 
-                          subscriptionType, billingType, paymentGatewayResponse);
+                          subscriptionType, billingType, paymentGatewayResponse, isScheduledPayment);
     }
     
     private AppUser findUserByEmail(String email) {

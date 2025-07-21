@@ -120,7 +120,7 @@ public class SubscriptionScheduler {
                 user, user.getSubscription().getId(), reason,
                 failureMessage, user.getSubscription().getAmount(),
                 user.getSubscription().getPlanName(), user.getSubscription().getBillingType(),
-                String.format("Scheduled payment failure - Code: %s", failureCode)
+                String.format("Scheduled payment failure - Code: %s", failureCode), true
             );
             
             // 연속 실패 검사 및 구독 비활성화
@@ -144,7 +144,7 @@ public class SubscriptionScheduler {
                 user, user.getSubscription().getId(), PaymentFailureReason.OTHER,
                 e.getMessage(), user.getSubscription().getAmount(),
                 user.getSubscription().getPlanName(), user.getSubscription().getBillingType(),
-                String.format("Scheduled payment exception: %s", e.getClass().getSimpleName())
+                String.format("Scheduled payment exception: %s", e.getClass().getSimpleName()), true
             );
             
             // 연속 실패 검사 및 구독 비활성화
@@ -190,29 +190,29 @@ public class SubscriptionScheduler {
     
     private void checkConsecutiveFailuresAndDeactivate(AppUser user, PaymentFailureReason reason) {
         try {
-            // 최근 7일간 같은 원인으로 실패한 횟수 조회
+            // 최근 7일간 같은 원인으로 스케줄링에서 실패한 횟수만 조회
             LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-            Long consecutiveFailures = paymentFailureLogRepository.countRecentFailuresByUserAndReason(
+            Long consecutiveFailures = paymentFailureLogRepository.countRecentScheduledFailuresByUserAndReason(
                 user.getId(), reason, sevenDaysAgo);
             
-            log.info("연속 실패 검사 - 사용자: {}, 실패 원인: {}, 최근 7일간 실패 횟수: {}", 
+            log.info("연속 스케줄링 실패 검사 - 사용자: {}, 실패 원인: {}, 최근 7일간 스케줄링 실패 횟수: {}", 
                     user.getEmail(), reason, consecutiveFailures);
             
             if (consecutiveFailures >= 3) {
                 // 3번 이상 연속 실패 시 구독 비활성화
                 subscriptionService.deactivateSubscriptionDueToPaymentFailures(
                     user, 
-                    String.format("연속 결제 실패 (%s) %d회", reason.getDescription(), consecutiveFailures)
+                    String.format("연속 스케줄링 결제 실패 (%s) %d회", reason.getDescription(), consecutiveFailures)
                 );
                 
                 // 슬랙 알림 전송
                 String deactivationMessage = String.format(
-                    "⚠️ 구독 자동 비활성화\n사용자: %s\n이메일: %s\n실패 원인: %s\n연속 실패 횟수: %d회\n비활성화 사유: 최근 7일간 같은 원인으로 3회 이상 결제 실패", 
+                    "⚠️ 구독 자동 비활성화\n사용자: %s\n이메일: %s\n실패 원인: %s\n연속 스케줄링 실패 횟수: %d회\n비활성화 사유: 최근 7일간 같은 원인으로 3회 이상 스케줄링 결제 실패", 
                     user.getUsername(), user.getEmail(), reason.getDescription(), consecutiveFailures
                 );
                 
                 slackService.sendSlackMessage(deactivationMessage);
-                log.warn("구독 자동 비활성화 완료 - 사용자: {}, 원인: {}, 실패 횟수: {}", 
+                log.warn("구독 자동 비활성화 완료 - 사용자: {}, 원인: {}, 스케줄링 실패 횟수: {}", 
                         user.getEmail(), reason.getDescription(), consecutiveFailures);
             }
         } catch (Exception e) {

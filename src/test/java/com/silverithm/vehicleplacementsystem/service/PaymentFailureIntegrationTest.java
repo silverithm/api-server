@@ -96,7 +96,8 @@ class PaymentFailureIntegrationTest {
                 eq(10000),
                 eq(SubscriptionType.BASIC), 
                 eq(SubscriptionBillingType.MONTHLY),
-                eq(errorResponse)
+                eq(errorResponse),
+                eq(false)
         );
         
         verify(slackService).sendApiFailureNotification(
@@ -135,7 +136,8 @@ class PaymentFailureIntegrationTest {
                 eq(10000),
                 eq(SubscriptionType.BASIC), 
                 eq(SubscriptionBillingType.MONTHLY),
-                eq(errorResponse)
+                eq(errorResponse),
+                eq(false)
         );
         
         verify(slackService).sendApiFailureNotification(
@@ -169,7 +171,8 @@ class PaymentFailureIntegrationTest {
                 eq(10000),
                 eq(SubscriptionType.BASIC), 
                 eq(SubscriptionBillingType.MONTHLY),
-                eq("시스템 오류: 네트워크 연결 실패")
+                eq("시스템 오류: 네트워크 연결 실패"),
+                eq(false)
         );
         
         verify(slackService).sendApiFailureNotification(
@@ -199,7 +202,7 @@ class PaymentFailureIntegrationTest {
         // then
         verify(paymentFailureService).savePaymentFailure(
                 anyString(), any(), eq(PaymentFailureReason.CARD_LIMIT_EXCEEDED), anyString(), 
-                anyInt(), any(), any(), anyString()
+                anyInt(), any(), any(), anyString(), eq(false)
         );
     }
 
@@ -222,7 +225,7 @@ class PaymentFailureIntegrationTest {
         // then
         verify(paymentFailureService).savePaymentFailure(
                 anyString(), any(), eq(PaymentFailureReason.INVALID_CARD), anyString(), 
-                anyInt(), any(), any(), anyString()
+                anyInt(), any(), any(), anyString(), eq(false)
         );
     }
 
@@ -245,7 +248,7 @@ class PaymentFailureIntegrationTest {
         // then
         verify(paymentFailureService).savePaymentFailure(
                 anyString(), any(), eq(PaymentFailureReason.INSUFFICIENT_BALANCE), anyString(), 
-                anyInt(), any(), any(), anyString()
+                anyInt(), any(), any(), anyString(), eq(false)
         );
     }
 
@@ -266,7 +269,7 @@ class PaymentFailureIntegrationTest {
         // then
         // 재시도 로직에서 일반 예외는 재시도하지만 마지막에만 실패 로그 저장
         verify(paymentFailureService, times(1)).savePaymentFailure(
-                anyString(), any(), any(), anyString(), anyInt(), any(), any(), anyString()
+                anyString(), any(), any(), anyString(), anyInt(), any(), any(), anyString(), any(Boolean.class)
         );
         
         // 최종 실패 로그 확인
@@ -278,7 +281,8 @@ class PaymentFailureIntegrationTest {
                 eq(10000),
                 eq(SubscriptionType.BASIC), 
                 eq(SubscriptionBillingType.MONTHLY),
-                eq("시스템 오류: Connection timeout")
+                eq("시스템 오류: Connection timeout"),
+                eq(false)
         );
     }
 }

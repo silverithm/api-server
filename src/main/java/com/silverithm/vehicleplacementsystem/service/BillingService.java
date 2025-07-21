@@ -125,7 +125,7 @@ public class BillingService {
                         requestDto.getCustomerEmail(), null, reason,
                         e.getResponseBodyAsString(), requestDto.getAmount(),
                         requestDto.getPlanName(), requestDto.getBillingType(),
-                        e.getResponseBodyAsString()
+                        e.getResponseBodyAsString(), false
                     );
                     slackService.sendApiFailureNotification("결제 실패 (클라이언트 오류)", requestDto.getCustomerEmail(), 
                             e.getResponseBodyAsString(), requestDto.toString());
@@ -146,7 +146,7 @@ public class BillingService {
                         requestDto.getCustomerEmail(), null, PaymentFailureReason.PAYMENT_GATEWAY_ERROR,
                         e.getResponseBodyAsString(), requestDto.getAmount(),
                         requestDto.getPlanName(), requestDto.getBillingType(),
-                        e.getResponseBodyAsString()
+                        e.getResponseBodyAsString(), false
                     );
                     slackService.sendApiFailureNotification("결제 실패 (서버 오류)", requestDto.getCustomerEmail(), 
                             e.getResponseBodyAsString(), requestDto.toString());
@@ -171,7 +171,7 @@ public class BillingService {
                         requestDto.getCustomerEmail(), null, PaymentFailureReason.OTHER,
                         e.getMessage(), requestDto.getAmount(),
                         requestDto.getPlanName(), requestDto.getBillingType(),
-                        "시스템 오류: " + e.getMessage()
+                        "시스템 오류: " + e.getMessage(), false
                     );
                     slackService.sendApiFailureNotification("결제 실패 (시스템 오류)", requestDto.getCustomerEmail(), 
                             e.getMessage(), requestDto.toString());
@@ -186,7 +186,7 @@ public class BillingService {
             requestDto.getCustomerEmail(), null, PaymentFailureReason.OTHER,
             "모든 재시도 실패", requestDto.getAmount(),
             requestDto.getPlanName(), requestDto.getBillingType(),
-            lastException != null ? lastException.getMessage() : "알 수 없는 오류"
+            lastException != null ? lastException.getMessage() : "알 수 없는 오류", false
         );
         slackService.sendApiFailureNotification("결제 최종 실패", requestDto.getCustomerEmail(), 
                 lastException != null ? lastException.getMessage() : "알 수 없는 오류", requestDto.toString());
@@ -229,7 +229,7 @@ public class BillingService {
                 requestDto.getCustomerEmail(), null, reason,
                 "빌링키 발급 실패: " + e.getResponseBodyAsString(), 0,
                 requestDto.getPlanName(), requestDto.getBillingType(),
-                e.getResponseBodyAsString()
+                e.getResponseBodyAsString(), false
             );
             
             slackService.sendApiFailureNotification("빌링키 발급 실패", requestDto.getCustomerEmail(), 
@@ -244,7 +244,7 @@ public class BillingService {
                 requestDto.getCustomerEmail(), null, PaymentFailureReason.OTHER,
                 "빌링키 발급 시스템 오류: " + e.getMessage(), 0,
                 requestDto.getPlanName(), requestDto.getBillingType(),
-                "시스템 오류: " + e.getMessage()
+                "시스템 오류: " + e.getMessage(), false
             );
             
             slackService.sendApiFailureNotification("빌링키 발급 시스템 오류", requestDto.getCustomerEmail(), 

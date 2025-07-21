@@ -55,10 +55,13 @@ public class PaymentFailureLog extends BaseEntity {
     @Column(name = "payment_gateway_response", length = 2000)
     private String paymentGatewayResponse;
     
+    @Column(name = "is_scheduled_payment")
+    private Boolean isScheduledPayment = false;
+    
     @Builder
     public PaymentFailureLog(AppUser user, Long subscriptionId, PaymentFailureReason failureReason, 
                            String failureMessage, Integer attemptedAmount, SubscriptionType subscriptionType,
-                           SubscriptionBillingType billingType, String paymentGatewayResponse) {
+                           SubscriptionBillingType billingType, String paymentGatewayResponse, Boolean isScheduledPayment) {
         this.user = user;
         this.subscriptionId = subscriptionId;
         this.failureReason = failureReason;
@@ -67,5 +70,6 @@ public class PaymentFailureLog extends BaseEntity {
         this.subscriptionType = subscriptionType;
         this.billingType = billingType;
         this.paymentGatewayResponse = paymentGatewayResponse;
+        this.isScheduledPayment = isScheduledPayment != null ? isScheduledPayment : false;
     }
 }
