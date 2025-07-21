@@ -42,7 +42,7 @@ public class SubscriptionScheduler {
     }
 
 
-    @Scheduled(cron = "0 0 6 * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     public void processScheduledPayments() {
         LocalDateTime currentDate = LocalDateTime.now();
         log.info("🔄 스케줄러 실행됨 - 현재 시간: {}", currentDate);
@@ -58,6 +58,14 @@ public class SubscriptionScheduler {
                 if (user.isEmptyBillingKey()) {
                     log.warn("⚠️ 빌링키가 없는 사용자 스킵: {}", user.getUsername());
                     failureCount++;
+                    continue;
+                }
+
+                // 구독 상태 확인 - ACTIVE가 아닌 경우 스킵
+                if (user.getSubscription() == null || !user.getSubscription().isActivated()) {
+                    log.warn("⚠️ 비활성화된 구독을 가진 사용자 스킵: {} (상태: {})", 
+                            user.getUsername(), 
+                            user.getSubscription() != null ? user.getSubscription().getStatus() : "NULL");
                     continue;
                 }
 
@@ -176,6 +184,7 @@ public class SubscriptionScheduler {
             case "EXPIRED_CARD":
                 return PaymentFailureReason.EXPIRED_CARD;
             case "INSUFFICIENT_FUNDS":
+            case "INSUFFICIENT_BALANCE":
                 return PaymentFailureReason.INSUFFICIENT_BALANCE;
             case "REJECT_CARD_COMPANY":
             case "FORBIDDEN_REQUEST":

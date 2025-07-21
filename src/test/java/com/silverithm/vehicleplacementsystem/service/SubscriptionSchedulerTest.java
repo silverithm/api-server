@@ -306,4 +306,96 @@ class SubscriptionSchedulerTest {
         verify(billingService, times(2)).requestPayment(any(SubscriptionRequestDTO.class), any());
         verify(subscriptionService, times(1)).processSubscription(eq(testUser), any(SubscriptionRequestDTO.class));
     }
+
+    @Test
+    @DisplayName("구독이 취소된 사용자는 정기결제 대상에서 제외")
+    void processScheduledPayments_CancelledSubscription_Skipped() {
+        // Given
+        testSubscription.updateStatus(SubscriptionStatus.CANCELLED);
+        List<AppUser> users = Arrays.asList(testUser);
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(users);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then
+        verify(userRepository, times(1)).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        verify(billingService, never()).requestPayment(any(), any());
+        verify(subscriptionService, never()).processSubscription(any(), any());
+    }
+
+    @Test
+    @DisplayName("구독이 비활성화된 사용자는 정기결제 대상에서 제외")
+    void processScheduledPayments_InactiveSubscription_Skipped() {
+        // Given
+        testSubscription.updateStatus(SubscriptionStatus.INACTIVE);
+        List<AppUser> users = Arrays.asList(testUser);
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(users);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then
+        verify(userRepository, times(1)).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        verify(billingService, never()).requestPayment(any(), any());
+        verify(subscriptionService, never()).processSubscription(any(), any());
+    }
+
+    @Test
+    @DisplayName("구독이 활성 상태인 사용자만 정기결제 처리")
+    void processScheduledPayments_OnlyActiveSubscriptions_Processed() {
+        // Given
+        AppUser cancelledUser = new AppUser("cancelled", "cancelled@example.com", "password", UserRole.ROLE_ADMIN,
+                                           "refresh_token", null, "customer_cancelled_123");
+        cancelledUser.updateBillingKey("encrypted_billing_key_cancelled");
+        
+        Subscription cancelledSubscription = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(10000)
+                .status(SubscriptionStatus.CANCELLED)
+                .startDate(LocalDateTime.now().minusDays(30))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .user(cancelledUser)
+                .build();
+        cancelledUser.setSubscription(cancelledSubscription);
+
+        AppUser inactiveUser = new AppUser("inactive", "inactive@example.com", "password", UserRole.ROLE_ADMIN,
+                                          "refresh_token", null, "customer_inactive_123");
+        inactiveUser.updateBillingKey("encrypted_billing_key_inactive");
+        
+        Subscription inactiveSubscription = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(10000)
+                .status(SubscriptionStatus.INACTIVE)
+                .startDate(LocalDateTime.now().minusDays(30))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .user(inactiveUser)
+                .build();
+        inactiveUser.setSubscription(inactiveSubscription);
+
+        // 실제 스케줄러는 userRepository에서 이미 필터링된 사용자만 반환한다고 가정
+        // 하지만 테스트에서는 모든 사용자를 포함시켜 스케줄러의 필터링 로직을 테스트
+        List<AppUser> users = Arrays.asList(testUser, cancelledUser, inactiveUser);
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(users);
+        when(billingService.requestPayment(any(SubscriptionRequestDTO.class), eq("billing_test_123")))
+                .thenReturn(successPaymentResponse);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then
+        verify(userRepository, times(1)).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        // ACTIVE 상태인 testUser만 결제 요청되어야 함
+        verify(billingService, times(1)).requestPayment(any(SubscriptionRequestDTO.class), eq("billing_test_123"));
+        verify(subscriptionService, times(1)).processSubscription(eq(testUser), any(SubscriptionRequestDTO.class));
+        
+        // 취소되거나 비활성화된 사용자는 결제 요청되지 않아야 함
+        verify(billingService, never()).requestPayment(any(SubscriptionRequestDTO.class), eq("encrypted_billing_key_cancelled"));
+        verify(billingService, never()).requestPayment(any(SubscriptionRequestDTO.class), eq("encrypted_billing_key_inactive"));
+    }
 }
