@@ -8,6 +8,9 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 @Configuration
@@ -21,8 +24,24 @@ public class BillingKeyEncryptionConfig {
 
     @Bean
     public SecretKey billingKeySecretKey() {
-        byte[] decodedKey = Base64.getDecoder().decode(encryptionKey);
-        return new SecretKeySpec(decodedKey, ALGORITHM);
+        try {
+            // Base64 디코딩 시도
+            byte[] keyBytes;
+            try {
+                keyBytes = Base64.getDecoder().decode(encryptionKey);
+            } catch (IllegalArgumentException e) {
+                // Base64가 아닌 경우 원본 문자열을 바이트로 변환
+                keyBytes = encryptionKey.getBytes(StandardCharsets.UTF_8);
+            }
+            
+            // SHA-256을 사용하여 32바이트 키 생성 (AES-256 호환)
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+            byte[] hashedKey = sha256.digest(keyBytes);
+            
+            return new SecretKeySpec(hashedKey, ALGORITHM);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 알고리즘을 찾을 수 없습니다", e);
+        }
     }
 
     public String encrypt(String plainText, SecretKey key) {
