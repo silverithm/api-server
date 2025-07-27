@@ -5,12 +5,16 @@
 DROP INDEX IF EXISTS idx_vacation_limits_company_id;
 DROP INDEX IF EXISTS idx_vacation_limits_date_company;
 
--- 2. 최적화된 복합 인덱스 생성
+-- 2. 최적화된 복합 인덱스 생성 (이미 엔티티에 정의된 경우 스킵)
 -- company_id를 첫 번째로: 회사별 데이터 분리 (높은 선택도)
 -- role을 두 번째로: 3개 값만 존재 (CAREGIVER, DRIVER, ALL)
 -- date를 마지막으로: IN 절 range scan 최적화
-CREATE INDEX idx_vacation_limits_optimal 
+CREATE INDEX IF NOT EXISTS idx_vacation_limits_optimal 
 ON vacation_limits(company_id, role, date);
 
--- 3. 인덱스 통계 업데이트
+-- 3. 유니크 제약조건 유지 (데이터 무결성)
+-- 기존 유니크 제약조건은 그대로 유지 (date, role, company_id)
+-- 비즈니스 로직상 같은 날짜, 같은 역할, 같은 회사에 중복 제한 방지
+
+-- 4. 인덱스 통계 업데이트
 ANALYZE TABLE vacation_limits;

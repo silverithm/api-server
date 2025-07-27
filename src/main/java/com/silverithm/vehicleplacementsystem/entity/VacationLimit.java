@@ -12,7 +12,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "vacation_limits", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"date", "role", "company_id"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"date", "role", "company_id"}),
+       indexes = {
+           @Index(name = "idx_vacation_limits_optimal", columnList = "company_id, role, date")
+       })
 @Getter
 @Setter
 @NoArgsConstructor
