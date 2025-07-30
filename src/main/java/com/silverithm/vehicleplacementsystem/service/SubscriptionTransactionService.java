@@ -32,7 +32,7 @@ public class SubscriptionTransactionService {
 
     private SubscriptionResponseDTO updateSubscription(Subscription subscription, SubscriptionRequestDTO requestDto) {
         LocalDateTime extendedEndDate = SubscriptionBillingType.extendEndDate(requestDto.getBillingType(), 
-                subscription.getEndDate());
+                subscription.getStartDate());
         log.info("Extending subscription for user: {}, current endDate: {}, new endDate: {}", 
                 subscription.getUser().getUsername(), subscription.getEndDate(), extendedEndDate);
         subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), extendedEndDate,
