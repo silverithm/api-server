@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.VacationLimit;
@@ -214,13 +215,12 @@ public class VacationService {
 
         log.info("[Vacation Service] 휴가 신청 생성 완료: 회사 {}, ID={}", company.getName(), saved.getId());
 
-        // 관리자에게 알림 전송 (실제 환경에서는 관리자 FCM 토큰을 조회해야 함)
-//        try {
-//            sendVacationSubmittedNotificationToAdmins(saved);
-//        } catch (Exception e) {
-//            log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
-//            // 알림 전송 실패는 휴가 신청 자체에는 영향을 주지 않음
-//        }
+        try {
+            sendVacationSubmittedNotificationToAdmins(saved, company);
+        } catch (Exception e) {
+            log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
+            // 알림 전송 실패는 휴가 신청 자체에는 영향을 주지 않음
+        }
 
         return VacationRequestDTO.fromEntity(saved);
     }
@@ -432,6 +432,7 @@ public class VacationService {
                 .collect(Collectors.toList());
     }
 
+
     // 알림 전송 헬퍼 메서드들
     private void sendVacationApprovedNotificationToUser(VacationRequest vacation) {
         // 실제 환경에서는 사용자의 FCM 토큰을 조회해야 함
@@ -466,24 +467,24 @@ public class VacationService {
         }
     }
 
-//    private void sendVacationSubmittedNotificationToAdmins(VacationRequest vacation) {
-//        List<String> adminFcmTokens = getAdminFcmTokens();
-//
-//        for (String adminToken : adminFcmTokens) {
-//            try {
-//                notificationService.sendVacationSubmittedNotification(
-//                        adminToken,
-//                        "admin", // 관리자 사용자 ID
-//                        "관리자", // 관리자 이름
-//                        vacation.getUserName(),
-//                        vacation.getDate().toString(),
-//                        vacation.getId()
-//                );
-//            } catch (Exception e) {
-//                log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
-//            }
-//        }
-//    }
+    private void sendVacationSubmittedNotificationToAdmins(VacationRequest vacation, Company company) {
+        List<String> adminFcmTokens = getAdminFcmTokens(company);
+
+        for (String adminToken : adminFcmTokens) {
+            try {
+                notificationService.sendVacationSubmittedNotification(
+                        adminToken,
+                        "admin", // 관리자 사용자 ID
+                        "관리자", // 관리자 이름
+                        vacation.getUserName(),
+                        vacation.getDate().toString(),
+                        vacation.getId()
+                );
+            } catch (Exception e) {
+                log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
+            }
+        }
+    }
 
     private String getUserFcmToken(String userId, String userName) {
         log.debug("[Vacation Service] 사용자 FCM 토큰 조회: userId={}, userName={}", userId, userName);
@@ -497,7 +498,7 @@ public class VacationService {
             if (member != null && member.getFcmToken() != null) {
                 log.debug("[Vacation Service] FCM 토큰 조회 성공: userId={}, userName={}", userId, userName);
                 return member.getFcmToken();
-            }else{
+            } else {
                 log.warn("[Vacation Service] FCM 토큰이 없습니다: userId={}, userName={}", userId, userName);
                 return null; // FCM 토큰이 없는 경우 null 반환
             }
@@ -507,28 +508,29 @@ public class VacationService {
         }
     }
 
-//    private List<String> getAdminFcmTokens() {
-//        log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
-//
-//        try {
-//            // ADMIN, MANAGER 권한을 가진 Member들의 FCM 토큰 조회
-//            List<Member> adminMembers = memberRepository.findByRoleInAndFcmTokenIsNotNull(
-//                    List.of(Member.Role.ADMIN)
-//            );
-//
-//            List<String> adminTokens = adminMembers.stream()
-//                    .map(Member::getFcmToken)
-//                    .filter(token -> token != null && !token.isEmpty())
-//                    .collect(Collectors.toList());
-//
-//            log.debug("[Vacation Service] 관리자 FCM 토큰 조회 완료: {} 개", adminTokens.size());
-//            return adminTokens;
-//
-//        } catch (Exception e) {
-//            log.error("[Vacation Service] 관리자 FCM 토큰 조회 중 오류 발생", e);
-//            return List.of(); // 빈 리스트 반환
-//        }
-//    }
+    private List<String> getAdminFcmTokens(Company company) {
+        log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
+
+        try {
+            // ADMIN, MANAGER 권한을 가진 Member들의 FCM 토큰 조회
+            List<Member> adminMembers = memberRepository.findByRoleInAndFcmTokenIsNotNull(
+                    List.of(Member.Role.ADMIN)
+            );
+
+            List<AppUser> adminUsers = company.getUsers();
+
+            List<String> adminTokens = adminUsers.stream()
+                    .map(AppUser::getFcmToken)
+                    .filter(token -> token != null && !token.isEmpty())
+                    .collect(Collectors.toList());
+
+            log.debug("[Vacation Service] 관리자 FCM 토큰 조회 완료: {} 개", adminTokens.size());
+            return adminTokens;
+        } catch (Exception e) {
+            log.error("[Vacation Service] 관리자 FCM 토큰 조회 중 오류 발생", e);
+            return List.of(); // 빈 리스트 반환
+        }
+    }
 
     // 멤버 개인용 휴무 관련 메서드들
 
