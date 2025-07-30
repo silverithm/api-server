@@ -59,13 +59,11 @@ public class MemberService {
         Company company = companyRepository.findById(requestDTO.getCompanyId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
 
+
         if (memberRepository.existsByEmail(requestDTO.getEmail())) {
             throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + requestDTO.getEmail());
         }
 
-        if (memberJoinRequestRepository.existsByUsername(requestDTO.getUsername())) {
-            throw new IllegalArgumentException("이미 가입 요청된 사용자명입니다: " + requestDTO.getUsername());
-        }
 
         // Role enum 변환
         Member.Role role;
