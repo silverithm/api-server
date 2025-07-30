@@ -59,11 +59,6 @@ public class MemberService {
         Company company = companyRepository.findById(requestDTO.getCompanyId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
 
-        // 전역 중복 확인
-        if (memberRepository.existsByUsername(requestDTO.getUsername())) {
-            throw new IllegalArgumentException("이미 존재하는 사용자명입니다: " + requestDTO.getUsername());
-        }
-
         if (memberRepository.existsByEmail(requestDTO.getEmail())) {
             throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + requestDTO.getEmail());
         }
