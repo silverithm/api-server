@@ -70,6 +70,7 @@ public class UserController {
         return ResponseEntity.ok().body(userService.findPassword(email));
     }
 
+
     @PostMapping("api/v1/change/password")
     public ResponseEntity<String> changePassword(@RequestBody PasswordChangeRequest passwordChangeRequest) {
         userService.changePassword(passwordChangeRequest);

@@ -129,7 +129,7 @@ class FreeSubscriptionTest {
                 subscriptionService.createFreeSubscription(userDetails)
         );
 
-        assertEquals("User already has a subscription", exception.getMessage());
+        assertEquals("이미 구독 중인 사용자입니다", exception.getMessage());
         assertEquals(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
         
         verify(userRepository).findByEmail("existing@example.com");
@@ -150,7 +150,7 @@ class FreeSubscriptionTest {
                 subscriptionService.createFreeSubscription(userDetails)
         );
 
-        assertEquals("User has already used free subscription before", exception.getMessage());
+        assertEquals("이미 무료 구독을 사용한 적이 있습니다", exception.getMessage());
         assertEquals(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
         
         verify(userRepository).findByEmail("test@example.com");
@@ -171,7 +171,7 @@ class FreeSubscriptionTest {
                 subscriptionService.createFreeSubscription(userDetails)
         );
 
-        assertEquals("User not found with email: notfound@example.com", exception.getMessage());
+        assertEquals("해당 이메일의 사용자를 찾을 수 없습니다: notfound@example.com", exception.getMessage());
         assertEquals(HttpStatus.NOT_FOUND, exception.getHttpStatus());
         
         verify(userRepository).findByEmail("notfound@example.com");

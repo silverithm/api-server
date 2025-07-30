@@ -123,7 +123,7 @@ class PaymentFailureServiceTest {
                 )
         );
 
-        assertEquals("User not found with email: notfound@example.com", exception.getMessage());
+        assertEquals("해당 이메일의 사용자를 찾을 수 없습니다: notfound@example.com", exception.getMessage());
         assertEquals(HttpStatus.NOT_FOUND, exception.getHttpStatus());
     }
 
