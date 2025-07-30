@@ -89,7 +89,7 @@ public class UserService {
         try {
 
             AppUser findUser = userRepository.findActiveByEmail(userSigninDTO.getEmail())
-                    .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+                    .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
 
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
@@ -112,7 +112,7 @@ public class UserService {
                     tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
 
         } catch (AuthenticationException e) {
-            throw new CustomException("Invalid username/password supplied", HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomException("아이디 또는 비밀번호가 올바르지 않습니다", HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -137,7 +137,7 @@ public class UserService {
 
     private void validateEmailNotExists(String email) throws Exception {
         if (userRepository.existsByEmailAndDeletedAtIsNull(email)) {
-            throw new CustomException("Useremail is already in use", HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomException("이미 사용 중인 이메일입니다", HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -189,7 +189,7 @@ public class UserService {
 
     public FindPasswordResponse findPassword(String email) {
         AppUser findUser = userRepository.findActiveByEmail(email)
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
 
         String temporaryPassword = createTemporaryPassword(findUser);
 
@@ -235,10 +235,10 @@ public class UserService {
 
     public void changePassword(PasswordChangeRequest passwordChangeRequest) {
         AppUser findUser = userRepository.findActiveByEmail(passwordChangeRequest.email())
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
 
         if (!passwordEncoder.matches(passwordChangeRequest.currentPassword(), findUser.getPassword())) {
-            throw new CustomException("Invalid current password", HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomException("현재 비밀번호가 올바르지 않습니다", HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
         String encodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());
@@ -250,7 +250,7 @@ public class UserService {
     @Transactional
     public void updateCompanyName(UpdateCompanyNameDTO updateCompanyNameDTO, String userEmail) {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
         findUser.updateCompanyName(updateCompanyNameDTO.companyName());
     }
 
@@ -259,7 +259,7 @@ public class UserService {
                                                              String userEmail)
             throws Exception {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
         Location companyLocation = geocodingService.getAddressCoordinates(updateCompanyAddressDTO.companyAddress());
         findUser.updateCompanyAddress(companyLocation, updateCompanyAddressDTO.companyAddress());
 
@@ -290,7 +290,7 @@ public class UserService {
         Authentication authentication = jwtTokenProvider.getAuthentication(tokenRefreshRequest.refreshToken());
 
         if (!jwtTokenProvider.validateToken(tokenRefreshRequest.refreshToken())) {
-            throw new CustomException("Invalid Refresh Token", HttpStatus.UNAUTHORIZED);
+            throw new CustomException("유효하지 않은 리프레시 토큰입니다", HttpStatus.UNAUTHORIZED);
         }
 
         UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(userName,
@@ -302,7 +302,7 @@ public class UserService {
 
     public SubscriptionResponseDTO getUserSubscription(String userEmail) {
         AppUser user = userRepository.findActiveByEmail(userEmail)
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
         if (user.getSubscription() == null) {
             return new SubscriptionResponseDTO();
@@ -407,14 +407,14 @@ public class UserService {
     @Transactional
     public void deleteUser(String userEmail) {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
         findUser.getCompany().updateExpose(false);
         findUser.softDelete();
     }
 
     public UserInfoResponseDTO getUserInfo(String userEmail) {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
         
         if (findUser.getSubscription() == null) {
             return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),

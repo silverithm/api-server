@@ -93,7 +93,7 @@ public class ElderService {
 
     public void bulkAddElders(UserDetails userDetails, List<AddElderRequest> elderRequests) throws Exception {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
         for (AddElderRequest elderRequest : elderRequests) {
             Location homeAddress = geocodingService.getAddressCoordinates(elderRequest.homeAddress());

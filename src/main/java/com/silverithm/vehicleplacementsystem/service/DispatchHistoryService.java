@@ -71,7 +71,7 @@ public class DispatchHistoryService {
 
     public DispatchHistoryDetailDTO getDispatchDetail(Long historyId) throws JsonProcessingException {
         DispatchHistory history = repository.findById(historyId)
-                .orElseThrow(() -> new CustomException("History not found", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new CustomException("기록을 찾을 수 없습니다", HttpStatus.BAD_REQUEST));
         List<AssignmentResponseDTO> assignments = objectMapper.readValue(
                 history.getDispatchResult(),
                 new TypeReference<List<AssignmentResponseDTO>>() {
@@ -83,13 +83,13 @@ public class DispatchHistoryService {
     public ResponseEntity<Long> deleteHistory(Long id, UserDetails userDetails) {
 
         DispatchHistory history = repository.findById(id)
-                .orElseThrow(() -> new CustomException("History not found", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new CustomException("기록을 찾을 수 없습니다", HttpStatus.BAD_REQUEST));
 
         log.info("history.getUsername() : {}", history.getUsername());
         log.info("userDetails.getUsername() : {}", userDetails.getUsername());
 
         if (!history.getUsername().equals(userDetails.getUsername())) {
-            throw new CustomException("You are not authorized to delete this history", HttpStatus.FORBIDDEN);
+            throw new CustomException("이 기록을 삭제할 권한이 없습니다", HttpStatus.FORBIDDEN);
         }
 
         repository.deleteById(id);

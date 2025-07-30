@@ -81,7 +81,7 @@ public class LocalRedisConfig {
             }
         }
 
-        throw new IllegalArgumentException("Not Found Available port: 10000 ~ 65535");
+        throw new IllegalArgumentException("사용 가능한 포트를 찾을 수 없습니다: 10000 ~ 65535");
     }
 
     // 해당 port를 사용중인 프로세스 확인하는 sh 실행

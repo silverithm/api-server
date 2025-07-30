@@ -119,6 +119,6 @@ public class PaymentFailureService {
     
     private AppUser findUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException("User not found with email: " + email, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("해당 이메일의 사용자를 찾을 수 없습니다: " + email, HttpStatus.NOT_FOUND));
     }
 }

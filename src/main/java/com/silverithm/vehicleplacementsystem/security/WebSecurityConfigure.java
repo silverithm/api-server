@@ -77,12 +77,12 @@ public class WebSecurityConfigure {
                 String password = authentication.getCredentials().toString();
 
                 AppUser user = userRepository.findActiveByEmail(email)
-                        .orElseThrow(() -> new CustomException("User not found", HttpStatus.UNPROCESSABLE_ENTITY));
+                        .orElseThrow(() -> new CustomException("유저를 찾을 수 없습니다.", HttpStatus.UNPROCESSABLE_ENTITY));
 
                 if (passwordEncoder().matches(password, user.getPassword())) {
                     return new UsernamePasswordAuthenticationToken(email, password);
                 } else {
-                    throw new AuthenticationException("Invalid username/password supplied") {
+                    throw new AuthenticationException("유효하지 않은 아이디 또는 비밀번호입니다.") {
                     };
                 }
             }

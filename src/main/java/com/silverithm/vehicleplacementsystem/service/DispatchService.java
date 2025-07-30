@@ -462,7 +462,7 @@ public class DispatchService {
     public Boolean isLimitExceeded(UserDetails userDetails) {
 
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.UNPROCESSABLE_ENTITY));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
 
         if (user.isActiveSubscription()) {
             return false;

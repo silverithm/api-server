@@ -106,7 +106,7 @@ public class EmployeeService {
     @Transactional
     public void createEmployeeCompany(Long userId, CreateCompanyDto createCompanyDto) throws Exception {
         AppUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
         Location location = geocodingService.getAddressCoordinates(createCompanyDto.companyAddressName());
         Company company = Company.of(createCompanyDto.companyName(), createCompanyDto.companyAddressName(),
                 location);
@@ -126,14 +126,14 @@ public class EmployeeService {
     @Transactional
     public void bulkAddEmployees(UserDetails userDetails, List<AddEmployeeRequest> employeeRequests) throws Exception {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
         for (AddEmployeeRequest employeeRequest : employeeRequests) {
             Location homeAddress = geocodingService.getAddressCoordinates(employeeRequest.homeAddress());
             Location workPlace = geocodingService.getAddressCoordinates(employeeRequest.workPlace());
 
             if (homeAddress == null || workPlace == null) {
-                throw new CustomException("Invalid address", HttpStatus.BAD_REQUEST);
+                throw new CustomException("유효하지 않은 주소입니다", HttpStatus.BAD_REQUEST);
             }
 
             Employee employee = new Employee(employeeRequest.homeAddress(), employeeRequest.name(),

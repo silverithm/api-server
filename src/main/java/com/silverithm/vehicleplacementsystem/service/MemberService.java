@@ -709,7 +709,7 @@ public class MemberService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + username));
 
         if (!passwordEncoder.matches(passwordChangeRequest.currentPassword(), member.getPassword())) {
-            throw new CustomException("Invalid current password", HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new CustomException("현재 비밀번호가 올바르지 않습니다", HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
         String newEncodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());

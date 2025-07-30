@@ -35,7 +35,7 @@ public class GeocodingService {
 
             return new Location(latitude, longitude);
         } catch (Exception e) {
-            throw new Exception("Failed to get coordinates for address: " + address);
+            throw new Exception("주소의 좌표를 가져오는데 실패했습니다: " + address);
         }
     }
 

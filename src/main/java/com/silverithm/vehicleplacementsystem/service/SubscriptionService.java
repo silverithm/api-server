@@ -66,7 +66,7 @@ public class SubscriptionService {
 
     private AppUser findUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException("User not found with email: " + email, HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new CustomException("해당 이메일의 사용자를 찾을 수 없습니다: " + email, HttpStatus.NOT_FOUND));
     }
 
 
@@ -74,7 +74,7 @@ public class SubscriptionService {
     public SubscriptionResponseDTO createSubscriptionToUser(SubscriptionRequestDTO requestDto, Long userId) {
 
         AppUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with userId: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자 ID를 찾을 수 없습니다: " + userId));
 
         LocalDateTime startDate = LocalDateTime.now();
         LocalDateTime endDate = SubscriptionBillingType.calculateEndDate(requestDto.getBillingType());
@@ -89,7 +89,7 @@ public class SubscriptionService {
 
     public SubscriptionResponseDTO getSubscription(Long id) {
         Subscription subscription = subscriptionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Subscription not found with id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("해당 구독 ID를 찾을 수 없습니다: " + id));
         return new SubscriptionResponseDTO(subscription);
     }
 
@@ -97,13 +97,13 @@ public class SubscriptionService {
     public SubscriptionResponseDTO cancelSubscription(UserDetails userDetails) {
 
         AppUser user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(
-                () -> new CustomException("User not found with userEmail: " + userDetails.getUsername(),
+                () -> new CustomException("해당 사용자 이메일을 찾을 수 없습니다: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
         Subscription subscription = user.getSubscription();
 
         if (subscription == null) {
-            throw new CustomException("Subscription not found with userId: " + user.getId(), HttpStatus.NOT_FOUND);
+            throw new CustomException("해당 사용자 ID의 구독 정보를 찾을 수 없습니다: " + user.getId(), HttpStatus.NOT_FOUND);
         }
 
         subscription.updateStatus(SubscriptionStatus.CANCELLED);
@@ -115,13 +115,13 @@ public class SubscriptionService {
     public SubscriptionResponseDTO activateSubscription(UserDetails userDetails) {
 
         AppUser user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(
-                () -> new CustomException("User not found with userEmail: " + userDetails.getUsername(),
+                () -> new CustomException("해당 사용자 이메일을 찾을 수 없습니다: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
         Subscription subscription = user.getSubscription();
 
         if (subscription == null) {
-            throw new CustomException("Subscription not found with userId: " + user.getId(), HttpStatus.NOT_FOUND);
+            throw new CustomException("해당 사용자 ID의 구독 정보를 찾을 수 없습니다: " + user.getId(), HttpStatus.NOT_FOUND);
         }
 
         subscription.updateStatus(SubscriptionStatus.ACTIVE);
@@ -153,7 +153,7 @@ public class SubscriptionService {
         }
 
         // 구독이 없고 free subscription history도 없는 경우
-        throw new CustomException("No subscription found", HttpStatus.NOT_FOUND);
+        throw new CustomException("구독 정보가 없습니다", HttpStatus.NOT_FOUND);
     }
 
     public SubscriptionResponseDTO createFreeSubscription(UserDetails userDetails) {
@@ -163,12 +163,12 @@ public class SubscriptionService {
 
         // 이미 구독이 있는 경우 예외 처리
         if (user.getSubscription() != null) {
-            throw new CustomException("User already has a subscription", HttpStatus.BAD_REQUEST);
+            throw new CustomException("이미 구독 중인 사용자입니다", HttpStatus.BAD_REQUEST);
         }
 
         // 무료 요금제를 한번이라도 사용한 이력이 있는지 확인
         if (freeSubscriptionHistoryRepository.existsByUserId(user.getId())) {
-            throw new CustomException("User has already used free subscription before", HttpStatus.BAD_REQUEST);
+            throw new CustomException("이미 무료 구독을 사용한 적이 있습니다", HttpStatus.BAD_REQUEST);
         }
 
         LocalDateTime startDate = LocalDateTime.now();

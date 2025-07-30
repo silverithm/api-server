@@ -35,7 +35,7 @@ public class EmailService {
             emailSender.send(message);
         } catch (MessagingException e) {
             log.info(e.toString());
-            throw new CustomException("Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new CustomException("이메일 전송에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
         } catch (jakarta.mail.MessagingException e) {
             throw new RuntimeException(e);
         }
