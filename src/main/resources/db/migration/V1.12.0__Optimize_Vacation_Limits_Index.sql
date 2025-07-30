@@ -2,8 +2,8 @@
 -- 쿼리 패턴: WHERE company_id = ? AND date IN (?, ?, ?) AND role IN (?, ?, ?)
 
 -- 1. 기존 중복/비효율 인덱스 제거
-DROP INDEX IF EXISTS idx_vacation_limits_company_id;
-DROP INDEX IF EXISTS idx_vacation_limits_date_company;
+DROP INDEX IF EXISTS idx_vacation_limits_company_id ON vacation_limits;
+DROP INDEX IF EXISTS idx_vacation_limits_date_company ON vacation_limits;
 
 -- 2. 최적화된 복합 인덱스 생성 (이미 엔티티에 정의된 경우 스킵)
 -- company_id를 첫 번째로: 회사별 데이터 분리 (높은 선택도)
