@@ -137,7 +137,7 @@ public class SubscriptionService {
 
     public SubscriptionResponseDTO getMySubscription(UserDetails userDetails) {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
+                .orElseThrow(() -> new CustomException("해당 이메일의 사용자를 찾을 수 없습니다: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
         boolean hasUsedFreeSubscription = freeSubscriptionHistoryRepository.existsByUserId(user.getId());
@@ -158,7 +158,7 @@ public class SubscriptionService {
 
     public SubscriptionResponseDTO createFreeSubscription(UserDetails userDetails) {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new CustomException("User not found with email: " + userDetails.getUsername(),
+                .orElseThrow(() -> new CustomException("해당 이메일의 사용자를 찾을 수 없습니다: " + userDetails.getUsername(),
                         HttpStatus.NOT_FOUND));
 
         // 이미 구독이 있는 경우 예외 처리

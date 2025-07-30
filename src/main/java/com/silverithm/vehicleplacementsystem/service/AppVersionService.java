@@ -16,7 +16,7 @@ public class AppVersionService {
 
     public AppVersionResponseDTO getLatestAppVersion() {
         AppVersion appVersion = appVersionRepository.findTopByOrderByCreatedAtDesc()
-                .orElseThrow(() -> new IllegalStateException("App version information not found"));
+                .orElseThrow(() -> new IllegalStateException("앱 버전 정보를 찾을 수 없습니다"));
         
         return AppVersionResponseDTO.from(appVersion);
     }
