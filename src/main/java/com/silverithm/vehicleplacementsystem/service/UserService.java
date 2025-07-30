@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.dto.FCMTokenUpdateDTO;
 import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
@@ -19,6 +20,7 @@ import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
@@ -427,6 +429,17 @@ public class UserService {
                 findUser.getCompany().getId(), findUser.getCompany().getName(),
                 findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                 new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
+    }
+
+    @Transactional
+    public void updateFcmToken(Long userId, FCMTokenUpdateDTO tokenUpdateDTO) {
+        log.info("[User Service] FCM 토큰 업데이트: userId={}", userId);
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + userId));
+
+        user.updateFcmToken(tokenUpdateDTO.getFcmToken());
+        userRepository.save(user);
+        log.info("[User Service] FCM 토큰 업데이트 완료: userId={}", userId);
     }
 }
 

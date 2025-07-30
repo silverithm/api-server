@@ -49,6 +49,9 @@ public class AppUser extends BaseEntity {
 
     private String refreshToken;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
@@ -146,4 +149,7 @@ public class AppUser extends BaseEntity {
         this.subscription = subscription;
     }
 
+    public void updateFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
 }

@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.dto.FCMTokenUpdateDTO;
 import com.silverithm.vehicleplacementsystem.dto.FindPasswordResponse;
 import com.silverithm.vehicleplacementsystem.dto.PasswordChangeRequest;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
@@ -19,6 +20,7 @@ import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -164,6 +167,26 @@ public class UserController {
     @GetMapping("api/v1/users/info")
     public ResponseEntity<UserInfoResponseDTO> getUserInfo(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok().body(userService.getUserInfo(userDetails.getUsername()));
+    }
+
+
+    @PutMapping("api/v1/{id}/fcm-token")
+    public ResponseEntity<Map<String, String>> updateFcmToken(
+            @PathVariable Long id,
+            @Valid @RequestBody FCMTokenUpdateDTO tokenUpdateDTO) {
+
+        try {
+            log.info("[User API] FCM 토큰 업데이트: userId={}", id);
+            userService.updateFcmToken(id, tokenUpdateDTO);
+            return ResponseEntity.ok(Map.of("message", "FCM 토큰이 업데이트되었습니다"));
+        } catch (IllegalArgumentException e) {
+            log.error("[User API] FCM 토큰 업데이트 실패: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[User API] FCM 토큰 업데이트 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "FCM 토큰 업데이트 중 오류가 발생했습니다"));
+        }
     }
 
 
