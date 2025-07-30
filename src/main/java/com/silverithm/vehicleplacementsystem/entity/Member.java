@@ -22,7 +22,7 @@ public class Member {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String username;
     
     @Column(nullable = false)
@@ -31,7 +31,7 @@ public class Member {
     @Column(nullable = false)
     private String name;
     
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String email;
     
     @Column
