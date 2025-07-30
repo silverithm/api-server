@@ -12,6 +12,7 @@ import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserInfoResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
@@ -157,6 +158,11 @@ public class UserController {
         }
         
         return ResponseEntity.ok().body(response);
+    }
+
+    @GetMapping("api/v1/users/info")
+    public ResponseEntity<UserInfoResponseDTO> getUserInfo(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok().body(userService.getUserInfo(userDetails.getUsername()));
     }
 
 

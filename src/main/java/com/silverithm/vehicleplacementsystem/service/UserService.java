@@ -12,6 +12,7 @@ import com.silverithm.vehicleplacementsystem.dto.TokenValidationResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyAddressResponse;
 import com.silverithm.vehicleplacementsystem.dto.UpdateCompanyNameDTO;
+import com.silverithm.vehicleplacementsystem.dto.UserInfoResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserDataDTO;
@@ -409,6 +410,23 @@ public class UserService {
                 .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
         findUser.getCompany().updateExpose(false);
         findUser.softDelete();
+    }
+
+    public UserInfoResponseDTO getUserInfo(String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("User Not Found", HttpStatus.NOT_FOUND));
+        
+        if (findUser.getSubscription() == null) {
+            return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
+                    findUser.getCompany().getId(), findUser.getCompany().getName(),
+                    findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
+                    new SubscriptionResponseDTO(), findUser.getCustomerKey());
+        }
+        
+        return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
+                findUser.getCompany().getId(), findUser.getCompany().getName(),
+                findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
+                new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
     }
 }
 
