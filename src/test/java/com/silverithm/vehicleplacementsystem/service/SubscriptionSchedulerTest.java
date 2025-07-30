@@ -398,4 +398,204 @@ class SubscriptionSchedulerTest {
         verify(billingService, never()).requestPayment(any(SubscriptionRequestDTO.class), eq("encrypted_billing_key_cancelled"));
         verify(billingService, never()).requestPayment(any(SubscriptionRequestDTO.class), eq("encrypted_billing_key_inactive"));
     }
+
+    @Test
+    @DisplayName("구독 청구 대상 조회 - 삭제된 사용자 제외")
+    void processScheduledPayments_ExcludeDeletedUsers() {
+        // Given
+        // 정상 사용자 (deletedAt = null)
+        AppUser activeUser = new AppUser("activeuser", "active@example.com", "password", 
+                                         UserRole.ROLE_ADMIN, "refresh_token", null, "customer_active_123");
+        activeUser.updateBillingKey("encrypted_billing_key_active");
+        
+        Subscription activeSubscription = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(10000)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(LocalDateTime.now().minusDays(30))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .user(activeUser)
+                .build();
+        activeUser.setSubscription(activeSubscription);
+
+        // 삭제된 사용자 (deletedAt != null)
+        AppUser deletedUser = new AppUser("deleteduser", "deleted@example.com", "password", 
+                                          UserRole.ROLE_ADMIN, "refresh_token", null, "customer_deleted_123");
+        deletedUser.updateBillingKey("encrypted_billing_key_deleted");
+        deletedUser.softDelete(); // 소프트 삭제 적용
+        
+        Subscription deletedSubscription = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(10000)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(LocalDateTime.now().minusDays(30))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .user(deletedUser)
+                .build();
+        deletedUser.setSubscription(deletedSubscription);
+
+        // UserRepository에서 이미 deletedAt이 null인 사용자만 반환한다고 가정 (실제 구현)
+        List<AppUser> users = Arrays.asList(activeUser); // 삭제된 사용자는 포함되지 않음
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(users);
+
+        // BillingKeyEncryptionService mock 설정
+        when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key_active"))
+                .thenReturn("billing_active_123");
+
+        when(billingService.requestPayment(any(SubscriptionRequestDTO.class), eq("billing_active_123")))
+                .thenReturn(successPaymentResponse);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then
+        verify(userRepository, times(1)).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        
+        // 활성 사용자만 결제 요청되어야 함
+        verify(billingService, times(1)).requestPayment(any(SubscriptionRequestDTO.class), eq("billing_active_123"));
+        verify(subscriptionService, times(1)).processSubscription(eq(activeUser), any(SubscriptionRequestDTO.class));
+        
+        // 삭제된 사용자는 결제 요청되지 않아야 함
+        verify(billingService, never()).requestPayment(any(SubscriptionRequestDTO.class), eq("billing_deleted_123"));
+        verify(subscriptionService, never()).processSubscription(eq(deletedUser), any(SubscriptionRequestDTO.class));
+    }
+
+    @Test
+    @DisplayName("구독 청구 대상 조회 - 무료 구독 사용자 제외")
+    void processScheduledPayments_ExcludeFreeSubscriptionUsers() {
+        // Given
+        // 유료 구독 사용자
+        AppUser paidUser = new AppUser("paiduser", "paid@example.com", "password", 
+                                       UserRole.ROLE_ADMIN, "refresh_token", null, "customer_paid_123");
+        paidUser.updateBillingKey("encrypted_billing_key_paid");
+        
+        Subscription paidSubscription = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(10000)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(LocalDateTime.now().minusDays(30))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .user(paidUser)
+                .build();
+        paidUser.setSubscription(paidSubscription);
+
+        // 무료 구독 사용자
+        AppUser freeUser = new AppUser("freeuser", "free@example.com", "password", 
+                                       UserRole.ROLE_ADMIN, "refresh_token", null, "customer_free_123");
+        
+        Subscription freeSubscription = Subscription.builder()
+                .planName(SubscriptionType.FREE)
+                .billingType(SubscriptionBillingType.FREE)
+                .amount(0)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(LocalDateTime.now().minusDays(30))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .user(freeUser)
+                .build();
+        freeUser.setSubscription(freeSubscription);
+
+        // UserRepository에서 이미 FREE가 아닌 구독 사용자만 반환한다고 가정 (실제 구현)
+        List<AppUser> users = Arrays.asList(paidUser); // 무료 구독 사용자는 포함되지 않음
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(users);
+
+        // BillingKeyEncryptionService mock 설정
+        when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key_paid"))
+                .thenReturn("billing_paid_123");
+
+        when(billingService.requestPayment(any(SubscriptionRequestDTO.class), eq("billing_paid_123")))
+                .thenReturn(successPaymentResponse);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then
+        verify(userRepository, times(1)).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        
+        // 유료 구독 사용자만 결제 요청되어야 함
+        verify(billingService, times(1)).requestPayment(any(SubscriptionRequestDTO.class), eq("billing_paid_123"));
+        verify(subscriptionService, times(1)).processSubscription(eq(paidUser), any(SubscriptionRequestDTO.class));
+        
+        // 무료 구독 사용자는 결제 요청되지 않아야 함 (이미 Repository에서 필터링됨)
+        verify(subscriptionService, never()).processSubscription(eq(freeUser), any(SubscriptionRequestDTO.class));
+    }
+
+    @Test
+    @DisplayName("구독 청구 대상 조회 - 복합 조건 테스트")
+    void processScheduledPayments_ComplexConditions() {
+        // Given
+        LocalDateTime currentDate = LocalDateTime.now();
+        
+        // 조건을 만족하는 사용자 1: 활성, 유료, 만료됨, 삭제 안됨
+        AppUser validUser1 = new AppUser("valid1", "valid1@example.com", "password", 
+                                         UserRole.ROLE_ADMIN, "refresh_token", null, "customer_valid1_123");
+        validUser1.updateBillingKey("encrypted_billing_key_valid1");
+        
+        Subscription validSubscription1 = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(10000)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(currentDate.minusDays(30))
+                .endDate(currentDate.minusDays(1)) // 만료됨
+                .user(validUser1)
+                .build();
+        validUser1.setSubscription(validSubscription1);
+
+        // 조건을 만족하는 사용자 2: 활성, 유료, 만료됨, 삭제 안됨
+        AppUser validUser2 = new AppUser("valid2", "valid2@example.com", "password", 
+                                         UserRole.ROLE_ADMIN, "refresh_token", null, "customer_valid2_123");
+        validUser2.updateBillingKey("encrypted_billing_key_valid2");
+        
+        Subscription validSubscription2 = Subscription.builder()
+                .planName(SubscriptionType.BASIC)
+                .billingType(SubscriptionBillingType.YEARLY)
+                .amount(100000)
+                .status(SubscriptionStatus.ACTIVE)
+                .startDate(currentDate.minusMonths(12))
+                .endDate(currentDate.minusDays(5)) // 만료됨
+                .user(validUser2)
+                .build();
+        validUser2.setSubscription(validSubscription2);
+
+        // UserRepository에서 조건을 만족하는 사용자만 반환 (실제 구현)
+        // - deletedAt IS NULL
+        // - subscription.status = ACTIVE  
+        // - subscription.billingType != FREE
+        // - subscription.endDate <= currentDate
+        List<AppUser> users = Arrays.asList(validUser1, validUser2);
+        when(userRepository.findUsersRequiringSubscriptionBilling(any(LocalDateTime.class)))
+                .thenReturn(users);
+
+        // BillingKeyEncryptionService mock 설정
+        when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key_valid1"))
+                .thenReturn("billing_valid1_123");
+        when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key_valid2"))
+                .thenReturn("billing_valid2_123");
+
+        when(billingService.requestPayment(any(SubscriptionRequestDTO.class), eq("billing_valid1_123")))
+                .thenReturn(successPaymentResponse);
+        when(billingService.requestPayment(any(SubscriptionRequestDTO.class), eq("billing_valid2_123")))
+                .thenReturn(successPaymentResponse);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then
+        verify(userRepository, times(1)).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        
+        // 두 사용자 모두 결제 요청되어야 함
+        verify(billingService, times(1)).requestPayment(any(SubscriptionRequestDTO.class), eq("billing_valid1_123"));
+        verify(billingService, times(1)).requestPayment(any(SubscriptionRequestDTO.class), eq("billing_valid2_123"));
+        verify(subscriptionService, times(1)).processSubscription(eq(validUser1), any(SubscriptionRequestDTO.class));
+        verify(subscriptionService, times(1)).processSubscription(eq(validUser2), any(SubscriptionRequestDTO.class));
+        
+        // 총 2번의 결제 처리가 이루어져야 함
+        verify(billingService, times(2)).requestPayment(any(SubscriptionRequestDTO.class), anyString());
+        verify(subscriptionService, times(2)).processSubscription(any(AppUser.class), any(SubscriptionRequestDTO.class));
+    }
 }

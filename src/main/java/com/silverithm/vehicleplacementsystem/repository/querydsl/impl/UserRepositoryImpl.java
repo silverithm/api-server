@@ -27,7 +27,8 @@ public class UserRepositoryImpl implements UserRepositoryCustom {
                 .selectFrom(appUser)
                 .join(appUser.subscription, subscription)
                 .where(subscription.endDate.loe(currentDate), subscription.status.eq(SubscriptionStatus.ACTIVE),
-                        subscription.billingType.ne(SubscriptionBillingType.FREE))
+                        subscription.billingType.ne(SubscriptionBillingType.FREE),
+                        appUser.deletedAt.isNull())
                 .fetch();
     }
 }

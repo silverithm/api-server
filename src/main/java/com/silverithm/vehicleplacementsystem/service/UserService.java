@@ -21,6 +21,7 @@ import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
+import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
@@ -410,8 +411,10 @@ public class UserService {
     public void deleteUser(String userEmail) {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+        findUser.getSubscription().updateStatus(SubscriptionStatus.INACTIVE);
         findUser.getCompany().updateExpose(false);
         findUser.softDelete();
+
     }
 
     public UserInfoResponseDTO getUserInfo(String userEmail) {
