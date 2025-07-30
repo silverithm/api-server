@@ -67,10 +67,6 @@ public class MemberService {
             throw new IllegalArgumentException("이미 가입 요청된 사용자명입니다: " + requestDTO.getUsername());
         }
 
-        if (memberJoinRequestRepository.existsByEmail(requestDTO.getEmail())) {
-            throw new IllegalArgumentException("이미 가입 요청된 이메일입니다: " + requestDTO.getEmail());
-        }
-
         // Role enum 변환
         Member.Role role;
         try {
