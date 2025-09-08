@@ -27,6 +27,4 @@ public class AdminVacationCreateRequestDTO {
     private VacationRequest.VacationDuration duration;
     
     private String type;
-    
-    private String adminNote;
 }
