@@ -532,6 +532,219 @@ public class VacationService {
         }
     }
 
+    // 관리자가 직원 대신 휴무 신청하는 메서드
+    
+    @Transactional
+    public VacationRequestDTO createVacationRequestByAdmin(Long companyId, AdminVacationCreateRequestDTO requestDTO) {
+        log.info("[Vacation Service] 관리자가 직원 대신 휴가 신청: companyId={}, memberId={}, 날짜: {}", 
+                companyId, requestDTO.getMemberId(), requestDTO.getDate());
+        
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+        
+        Member member = memberRepository.findById(requestDTO.getMemberId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다: " + requestDTO.getMemberId()));
+        
+        // 직원이 해당 회사 소속인지 확인
+        if (!member.getCompany().getId().equals(companyId)) {
+            throw new IllegalArgumentException("해당 직원은 이 회사 소속이 아닙니다");
+        }
+        
+        // 직원의 역할을 VacationRequest.Role로 변환
+        VacationRequest.Role vacationRole;
+        switch (member.getRole()) {
+            case CAREGIVER:
+                vacationRole = VacationRequest.Role.CAREGIVER;
+                break;
+            case OFFICE:
+                vacationRole = VacationRequest.Role.OFFICE;
+                break;
+            default:
+                vacationRole = VacationRequest.Role.ALL;
+                break;
+        }
+        
+        VacationRequest entity = VacationRequest.builder()
+                .userName(member.getName())
+                .date(requestDTO.getDate())
+                .reason(requestDTO.getReason() != null ? requestDTO.getReason() : "관리자 대신 신청")
+                .role(vacationRole)
+                .type(requestDTO.getType() != null ? requestDTO.getType() : "admin_created")
+                .duration(requestDTO.getDuration() != null ? requestDTO.getDuration().name() : "FULL_DAY")
+                .userId(member.getId().toString())
+                .company(company)
+                .status(VacationRequest.VacationStatus.APPROVED) // 관리자가 신청하면 자동 승인
+                .build();
+        
+        VacationRequest saved = vacationRequestRepository.save(entity);
+        
+        log.info("[Vacation Service] 관리자 대신 휴가 신청 완료: 회사 {}, 직원 {}, ID={}", 
+                company.getName(), member.getName(), saved.getId());
+        
+        // 직원에게 휴무 등록 알림 전송
+        try {
+            sendVacationCreatedByAdminNotificationToUser(saved, member);
+        } catch (Exception e) {
+            log.error("[Vacation Service] 직원 알림 전송 실패: {}", e.getMessage());
+        }
+        
+        return VacationRequestDTO.fromEntity(saved);
+    }
+    
+    private void sendVacationCreatedByAdminNotificationToUser(VacationRequest vacation, Member member) {
+        if (member.getFcmToken() != null && !member.getFcmToken().isEmpty()) {
+            notificationService.sendVacationApprovedNotification(
+                    member.getFcmToken(),
+                    member.getId().toString(),
+                    member.getName(),
+                    vacation.getDate().toString(),
+                    vacation.getId()
+            );
+        } else {
+            log.warn("[Vacation Service] 직원 FCM 토큰을 찾을 수 없음: {}", member.getName());
+        }
+    }
+    
+    // 일괄 승인/거부 메서드들
+    
+    @Transactional
+    public VacationBulkActionResponseDTO bulkApproveVacations(List<Long> vacationIds) {
+        log.info("[Vacation Service] 휴가 일괄 승인: {}건", vacationIds.size());
+        
+        if (vacationIds == null || vacationIds.isEmpty()) {
+            return VacationBulkActionResponseDTO.builder()
+                    .totalRequested(0)
+                    .successCount(0)
+                    .failureCount(0)
+                    .message("처리할 휴가가 없습니다")
+                    .build();
+        }
+        
+        // 한 번에 모든 휴가 신청 조회
+        List<VacationRequest> vacations = vacationRequestRepository.findAllById(vacationIds);
+        Map<Long, VacationRequest> vacationMap = vacations.stream()
+                .collect(Collectors.toMap(VacationRequest::getId, Function.identity()));
+        
+        List<VacationRequest> toUpdate = new ArrayList<>();
+        List<Long> successIds = new ArrayList<>();
+        List<Long> failureIds = new ArrayList<>();
+        Map<Long, String> failureReasons = new HashMap<>();
+        
+        // 각 ID에 대해 처리
+        for (Long vacationId : vacationIds) {
+            VacationRequest vacation = vacationMap.get(vacationId);
+            
+            if (vacation == null) {
+                failureIds.add(vacationId);
+                failureReasons.put(vacationId, "휴가 신청을 찾을 수 없습니다");
+                continue;
+            }
+            
+            if (vacation.getStatus() == VacationRequest.VacationStatus.APPROVED) {
+                failureIds.add(vacationId);
+                failureReasons.put(vacationId, "이미 승인된 휴가입니다");
+                continue;
+            }
+            
+            vacation.setStatus(VacationRequest.VacationStatus.APPROVED);
+            toUpdate.add(vacation);
+            successIds.add(vacationId);
+        }
+        
+        // 변경된 모든 엔티티를 한 번에 저장
+        if (!toUpdate.isEmpty()) {
+            vacationRequestRepository.saveAll(toUpdate);
+            
+            // 알림 전송 (비동기 처리 고려 가능)
+            for (VacationRequest vacation : toUpdate) {
+                try {
+                    sendVacationApprovedNotificationToUser(vacation);
+                } catch (Exception e) {
+                    log.error("[Vacation Service] 휴가 승인 알림 전송 실패: ID={}", vacation.getId(), e);
+                }
+            }
+        }
+        
+        return VacationBulkActionResponseDTO.builder()
+                .totalRequested(vacationIds.size())
+                .successCount(successIds.size())
+                .failureCount(failureIds.size())
+                .successIds(successIds)
+                .failureIds(failureIds)
+                .failureReasons(failureReasons)
+                .message(String.format("%d건 중 %d건 승인 완료", vacationIds.size(), successIds.size()))
+                .build();
+    }
+    
+    @Transactional
+    public VacationBulkActionResponseDTO bulkRejectVacations(List<Long> vacationIds) {
+        log.info("[Vacation Service] 휴가 일괄 거부: {}건", vacationIds.size());
+        
+        if (vacationIds == null || vacationIds.isEmpty()) {
+            return VacationBulkActionResponseDTO.builder()
+                    .totalRequested(0)
+                    .successCount(0)
+                    .failureCount(0)
+                    .message("처리할 휴가가 없습니다")
+                    .build();
+        }
+        
+        // 한 번에 모든 휴가 신청 조회
+        List<VacationRequest> vacations = vacationRequestRepository.findAllById(vacationIds);
+        Map<Long, VacationRequest> vacationMap = vacations.stream()
+                .collect(Collectors.toMap(VacationRequest::getId, Function.identity()));
+        
+        List<VacationRequest> toUpdate = new ArrayList<>();
+        List<Long> successIds = new ArrayList<>();
+        List<Long> failureIds = new ArrayList<>();
+        Map<Long, String> failureReasons = new HashMap<>();
+        
+        // 각 ID에 대해 처리
+        for (Long vacationId : vacationIds) {
+            VacationRequest vacation = vacationMap.get(vacationId);
+            
+            if (vacation == null) {
+                failureIds.add(vacationId);
+                failureReasons.put(vacationId, "휴가 신청을 찾을 수 없습니다");
+                continue;
+            }
+            
+            if (vacation.getStatus() == VacationRequest.VacationStatus.REJECTED) {
+                failureIds.add(vacationId);
+                failureReasons.put(vacationId, "이미 거부된 휴가입니다");
+                continue;
+            }
+            
+            vacation.setStatus(VacationRequest.VacationStatus.REJECTED);
+            toUpdate.add(vacation);
+            successIds.add(vacationId);
+        }
+        
+        // 변경된 모든 엔티티를 한 번에 저장
+        if (!toUpdate.isEmpty()) {
+            vacationRequestRepository.saveAll(toUpdate);
+            
+            // 알림 전송 (비동기 처리 고려 가능)
+            for (VacationRequest vacation : toUpdate) {
+                try {
+                    sendVacationRejectedNotificationToUser(vacation);
+                } catch (Exception e) {
+                    log.error("[Vacation Service] 휴가 거부 알림 전송 실패: ID={}", vacation.getId(), e);
+                }
+            }
+        }
+        
+        return VacationBulkActionResponseDTO.builder()
+                .totalRequested(vacationIds.size())
+                .successCount(successIds.size())
+                .failureCount(failureIds.size())
+                .successIds(successIds)
+                .failureIds(failureIds)
+                .failureReasons(failureReasons)
+                .message(String.format("%d건 중 %d건 거부 완료", vacationIds.size(), successIds.size()))
+                .build();
+    }
+
     // 멤버 개인용 휴무 관련 메서드들
 
     /**

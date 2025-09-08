@@ -150,6 +150,38 @@ public class VacationController {
         }
     }
     
+    @PostMapping("/admin/submit-for-member")
+    public ResponseEntity<Map<String, Object>> createVacationRequestByAdmin(
+            @Valid @RequestBody AdminVacationCreateRequestDTO requestDTO,
+            @RequestParam Long companyId) {
+        
+        try {
+            log.info("[Vacation API] 관리자가 직원 대신 휴가 신청: companyId={}, memberId={}, 날짜: {}", 
+                    companyId, requestDTO.getMemberId(), requestDTO.getDate());
+            
+            VacationRequestDTO result = vacationService.createVacationRequestByAdmin(companyId, requestDTO);
+            
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "message", "직원의 휴무가 성공적으로 등록되었습니다",
+                            "data", result
+                    ));
+                    
+        } catch (IllegalArgumentException e) {
+            log.error("[Vacation API] 관리자 휴가 신청 유효성 검증 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Vacation API] 관리자 휴가 신청 생성 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "휴가 신청을 처리하는 중 오류가 발생했습니다."));
+        }
+    }
+    
     @PutMapping("/approve/{id}")
     public ResponseEntity<Map<String, String>> approveVacation(@PathVariable Long id) {
         try {
@@ -174,6 +206,28 @@ public class VacationController {
         }
     }
     
+    @PutMapping("/bulk-approve")
+    public ResponseEntity<VacationBulkActionResponseDTO> bulkApproveVacations(
+            @Valid @RequestBody VacationBulkActionRequestDTO requestDTO) {
+        try {
+            log.info("[Vacation API] 휴가 일괄 승인 요청: {}건", requestDTO.getVacationIds().size());
+            
+            VacationBulkActionResponseDTO response = vacationService.bulkApproveVacations(requestDTO.getVacationIds());
+            
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(response);
+                    
+        } catch (Exception e) {
+            log.error("[Vacation API] 휴가 일괄 승인 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(VacationBulkActionResponseDTO.builder()
+                            .message("휴가 일괄 승인 중 오류가 발생했습니다")
+                            .build());
+        }
+    }
+    
     @PutMapping("/reject/{id}")
     public ResponseEntity<Map<String, String>> rejectVacation(@PathVariable Long id) {
         try {
@@ -195,6 +249,28 @@ public class VacationController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "휴가 거부 중 오류가 발생했습니다"));
+        }
+    }
+    
+    @PutMapping("/bulk-reject")
+    public ResponseEntity<VacationBulkActionResponseDTO> bulkRejectVacations(
+            @Valid @RequestBody VacationBulkActionRequestDTO requestDTO) {
+        try {
+            log.info("[Vacation API] 휴가 일괄 거부 요청: {}건", requestDTO.getVacationIds().size());
+            
+            VacationBulkActionResponseDTO response = vacationService.bulkRejectVacations(requestDTO.getVacationIds());
+            
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(response);
+                    
+        } catch (Exception e) {
+            log.error("[Vacation API] 휴가 일괄 거부 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(VacationBulkActionResponseDTO.builder()
+                            .message("휴가 일괄 거부 중 오류가 발생했습니다")
+                            .build());
         }
     }
     
