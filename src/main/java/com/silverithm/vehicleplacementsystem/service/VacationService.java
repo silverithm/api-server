@@ -573,7 +573,7 @@ public class VacationService {
                 .duration(requestDTO.getDuration() != null ? requestDTO.getDuration().name() : "FULL_DAY")
                 .userId(member.getId().toString())
                 .company(company)
-                .status(VacationRequest.VacationStatus.APPROVED) // 관리자가 신청하면 자동 승인
+                .status(VacationRequest.VacationStatus.PENDING) // 관리자가 신청해도 대기중 상태로 생성
                 .build();
         
         VacationRequest saved = vacationRequestRepository.save(entity);
