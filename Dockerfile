@@ -1,4 +1,4 @@
-FROM openjdk:17
+FROM eclipse-temurin:17-jre
 ENV TZ=Asia/Seoul
 CMD ["./gradlew", "clean", "build"]
 COPY ./build/libs/vehicle-placement-system-0.0.1-SNAPSHOT.jar /app.jar
