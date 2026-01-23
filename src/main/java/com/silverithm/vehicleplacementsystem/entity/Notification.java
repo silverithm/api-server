@@ -87,6 +87,7 @@ public class Notification {
         MEMBER_JOIN_REQUESTED,  // 회원가입 요청 (관리자에게)
         MEMBER_JOIN_APPROVED,   // 회원가입 승인
         MEMBER_JOIN_REJECTED,   // 회원가입 거부
+        NOTICE,                 // 공지사항
         GENERAL                 // 일반 알림
     }
 } 

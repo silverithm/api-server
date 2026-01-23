@@ -66,6 +66,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // FCM 토큰 관련 메서드
     List<Member> findByRoleInAndFcmTokenIsNotNull(List<Member.Role> roles);
 
+    // 회사별 FCM 토큰이 있는 멤버 조회
+    @Query("SELECT m FROM Member m WHERE m.company.id = :companyId AND m.fcmToken IS NOT NULL AND m.status = 'ACTIVE'")
+    List<Member> findByCompanyIdAndFcmTokenIsNotNull(@Param("companyId") Long companyId);
+
     Optional<Member> findByName(String name);
 
     @Query("SELECT m FROM Member m WHERE m.email = :email AND m.status = 'ACTIVE'")
