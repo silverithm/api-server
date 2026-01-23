@@ -82,3 +82,6 @@ src/main/resources/firebase/
 
 # Build backup directory
 build_backup/
+
+# macOS
+.DS_Store
