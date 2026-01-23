@@ -11,6 +11,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -48,5 +49,7 @@ public class ScheduleRequestDTO {
     private Boolean isAllDay = false;
 
     @Builder.Default
-    private String reminder = "NONE"; // NONE, TEN_MIN, THIRTY_MIN, ONE_HOUR, ONE_DAY
+    private Boolean sendNotification = false;
+
+    private List<Long> participantIds;
 }

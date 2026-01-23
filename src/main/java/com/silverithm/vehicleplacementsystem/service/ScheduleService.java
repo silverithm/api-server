@@ -5,12 +5,15 @@ import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.Company;
-import com.silverithm.vehicleplacementsystem.entity.ReminderType;
+import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleCategory;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleLabel;
+import com.silverithm.vehicleplacementsystem.entity.ScheduleParticipant;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
+import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleLabelRepository;
+import com.silverithm.vehicleplacementsystem.repository.ScheduleParticipantRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,7 +33,10 @@ public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleLabelRepository scheduleLabelRepository;
+    private final ScheduleParticipantRepository scheduleParticipantRepository;
     private final CompanyRepository companyRepository;
+    private final MemberRepository memberRepository;
+    private final FCMService fcmService;
 
     // ==================== Schedule CRUD ====================
 
@@ -62,7 +69,7 @@ public class ScheduleService {
                 .endDate(request.getEndDate())
                 .endTime(request.getEndTime())
                 .isAllDay(request.getIsAllDay())
-                .reminder(parseReminder(request.getReminder()))
+                .sendNotification(request.getSendNotification() != null ? request.getSendNotification() : false)
                 .authorId(authorId)
                 .authorName(authorName)
                 .build();
@@ -70,7 +77,32 @@ public class ScheduleService {
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 저장 완료: id={}", saved.getId());
 
-        return ScheduleDTO.fromEntity(saved);
+        // 참석자 추가
+        if (request.getParticipantIds() != null && !request.getParticipantIds().isEmpty()) {
+            List<ScheduleParticipant> participants = new ArrayList<>();
+            for (Long memberId : request.getParticipantIds()) {
+                Member member = memberRepository.findById(memberId).orElse(null);
+                if (member != null) {
+                    ScheduleParticipant participant = ScheduleParticipant.builder()
+                            .schedule(saved)
+                            .memberId(member.getId())
+                            .memberName(member.getName())
+                            .build();
+                    participants.add(participant);
+                }
+            }
+            if (!participants.isEmpty()) {
+                scheduleParticipantRepository.saveAll(participants);
+                log.info("[Schedule Service] 참석자 {} 명 추가 완료", participants.size());
+
+                // 알림 전송
+                if (Boolean.TRUE.equals(request.getSendNotification())) {
+                    sendNotificationsToParticipants(participants, saved);
+                }
+            }
+        }
+
+        return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved));
     }
 
     /**
@@ -100,13 +132,41 @@ public class ScheduleService {
                 request.getEndDate(),
                 request.getEndTime(),
                 request.getIsAllDay(),
-                request.getReminder() != null ? parseReminder(request.getReminder()) : null
+                request.getSendNotification()
         );
 
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 수정 완료: id={}", saved.getId());
 
-        return ScheduleDTO.fromEntity(saved);
+        // 기존 참석자 삭제
+        scheduleParticipantRepository.deleteByScheduleId(scheduleId);
+
+        // 새로운 참석자 추가
+        if (request.getParticipantIds() != null && !request.getParticipantIds().isEmpty()) {
+            List<ScheduleParticipant> participants = new ArrayList<>();
+            for (Long memberId : request.getParticipantIds()) {
+                Member member = memberRepository.findById(memberId).orElse(null);
+                if (member != null) {
+                    ScheduleParticipant participant = ScheduleParticipant.builder()
+                            .schedule(saved)
+                            .memberId(member.getId())
+                            .memberName(member.getName())
+                            .build();
+                    participants.add(participant);
+                }
+            }
+            if (!participants.isEmpty()) {
+                scheduleParticipantRepository.saveAll(participants);
+                log.info("[Schedule Service] 참석자 {} 명 업데이트 완료", participants.size());
+
+                // 알림 전송
+                if (Boolean.TRUE.equals(request.getSendNotification())) {
+                    sendNotificationsToParticipants(participants, saved);
+                }
+            }
+        }
+
+        return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved));
     }
 
     /**
@@ -289,15 +349,29 @@ public class ScheduleService {
         }
     }
 
-    private ReminderType parseReminder(String reminder) {
-        if (reminder == null) {
-            return ReminderType.NONE;
-        }
-        try {
-            return ReminderType.valueOf(reminder.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            log.warn("[Schedule Service] 알 수 없는 알림 타입: {}", reminder);
-            return ReminderType.NONE;
+    /**
+     * 참석자들에게 FCM 알림 전송
+     */
+    private void sendNotificationsToParticipants(List<ScheduleParticipant> participants, Schedule schedule) {
+        log.info("[Schedule Service] 참석자 {}명에게 알림 전송 시작", participants.size());
+
+        for (ScheduleParticipant participant : participants) {
+            try {
+                Member member = memberRepository.findById(participant.getMemberId()).orElse(null);
+                if (member != null && member.getFcmToken() != null && !member.getFcmToken().isEmpty()) {
+                    String title = "새로운 일정 알림";
+                    String body = String.format("%s - %s", schedule.getTitle(),
+                            schedule.getStartDate().toString());
+
+                    fcmService.sendNotification(member.getFcmToken(), title, body);
+                    log.info("[Schedule Service] 알림 전송 완료: member={}", member.getName());
+                } else {
+                    log.debug("[Schedule Service] FCM 토큰 없음: memberId={}", participant.getMemberId());
+                }
+            } catch (Exception e) {
+                log.error("[Schedule Service] 알림 전송 실패: memberId={}",
+                        participant.getMemberId(), e);
+            }
         }
     }
 }

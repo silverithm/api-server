@@ -10,6 +10,8 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "schedules")
@@ -59,9 +61,13 @@ public class Schedule {
     @Builder.Default
     private Boolean isAllDay = false;
 
-    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    private ReminderType reminder = ReminderType.NONE;
+    private Boolean sendNotification = false;
+
+    @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ScheduleParticipant> participants = new ArrayList<>();
 
     @Column(nullable = false)
     private String authorId;
@@ -85,8 +91,8 @@ public class Schedule {
         if (category == null) {
             category = ScheduleCategory.OTHER;
         }
-        if (reminder == null) {
-            reminder = ReminderType.NONE;
+        if (sendNotification == null) {
+            sendNotification = false;
         }
     }
 
@@ -98,7 +104,7 @@ public class Schedule {
     public void update(String title, String content, ScheduleCategory category,
                       ScheduleLabel label, String location, LocalDate startDate,
                       LocalTime startTime, LocalDate endDate, LocalTime endTime,
-                      Boolean isAllDay, ReminderType reminder) {
+                      Boolean isAllDay, Boolean sendNotification) {
         if (title != null) {
             this.title = title;
         }
@@ -123,8 +129,8 @@ public class Schedule {
         if (isAllDay != null) {
             this.isAllDay = isAllDay;
         }
-        if (reminder != null) {
-            this.reminder = reminder;
+        if (sendNotification != null) {
+            this.sendNotification = sendNotification;
         }
     }
 }

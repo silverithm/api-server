@@ -10,6 +10,8 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -29,8 +31,8 @@ public class ScheduleDTO {
     private LocalDate endDate;
     private LocalTime endTime;
     private Boolean isAllDay;
-    private String reminder;
-    private String reminderDisplayName;
+    private Boolean sendNotification;
+    private List<ScheduleParticipantDTO> participants;
     private String authorId;
     private String authorName;
     private Long companyId;
@@ -50,8 +52,7 @@ public class ScheduleDTO {
                 .endDate(schedule.getEndDate())
                 .endTime(schedule.getEndTime())
                 .isAllDay(schedule.getIsAllDay())
-                .reminder(schedule.getReminder() != null ? schedule.getReminder().name() : null)
-                .reminderDisplayName(schedule.getReminder() != null ? schedule.getReminder().getDisplayName() : null)
+                .sendNotification(schedule.getSendNotification())
                 .authorId(schedule.getAuthorId())
                 .authorName(schedule.getAuthorName())
                 .companyId(schedule.getCompany().getId())
@@ -60,6 +61,12 @@ public class ScheduleDTO {
 
         if (schedule.getLabel() != null) {
             builder.label(ScheduleLabelDTO.fromEntity(schedule.getLabel()));
+        }
+
+        if (schedule.getParticipants() != null && !schedule.getParticipants().isEmpty()) {
+            builder.participants(schedule.getParticipants().stream()
+                    .map(ScheduleParticipantDTO::fromEntity)
+                    .collect(Collectors.toList()));
         }
 
         return builder.build();
