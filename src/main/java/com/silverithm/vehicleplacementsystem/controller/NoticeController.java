@@ -338,6 +338,47 @@ public class NoticeController {
         }
     }
 
+    /**
+     * 읽음 기록 (사용자가 공지사항을 읽었음을 기록)
+     */
+    @PostMapping("/{noticeId}/readers")
+    public ResponseEntity<Map<String, Object>> markAsRead(
+            @PathVariable Long noticeId,
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+
+        try {
+            log.info("[Notice API] 읽음 기록: noticeId={}", noticeId);
+
+            // 요청 또는 인증 정보에서 사용자 정보 추출
+            String userId = request.get("userId");
+            String userName = request.get("userName");
+
+            if (userId == null || userId.isEmpty()) {
+                userId = authentication != null ? authentication.getName() : "unknown";
+            }
+            if (userName == null || userName.isEmpty()) {
+                userName = "사용자";
+            }
+
+            NoticeReaderDTO reader = noticeService.markAsRead(noticeId, userId, userName);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "reader", reader,
+                            "message", "읽음 기록이 완료되었습니다."
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Notice API] 읽음 기록 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "읽음 기록 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
     @RequestMapping(method = RequestMethod.OPTIONS)
     public ResponseEntity<Void> handleOptions() {
         return ResponseEntity.ok()
