@@ -1,7 +1,10 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.CreateNoticeRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.NoticeCommentDTO;
+import com.silverithm.vehicleplacementsystem.dto.NoticeCommentRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.NoticeDTO;
+import com.silverithm.vehicleplacementsystem.dto.NoticeReaderDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateNoticeRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.NoticeService;
 import lombok.RequiredArgsConstructor;
@@ -219,6 +222,119 @@ public class NoticeController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "조회수 증가 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    // ==================== 댓글 API ====================
+
+    /**
+     * 댓글 목록 조회
+     */
+    @GetMapping("/{noticeId}/comments")
+    public ResponseEntity<Map<String, Object>> getComments(@PathVariable Long noticeId) {
+
+        try {
+            log.info("[Notice API] 댓글 목록 조회: noticeId={}", noticeId);
+
+            List<NoticeCommentDTO> comments = noticeService.getComments(noticeId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("comments", comments));
+
+        } catch (Exception e) {
+            log.error("[Notice API] 댓글 목록 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "댓글 목록 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 댓글 생성
+     */
+    @PostMapping("/{noticeId}/comments")
+    public ResponseEntity<Map<String, Object>> createComment(
+            @PathVariable Long noticeId,
+            @Valid @RequestBody NoticeCommentRequestDTO request,
+            Authentication authentication) {
+
+        try {
+            log.info("[Notice API] 댓글 생성: noticeId={}", noticeId);
+
+            // 인증 정보에서 작성자 정보 추출, 또는 요청에서 가져옴
+            String authorId = request.getAuthorId() != null ? request.getAuthorId() :
+                    (authentication != null ? authentication.getName() : "unknown");
+            String authorName = request.getAuthorName() != null ? request.getAuthorName() : "사용자";
+
+            NoticeCommentDTO comment = noticeService.createComment(noticeId, authorId, authorName, request.getContent());
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "comment", comment,
+                            "message", "댓글이 등록되었습니다."
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Notice API] 댓글 생성 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "댓글 등록 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 댓글 삭제
+     */
+    @DeleteMapping("/{noticeId}/comments/{commentId}")
+    public ResponseEntity<Map<String, Object>> deleteComment(
+            @PathVariable Long noticeId,
+            @PathVariable Long commentId) {
+
+        try {
+            log.info("[Notice API] 댓글 삭제: noticeId={}, commentId={}", noticeId, commentId);
+
+            noticeService.deleteComment(noticeId, commentId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "message", "댓글이 삭제되었습니다."
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Notice API] 댓글 삭제 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "댓글 삭제 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    // ==================== 읽음 확인 API ====================
+
+    /**
+     * 읽은 사용자 목록 조회
+     */
+    @GetMapping("/{noticeId}/readers")
+    public ResponseEntity<Map<String, Object>> getReaders(@PathVariable Long noticeId) {
+
+        try {
+            log.info("[Notice API] 읽은 사용자 목록 조회: noticeId={}", noticeId);
+
+            List<NoticeReaderDTO> readers = noticeService.getReaders(noticeId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("readers", readers));
+
+        } catch (Exception e) {
+            log.error("[Notice API] 읽은 사용자 목록 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "읽은 사용자 목록 조회 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 

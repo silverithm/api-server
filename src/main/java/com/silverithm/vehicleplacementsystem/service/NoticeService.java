@@ -2,13 +2,19 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.CreateNoticeRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.NoticeCommentDTO;
 import com.silverithm.vehicleplacementsystem.dto.NoticeDTO;
+import com.silverithm.vehicleplacementsystem.dto.NoticeReaderDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateNoticeRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Notice;
+import com.silverithm.vehicleplacementsystem.entity.NoticeComment;
+import com.silverithm.vehicleplacementsystem.entity.NoticeReader;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.NoticeCommentRepository;
+import com.silverithm.vehicleplacementsystem.repository.NoticeReaderRepository;
 import com.silverithm.vehicleplacementsystem.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +33,8 @@ import java.util.stream.Collectors;
 public class NoticeService {
 
     private final NoticeRepository noticeRepository;
+    private final NoticeCommentRepository noticeCommentRepository;
+    private final NoticeReaderRepository noticeReaderRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
@@ -213,6 +221,120 @@ public class NoticeService {
                 "draft", draft,
                 "archived", archived
         );
+    }
+
+    // ==================== 댓글 관련 메서드 ====================
+
+    /**
+     * 댓글 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<NoticeCommentDTO> getComments(Long noticeId) {
+        log.info("[Notice Service] 댓글 목록 조회: noticeId={}", noticeId);
+
+        // 공지사항 존재 확인
+        noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+
+        List<NoticeComment> comments = noticeCommentRepository.findByNoticeIdOrderByCreatedAtAsc(noticeId);
+
+        return comments.stream()
+                .map(NoticeCommentDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 댓글 생성
+     */
+    @Transactional
+    public NoticeCommentDTO createComment(Long noticeId, String authorId, String authorName, String content) {
+        log.info("[Notice Service] 댓글 생성: noticeId={}, author={}", noticeId, authorName);
+
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+
+        NoticeComment comment = NoticeComment.builder()
+                .notice(notice)
+                .authorId(authorId)
+                .authorName(authorName)
+                .content(content)
+                .build();
+
+        NoticeComment saved = noticeCommentRepository.save(comment);
+        log.info("[Notice Service] 댓글 생성 완료: id={}", saved.getId());
+
+        return NoticeCommentDTO.fromEntity(saved);
+    }
+
+    /**
+     * 댓글 삭제
+     */
+    @Transactional
+    public void deleteComment(Long noticeId, Long commentId) {
+        log.info("[Notice Service] 댓글 삭제: noticeId={}, commentId={}", noticeId, commentId);
+
+        // 공지사항 존재 확인
+        noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+
+        NoticeComment comment = noticeCommentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("댓글을 찾을 수 없습니다: " + commentId));
+
+        // 댓글이 해당 공지사항에 속하는지 확인
+        if (!comment.getNotice().getId().equals(noticeId)) {
+            throw new RuntimeException("해당 공지사항의 댓글이 아닙니다.");
+        }
+
+        noticeCommentRepository.delete(comment);
+        log.info("[Notice Service] 댓글 삭제 완료: commentId={}", commentId);
+    }
+
+    // ==================== 읽음 확인 관련 메서드 ====================
+
+    /**
+     * 읽은 사용자 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<NoticeReaderDTO> getReaders(Long noticeId) {
+        log.info("[Notice Service] 읽은 사용자 목록 조회: noticeId={}", noticeId);
+
+        // 공지사항 존재 확인
+        noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+
+        List<NoticeReader> readers = noticeReaderRepository.findByNoticeIdOrderByReadAtDesc(noticeId);
+
+        return readers.stream()
+                .map(NoticeReaderDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 읽음 표시
+     */
+    @Transactional
+    public NoticeReaderDTO markAsRead(Long noticeId, String userId, String userName) {
+        log.info("[Notice Service] 읽음 표시: noticeId={}, userId={}", noticeId, userId);
+
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+
+        // 이미 읽은 경우 기존 기록 반환
+        return noticeReaderRepository.findByNoticeIdAndUserId(noticeId, userId)
+                .map(NoticeReaderDTO::fromEntity)
+                .orElseGet(() -> {
+                    NoticeReader reader = NoticeReader.builder()
+                            .notice(notice)
+                            .userId(userId)
+                            .userName(userName)
+                            .readAt(LocalDateTime.now())
+                            .build();
+
+                    NoticeReader saved = noticeReaderRepository.save(reader);
+                    log.info("[Notice Service] 읽음 표시 완료: id={}", saved.getId());
+
+                    return NoticeReaderDTO.fromEntity(saved);
+                });
     }
 
     /**
