@@ -1,0 +1,3 @@
+-- status 컬럼을 ENUM 타입으로 변경
+ALTER TABLE approval_requests
+    MODIFY COLUMN status ENUM('PENDING', 'APPROVED', 'REJECTED') NOT NULL COMMENT '상태 (PENDING, APPROVED, REJECTED)';
