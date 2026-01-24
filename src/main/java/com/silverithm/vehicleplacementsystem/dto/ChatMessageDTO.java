@@ -4,6 +4,8 @@ import com.silverithm.vehicleplacementsystem.entity.ChatMessage;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -26,6 +28,9 @@ public class ChatMessageDTO {
     private String mimeType;
     private int readCount;
     private String displayContent;
+
+    @Builder.Default
+    private List<ChatReactionDTO.ReactionSummary> reactions = new ArrayList<>();
 
     public static ChatMessageDTO fromEntity(ChatMessage message) {
         return ChatMessageDTO.builder()

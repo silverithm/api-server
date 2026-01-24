@@ -28,6 +28,7 @@ public class ChatService {
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatMessageReadRepository chatMessageReadRepository;
+    private final ChatMessageReactionRepository chatMessageReactionRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -301,19 +302,45 @@ public class ChatService {
     // ==================== 메시지 관리 ====================
 
     /**
-     * 메시지 목록 조회
+     * 메시지 목록 조회 (리액션 포함)
      */
     @Transactional(readOnly = true)
     public List<ChatMessageDTO> getMessages(Long roomId, int page, int size) {
+        return getMessages(roomId, page, size, null);
+    }
+
+    /**
+     * 메시지 목록 조회 (리액션 포함, 현재 사용자 ID로 myReaction 판단)
+     */
+    @Transactional(readOnly = true)
+    public List<ChatMessageDTO> getMessages(Long roomId, int page, int size, String currentUserId) {
         log.info("[Chat Service] 메시지 목록 조회: roomId={}, page={}, size={}", roomId, page, size);
 
         Pageable pageable = PageRequest.of(page, size);
         Page<ChatMessage> messages = chatMessageRepository.findByChatRoomIdOrderByCreatedAtDesc(roomId, pageable);
 
+        // 메시지 ID 목록 추출
+        List<Long> messageIds = messages.getContent().stream()
+                .map(ChatMessage::getId)
+                .collect(Collectors.toList());
+
+        // 한 번에 모든 리액션 조회
+        List<ChatMessageReaction> allReactions = chatMessageReactionRepository.findByMessageIdIn(messageIds);
+
+        // 메시지별로 리액션 그룹화
+        Map<Long, List<ChatMessageReaction>> reactionsByMessage = allReactions.stream()
+                .collect(Collectors.groupingBy(r -> r.getMessage().getId()));
+
         return messages.getContent().stream()
                 .map(msg -> {
                     int readCount = (int) chatMessageReadRepository.countByMessageId(msg.getId());
-                    return ChatMessageDTO.fromEntityWithReadCount(msg, readCount);
+                    ChatMessageDTO dto = ChatMessageDTO.fromEntityWithReadCount(msg, readCount);
+
+                    // 리액션 요약 추가
+                    List<ChatMessageReaction> msgReactions = reactionsByMessage.getOrDefault(msg.getId(), List.of());
+                    dto.setReactions(buildReactionSummaries(msgReactions, currentUserId));
+
+                    return dto;
                 })
                 .collect(Collectors.toList());
     }
@@ -441,6 +468,85 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
+    // ==================== 리액션 관리 ====================
+
+    /**
+     * 리액션 토글 (있으면 삭제, 없으면 추가)
+     */
+    @Transactional
+    public ChatReactionDTO toggleReaction(Long roomId, Long messageId, String userId, String userName, String emoji) {
+        log.info("[Chat Service] 리액션 토글: roomId={}, messageId={}, userId={}, emoji={}",
+                roomId, messageId, userId, emoji);
+
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("메시지를 찾을 수 없습니다: " + messageId));
+
+        if (!message.getChatRoom().getId().equals(roomId)) {
+            throw new RuntimeException("해당 채팅방의 메시지가 아닙니다");
+        }
+
+        // 이미 존재하는지 확인
+        Optional<ChatMessageReaction> existing = chatMessageReactionRepository
+                .findByMessageIdAndUserIdAndEmoji(messageId, userId, emoji);
+
+        if (existing.isPresent()) {
+            // 이미 있으면 삭제
+            chatMessageReactionRepository.delete(existing.get());
+            log.info("[Chat Service] 리액션 삭제됨: id={}", existing.get().getId());
+
+            // WebSocket으로 리액션 삭제 알림
+            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                    .type("REACTION_REMOVED")
+                    .roomId(roomId)
+                    .data(Map.of(
+                            "messageId", messageId,
+                            "userId", userId,
+                            "emoji", emoji
+                    ))
+                    .build();
+            messagingTemplate.convertAndSend("/topic/chat/" + roomId, wsMessage);
+
+            return null; // 삭제됨
+        } else {
+            // 없으면 추가
+            ChatMessageReaction reaction = ChatMessageReaction.builder()
+                    .message(message)
+                    .userId(userId)
+                    .userName(userName)
+                    .emoji(emoji)
+                    .build();
+
+            ChatMessageReaction saved = chatMessageReactionRepository.save(reaction);
+            log.info("[Chat Service] 리액션 추가됨: id={}", saved.getId());
+
+            ChatReactionDTO dto = ChatReactionDTO.fromEntity(saved);
+
+            // WebSocket으로 리액션 추가 알림
+            ChatWebSocketMessage wsMessage = ChatWebSocketMessage.builder()
+                    .type("REACTION_ADDED")
+                    .roomId(roomId)
+                    .data(Map.of(
+                            "messageId", messageId,
+                            "reaction", dto
+                    ))
+                    .build();
+            messagingTemplate.convertAndSend("/topic/chat/" + roomId, wsMessage);
+
+            return dto;
+        }
+    }
+
+    /**
+     * 메시지 리액션 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<ChatReactionDTO.ReactionSummary> getReactions(Long messageId, String currentUserId) {
+        log.info("[Chat Service] 리액션 조회: messageId={}", messageId);
+
+        List<ChatMessageReaction> reactions = chatMessageReactionRepository.findByMessageId(messageId);
+        return buildReactionSummaries(reactions, currentUserId);
+    }
+
     // ==================== 미디어 ====================
 
     /**
@@ -549,6 +655,32 @@ public class ChatService {
         } catch (NumberFormatException e) {
             return "사용자";
         }
+    }
+
+    private List<ChatReactionDTO.ReactionSummary> buildReactionSummaries(
+            List<ChatMessageReaction> reactions, String currentUserId) {
+        // 이모지별로 그룹화
+        Map<String, List<ChatMessageReaction>> byEmoji = reactions.stream()
+                .collect(Collectors.groupingBy(ChatMessageReaction::getEmoji));
+
+        return byEmoji.entrySet().stream()
+                .map(entry -> {
+                    String emoji = entry.getKey();
+                    List<ChatMessageReaction> emojiReactions = entry.getValue();
+                    List<String> userNames = emojiReactions.stream()
+                            .map(ChatMessageReaction::getUserName)
+                            .collect(Collectors.toList());
+                    boolean myReaction = currentUserId != null &&
+                            emojiReactions.stream().anyMatch(r -> r.getUserId().equals(currentUserId));
+
+                    return ChatReactionDTO.ReactionSummary.builder()
+                            .emoji(emoji)
+                            .count(emojiReactions.size())
+                            .userNames(userNames)
+                            .myReaction(myReaction)
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private void sendMessageNotification(ChatRoom room, ChatMessage message) {

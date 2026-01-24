@@ -62,6 +62,10 @@ public class ChatMessage {
     @Builder.Default
     private List<ChatMessageRead> readers = new ArrayList<>();
 
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ChatMessageReaction> reactions = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

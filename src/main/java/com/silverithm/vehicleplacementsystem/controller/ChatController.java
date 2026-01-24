@@ -370,6 +370,78 @@ public class ChatController {
         }
     }
 
+    // ==================== 리액션 API ====================
+
+    /**
+     * 리액션 토글 (추가/삭제)
+     */
+    @PostMapping("/rooms/{roomId}/messages/{messageId}/reactions")
+    public ResponseEntity<Map<String, Object>> toggleReaction(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @RequestBody Map<String, String> request) {
+
+        try {
+            String userId = request.get("userId");
+            String userName = request.get("userName");
+            String emoji = request.get("emoji");
+
+            log.info("[Chat API] 리액션 토글: roomId={}, messageId={}, userId={}, emoji={}",
+                    roomId, messageId, userId, emoji);
+
+            ChatReactionDTO result = chatService.toggleReaction(roomId, messageId, userId, userName, emoji);
+
+            if (result != null) {
+                return ResponseEntity.ok()
+                        .headers(getCorsHeaders())
+                        .body(Map.of(
+                                "success", true,
+                                "action", "added",
+                                "reaction", result
+                        ));
+            } else {
+                return ResponseEntity.ok()
+                        .headers(getCorsHeaders())
+                        .body(Map.of(
+                                "success", true,
+                                "action", "removed"
+                        ));
+            }
+
+        } catch (Exception e) {
+            log.error("[Chat API] 리액션 토글 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "리액션 처리 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 메시지 리액션 목록 조회
+     */
+    @GetMapping("/rooms/{roomId}/messages/{messageId}/reactions")
+    public ResponseEntity<Map<String, Object>> getReactions(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @RequestParam(required = false) String userId) {
+
+        try {
+            log.info("[Chat API] 리액션 조회: roomId={}, messageId={}", roomId, messageId);
+
+            var reactions = chatService.getReactions(messageId, userId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("reactions", reactions));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 리액션 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "리액션 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
     // ==================== 읽음 처리 API ====================
 
     /**
