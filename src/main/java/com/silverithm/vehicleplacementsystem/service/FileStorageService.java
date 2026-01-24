@@ -108,6 +108,8 @@ public class FileStorageService {
         String relativePath = subDirectory + "/" + storedFileName;
         String s3Key = folder + relativePath;
 
+        log.info("[FileStorage] PutObject 요청 시작: bucket={}, key={}, originalFile={}", bucketName, s3Key, originalFileName);
+
         try {
             // Content-Type 결정
             String contentType = determineContentType(extension);
@@ -121,12 +123,15 @@ public class FileStorageService {
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
 
-            log.info("[FileStorage] S3 파일 업로드 완료: {} -> s3://{}/{}", originalFileName, bucketName, s3Key);
+            log.info("[FileStorage] PutObject 성공: key={}, size={}bytes, returnPath={}", s3Key, file.getSize(), relativePath);
 
             // folder prefix를 제외한 상대 경로 반환
             return relativePath;
         } catch (S3Exception e) {
-            log.error("[FileStorage] S3 업로드 실패: {}", e.getMessage());
+            log.error("[FileStorage] PutObject 실패: key={}, statusCode={}, errorCode={}, errorMessage={}",
+                    s3Key, e.statusCode(),
+                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : "N/A",
+                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorMessage() : e.getMessage());
             throw new IOException("S3 파일 업로드에 실패했습니다: " + e.getMessage(), e);
         }
     }
@@ -137,21 +142,25 @@ public class FileStorageService {
     public byte[] loadFile(String filePath) throws IOException {
         checkS3Enabled();
 
-        try {
-            // folder prefix 추가
-            String s3Key = folder + filePath;
+        // folder prefix 추가
+        String s3Key = folder + filePath;
+        log.info("[FileStorage] GetObject 요청 시작: bucket={}, key={}", bucketName, s3Key);
 
+        try {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
                     .build();
 
-            return s3Client.getObjectAsBytes(getObjectRequest).asByteArray();
+            byte[] content = s3Client.getObjectAsBytes(getObjectRequest).asByteArray();
+            log.info("[FileStorage] GetObject 성공: key={}, size={}bytes", s3Key, content.length);
+            return content;
         } catch (NoSuchKeyException e) {
-            log.warn("[FileStorage] S3 파일을 찾을 수 없음: {}", filePath);
+            log.warn("[FileStorage] GetObject 실패 - 파일 없음: key={}, statusCode={}", s3Key, e.statusCode());
             throw new IOException("파일을 찾을 수 없습니다: " + filePath);
         } catch (S3Exception e) {
-            log.error("[FileStorage] S3 파일 읽기 실패: {}", e.getMessage());
+            log.error("[FileStorage] GetObject 실패: key={}, statusCode={}, errorCode={}, message={}",
+                    s3Key, e.statusCode(), e.awsErrorDetails().errorCode(), e.awsErrorDetails().errorMessage());
             throw new IOException("S3 파일 읽기에 실패했습니다: " + e.getMessage(), e);
         }
     }
@@ -184,27 +193,32 @@ public class FileStorageService {
      */
     public boolean fileExists(String filePath) {
         if (!s3Enabled) {
+            log.warn("[FileStorage] HeadObject 스킵 - S3 비활성화");
             return false;
         }
 
-        try {
-            // folder prefix 추가
-            String s3Key = folder + filePath;
-            log.info("[FileStorage] 파일 존재 확인: bucket={}, s3Key={}, folder={}", bucketName, s3Key, folder);
+        // folder prefix 추가
+        String s3Key = folder + filePath;
+        log.info("[FileStorage] HeadObject 요청 시작: bucket={}, key={}", bucketName, s3Key);
 
+        try {
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
                     .build();
 
-            s3Client.headObject(headObjectRequest);
-            log.info("[FileStorage] 파일 존재 확인 성공: {}", s3Key);
+            HeadObjectResponse response = s3Client.headObject(headObjectRequest);
+            log.info("[FileStorage] HeadObject 성공: key={}, contentLength={}, contentType={}",
+                    s3Key, response.contentLength(), response.contentType());
             return true;
         } catch (NoSuchKeyException e) {
-            log.warn("[FileStorage] S3 파일 없음: {}", filePath);
+            log.warn("[FileStorage] HeadObject 실패 - 파일 없음: key={}, statusCode={}", s3Key, e.statusCode());
             return false;
         } catch (S3Exception e) {
-            log.error("[FileStorage] S3 파일 존재 확인 실패: bucket={}, key={}, error={}", bucketName, folder + filePath, e.getMessage());
+            log.error("[FileStorage] HeadObject 실패: key={}, statusCode={}, errorCode={}, errorMessage={}",
+                    s3Key, e.statusCode(),
+                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : "N/A",
+                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorMessage() : e.getMessage());
             return false;
         }
     }
