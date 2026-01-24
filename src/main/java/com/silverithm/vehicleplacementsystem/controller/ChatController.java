@@ -507,10 +507,9 @@ public class ChatController {
             String filePath = fileStorageService.storeFile(file, "chat/" + roomId);
             log.info("[Chat API] 파일 저장 완료: filePath={}", filePath);
 
-            // baseUrl이 null인 경우 기본값 사용
-            String effectiveBaseUrl = (baseUrl != null && !baseUrl.isEmpty()) ? baseUrl : "https://silverithm.site";
-            String fileUrl = effectiveBaseUrl + "/uploads/" + filePath;
-            log.info("[Chat API] 파일 URL 생성: {}", fileUrl);
+            // S3 URL 직접 사용 (서버 부하 감소, 더 빠른 다운로드)
+            String fileUrl = fileStorageService.getFileUrl(filePath);
+            log.info("[Chat API] S3 파일 URL 생성: {}", fileUrl);
 
             // 파일 타입 결정
             String contentType = file.getContentType();
