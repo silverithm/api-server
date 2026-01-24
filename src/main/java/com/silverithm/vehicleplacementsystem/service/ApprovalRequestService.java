@@ -31,6 +31,7 @@ public class ApprovalRequestService {
     private final ApprovalRequestRepository requestRepository;
     private final ApprovalTemplateRepository templateRepository;
     private final CompanyRepository companyRepository;
+    private final FileStorageService fileStorageService;
 
     // 결재 요청 목록 조회 (관리자용, 필터 적용)
     @Transactional(readOnly = true)
@@ -61,7 +62,7 @@ public class ApprovalRequestService {
         }
 
         return requests.stream()
-                .map(ApprovalRequestDTO::from)
+                .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -70,7 +71,7 @@ public class ApprovalRequestService {
     public List<ApprovalRequestDTO> getMyApprovalRequests(String requesterId) {
         return requestRepository.findByRequesterIdOrderByCreatedAtDesc(requesterId)
                 .stream()
-                .map(ApprovalRequestDTO::from)
+                .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
@@ -79,7 +80,7 @@ public class ApprovalRequestService {
     public ApprovalRequestDTO getApprovalRequest(Long id) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
-        return ApprovalRequestDTO.from(request);
+        return toDTO(request);
     }
 
     // 결재 요청 생성 (직원)
@@ -110,7 +111,7 @@ public class ApprovalRequestService {
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 요청 생성: id={}, title={}, requester={}", saved.getId(), saved.getTitle(), requesterName);
 
-        return ApprovalRequestDTO.from(saved);
+        return toDTO(saved);
     }
 
     // 결재 승인 (관리자)
@@ -130,7 +131,7 @@ public class ApprovalRequestService {
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 승인: id={}, processedBy={}", saved.getId(), processedByName);
 
-        return ApprovalRequestDTO.from(saved);
+        return toDTO(saved);
     }
 
     // 결재 반려 (관리자)
@@ -151,7 +152,7 @@ public class ApprovalRequestService {
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 반려: id={}, processedBy={}, reason={}", saved.getId(), processedByName, reason);
 
-        return ApprovalRequestDTO.from(saved);
+        return toDTO(saved);
     }
 
     // 일괄 승인
@@ -189,5 +190,22 @@ public class ApprovalRequestService {
         stats.put("approved", requestRepository.countByCompanyIdAndStatus(companyId, ApprovalStatus.APPROVED));
         stats.put("rejected", requestRepository.countByCompanyIdAndStatus(companyId, ApprovalStatus.REJECTED));
         return stats;
+    }
+
+    // DTO 변환 시 S3 URL로 변환
+    private ApprovalRequestDTO toDTO(ApprovalRequest request) {
+        ApprovalRequestDTO dto = ApprovalRequestDTO.from(request);
+
+        // attachmentUrl이 상대경로인 경우 S3 URL로 변환
+        String attachmentUrl = dto.getAttachmentUrl();
+        if (attachmentUrl != null && !attachmentUrl.isEmpty()
+                && !attachmentUrl.startsWith("http://")
+                && !attachmentUrl.startsWith("https://")) {
+            String s3Url = fileStorageService.getFileUrl(attachmentUrl);
+            dto.setAttachmentUrl(s3Url);
+            log.debug("[ApprovalRequest] attachmentUrl 변환: {} -> {}", attachmentUrl, s3Url);
+        }
+
+        return dto;
     }
 }
