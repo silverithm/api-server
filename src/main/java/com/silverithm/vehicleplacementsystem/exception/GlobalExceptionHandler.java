@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
         log.error("파일 크기 초과: {}", ex.getMessage());
 
         Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "파일 크기가 너무 큽니다. 최대 10MB까지 업로드 가능합니다.");
+        errorResponse.put("error", "파일 크기가 너무 큽니다. 최대 50MB까지 업로드 가능합니다.");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
