@@ -46,8 +46,13 @@ public class FileStorageService {
         }
 
         try {
+            log.info("[FileStorage] Credentials 확인: accessKey={}, secretKey={}",
+                    accessKey != null && !accessKey.isBlank() ? accessKey.substring(0, 8) + "..." : "NULL/EMPTY",
+                    secretKey != null && !secretKey.isBlank() ? "SET" : "NULL/EMPTY");
+
             if (accessKey != null && !accessKey.isBlank() && secretKey != null && !secretKey.isBlank()) {
                 // 명시적 자격 증명 사용
+                log.info("[FileStorage] 명시적 자격 증명 사용");
                 AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
                 this.s3Client = S3Client.builder()
                         .region(Region.of(region))
@@ -55,6 +60,7 @@ public class FileStorageService {
                         .build();
             } else {
                 // 기본 자격 증명 체인 사용 (EC2 IAM Role 등)
+                log.info("[FileStorage] 기본 자격 증명 체인 사용 (EC2 IAM Role 등)");
                 this.s3Client = S3Client.builder()
                         .region(Region.of(region))
                         .build();
