@@ -19,35 +19,57 @@ import java.util.UUID;
 @Slf4j
 public class FileStorageService {
 
-    @Value("${cloud.aws.s3.bucket}")
+    @Value("${cloud.aws.s3.bucket:}")
     private String bucketName;
 
-    @Value("${cloud.aws.s3.folder}")
+    @Value("${cloud.aws.s3.folder:}")
     private String folder;
 
-    @Value("${cloud.aws.region.static}")
+    @Value("${cloud.aws.region.static:ap-northeast-2}")
     private String region;
 
-    @Value("${cloud.aws.credentials.access-key}")
+    @Value("${cloud.aws.credentials.access-key:}")
     private String accessKey;
 
-    @Value("${cloud.aws.credentials.secret-key}")
+    @Value("${cloud.aws.credentials.secret-key:}")
     private String secretKey;
 
     private S3Client s3Client;
+    private boolean s3Enabled = false;
 
     @PostConstruct
     public void init() {
+        // S3 설정이 없으면 비활성화
+        if (bucketName == null || bucketName.isBlank()) {
+            log.warn("[FileStorage] S3 버킷이 설정되지 않아 파일 저장 기능이 비활성화됩니다.");
+            return;
+        }
+
         try {
-            AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
-            this.s3Client = S3Client.builder()
-                    .region(Region.of(region))
-                    .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                    .build();
+            if (accessKey != null && !accessKey.isBlank() && secretKey != null && !secretKey.isBlank()) {
+                // 명시적 자격 증명 사용
+                AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+                this.s3Client = S3Client.builder()
+                        .region(Region.of(region))
+                        .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                        .build();
+            } else {
+                // 기본 자격 증명 체인 사용 (EC2 IAM Role 등)
+                this.s3Client = S3Client.builder()
+                        .region(Region.of(region))
+                        .build();
+            }
+            this.s3Enabled = true;
             log.info("[FileStorage] S3 클라이언트 초기화 완료: bucket={}, folder={}, region={}", bucketName, folder, region);
         } catch (Exception e) {
             log.error("[FileStorage] S3 클라이언트 초기화 실패", e);
-            throw new RuntimeException("S3 클라이언트를 초기화할 수 없습니다.", e);
+            log.warn("[FileStorage] 파일 저장 기능이 비활성화됩니다.");
+        }
+    }
+
+    private void checkS3Enabled() {
+        if (!s3Enabled) {
+            throw new IllegalStateException("S3 파일 저장 기능이 비활성화되어 있습니다. AWS 설정을 확인해주세요.");
         }
     }
 
@@ -58,6 +80,8 @@ public class FileStorageService {
      * @return 저장된 파일 경로 (S3 key, folder prefix 제외)
      */
     public String storeFile(MultipartFile file, String subDirectory) throws IOException {
+        checkS3Enabled();
+
         // 원본 파일명
         String originalFileName = file.getOriginalFilename();
         if (originalFileName == null || originalFileName.isBlank()) {
@@ -105,6 +129,8 @@ public class FileStorageService {
      * 파일 읽기
      */
     public byte[] loadFile(String filePath) throws IOException {
+        checkS3Enabled();
+
         try {
             // folder prefix 추가
             String s3Key = folder + filePath;
@@ -128,6 +154,8 @@ public class FileStorageService {
      * 파일 삭제
      */
     public void deleteFile(String filePath) throws IOException {
+        checkS3Enabled();
+
         try {
             // folder prefix 추가
             String s3Key = folder + filePath;
@@ -149,6 +177,10 @@ public class FileStorageService {
      * 파일 존재 여부 확인
      */
     public boolean fileExists(String filePath) {
+        if (!s3Enabled) {
+            return false;
+        }
+
         try {
             // folder prefix 추가
             String s3Key = folder + filePath;
@@ -172,8 +204,18 @@ public class FileStorageService {
      * S3 파일 URL 생성
      */
     public String getFileUrl(String filePath) {
+        if (!s3Enabled) {
+            return null;
+        }
         String s3Key = folder + filePath;
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, s3Key);
+    }
+
+    /**
+     * S3 활성화 여부 확인
+     */
+    public boolean isS3Enabled() {
+        return s3Enabled;
     }
 
     private String determineContentType(String extension) {
