@@ -184,6 +184,7 @@ public class FileStorageService {
         try {
             // folder prefix 추가
             String s3Key = folder + filePath;
+            log.info("[FileStorage] 파일 존재 확인: bucket={}, s3Key={}, folder={}", bucketName, s3Key, folder);
 
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
                     .bucket(bucketName)
@@ -191,11 +192,13 @@ public class FileStorageService {
                     .build();
 
             s3Client.headObject(headObjectRequest);
+            log.info("[FileStorage] 파일 존재 확인 성공: {}", s3Key);
             return true;
         } catch (NoSuchKeyException e) {
+            log.warn("[FileStorage] S3 파일 없음: {}", filePath);
             return false;
         } catch (S3Exception e) {
-            log.error("[FileStorage] S3 파일 존재 확인 실패: {}", e.getMessage());
+            log.error("[FileStorage] S3 파일 존재 확인 실패: bucket={}, key={}, error={}", bucketName, folder + filePath, e.getMessage());
             return false;
         }
     }
