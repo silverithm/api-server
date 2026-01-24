@@ -125,6 +125,11 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/members/find/password").permitAll()
                                 .requestMatchers("/api/v1/validate-token").permitAll()
                                 .requestMatchers("/api/v1/app-version").permitAll()
+                                // WebSocket endpoints
+                                .requestMatchers("/ws/**").permitAll()
+                                .requestMatchers("/ws/chat/**").permitAll()
+                                // Chat API endpoints
+                                .requestMatchers("/api/v1/chat/**").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
                         UsernamePasswordAuthenticationFilter.class);

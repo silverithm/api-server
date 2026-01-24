@@ -89,10 +89,12 @@ dependencies {
     
     // JSON processing
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    
+
     // Toss Payments SDK는 현재 이용할 수 없으므로 주석 처리
     // implementation 'com.tosspayments:tosspayments-java-sdk:1.5.0'
 
+    // WebSocket for Chat
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
 }
 
 tasks.named('test') {
