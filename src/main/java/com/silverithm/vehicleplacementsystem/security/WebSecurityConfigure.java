@@ -130,6 +130,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/ws/chat/**").permitAll()
                                 // Chat API endpoints
                                 .requestMatchers("/api/v1/chat/**").permitAll()
+                                // File API endpoints
+                                .requestMatchers("/api/v1/files/**").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
                         UsernamePasswordAuthenticationFilter.class);
