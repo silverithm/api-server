@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ApprovalRequestService;
+import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/approvals")
@@ -24,6 +26,7 @@ import java.util.Map;
 public class ApprovalRequestController {
 
     private final ApprovalRequestService approvalService;
+    private final FileStorageService fileStorageService;
 
     /**
      * 결재 요청 목록 조회 (관리자)
@@ -131,6 +134,45 @@ public class ApprovalRequestController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "결재 요청 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 결재 첨부파일 업로드
+     */
+    @PostMapping("/files")
+    public ResponseEntity<Map<String, Object>> uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            log.info("[Approval API] 파일 업로드 요청: fileName={}, size={}bytes",
+                    file.getOriginalFilename(), file.getSize());
+
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .headers(getCorsHeaders())
+                        .body(Map.of("error", "파일이 비어있습니다."));
+            }
+
+            // S3에 파일 저장 (approvals 서브디렉토리)
+            String filePath = fileStorageService.storeFile(file, "approvals");
+            String fileUrl = fileStorageService.getFileUrl(filePath);
+
+            log.info("[Approval API] 파일 업로드 성공: filePath={}, fileUrl={}", filePath, fileUrl);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "filePath", filePath,
+                            "fileUrl", fileUrl,
+                            "fileName", file.getOriginalFilename(),
+                            "fileSize", file.getSize()
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Approval API] 파일 업로드 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 
