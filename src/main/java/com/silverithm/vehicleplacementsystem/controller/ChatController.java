@@ -2,12 +2,15 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.service.ChatService;
+import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import java.util.List;
@@ -22,6 +25,10 @@ import java.util.Map;
 public class ChatController {
 
     private final ChatService chatService;
+    private final FileStorageService fileStorageService;
+
+    @Value("${app.base-url:https://silverithm.site}")
+    private String baseUrl;
 
     // ==================== 채팅방 API ====================
 
@@ -137,13 +144,19 @@ public class ChatController {
     @PostMapping("/rooms/{roomId}/leave")
     public ResponseEntity<Map<String, Object>> leaveChatRoom(
             @PathVariable Long roomId,
-            @RequestBody Map<String, String> request) {
+            @RequestParam(required = false) String userId,
+            @RequestBody(required = false) Map<String, String> request) {
 
         try {
-            String userId = request.get("userId");
-            log.info("[Chat API] 채팅방 나가기: roomId={}, userId={}", roomId, userId);
+            // 쿼리 파라미터 또는 request body에서 userId 가져오기
+            String effectiveUserId = userId;
+            if (effectiveUserId == null && request != null) {
+                effectiveUserId = request.get("userId");
+            }
 
-            chatService.leaveChatRoom(roomId, userId);
+            log.info("[Chat API] 채팅방 나가기: roomId={}, userId={}", roomId, effectiveUserId);
+
+            chatService.leaveChatRoom(roomId, effectiveUserId);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -419,7 +432,7 @@ public class ChatController {
     // ==================== 미디어 API ====================
 
     /**
-     * 공유된 미디어 조회
+     * 공유된 미디어 조회 (/media 엔드포인트)
      */
     @GetMapping("/rooms/{roomId}/media")
     public ResponseEntity<Map<String, Object>> getSharedMedia(
@@ -440,6 +453,102 @@ public class ChatController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "미디어 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 공유된 파일 조회 (/files 엔드포인트 - 프론트엔드 호환)
+     */
+    @GetMapping("/rooms/{roomId}/files")
+    public ResponseEntity<Map<String, Object>> getSharedFiles(
+            @PathVariable Long roomId,
+            @RequestParam(required = false) String type) {
+
+        try {
+            log.info("[Chat API] 공유된 파일 조회: roomId={}, type={}", roomId, type);
+
+            List<ChatMessageDTO> files = chatService.getSharedMedia(roomId, type);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("files", files));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 공유된 파일 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "파일 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 파일 업로드 및 메시지 전송
+     */
+    @PostMapping("/rooms/{roomId}/files")
+    public ResponseEntity<Map<String, Object>> uploadFile(
+            @PathVariable Long roomId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam String senderId,
+            @RequestParam String senderName) {
+
+        try {
+            log.info("[Chat API] 파일 업로드 시작: roomId={}, fileName={}, fileSize={}, senderId={}",
+                    roomId, file.getOriginalFilename(), file.getSize(), senderId);
+
+            if (file.isEmpty()) {
+                log.warn("[Chat API] 빈 파일 업로드 시도");
+                return ResponseEntity.badRequest()
+                        .headers(getCorsHeaders())
+                        .body(Map.of("error", "파일이 비어있습니다."));
+            }
+
+            // 파일 저장
+            log.info("[Chat API] FileStorageService 호출 시작");
+            String filePath = fileStorageService.storeFile(file, "chat/" + roomId);
+            log.info("[Chat API] 파일 저장 완료: filePath={}", filePath);
+
+            // baseUrl이 null인 경우 기본값 사용
+            String effectiveBaseUrl = (baseUrl != null && !baseUrl.isEmpty()) ? baseUrl : "https://silverithm.site";
+            String fileUrl = effectiveBaseUrl + "/uploads/" + filePath;
+            log.info("[Chat API] 파일 URL 생성: {}", fileUrl);
+
+            // 파일 타입 결정
+            String contentType = file.getContentType();
+            String messageType = "FILE";
+            if (contentType != null && contentType.startsWith("image/")) {
+                messageType = "IMAGE";
+            }
+            log.info("[Chat API] 메시지 타입: {}, contentType: {}", messageType, contentType);
+
+            // 메시지 생성 요청
+            ChatMessageCreateRequest messageRequest = ChatMessageCreateRequest.builder()
+                    .senderId(senderId)
+                    .senderName(senderName)
+                    .type(messageType)
+                    .content(file.getOriginalFilename())
+                    .fileUrl(fileUrl)
+                    .fileName(file.getOriginalFilename())
+                    .fileSize(file.getSize())
+                    .mimeType(contentType)
+                    .build();
+
+            log.info("[Chat API] ChatService.sendMessage 호출");
+            ChatMessageDTO message = chatService.sendMessage(roomId, messageRequest);
+            log.info("[Chat API] 파일 메시지 전송 완료: messageId={}", message.getId());
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "message", message,
+                            "fileUrl", fileUrl
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 파일 업로드 오류 - 상세: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 
