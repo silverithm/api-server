@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalTemplateRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplate;
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.repository.ApprovalRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalTemplateRepository;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class ApprovalTemplateService {
 
     private final ApprovalTemplateRepository templateRepository;
+    private final ApprovalRequestRepository approvalRequestRepository;
     private final CompanyRepository companyRepository;
 
     // 전체 양식 조회 (관리자용)
@@ -104,6 +106,15 @@ public class ApprovalTemplateService {
         if (!templateRepository.existsById(id)) {
             throw new RuntimeException("양식을 찾을 수 없습니다: " + id);
         }
+
+        // 해당 양식을 사용하는 결재 요청이 있는지 확인
+        if (approvalRequestRepository.existsByTemplateId(id)) {
+            Long count = approvalRequestRepository.countByTemplateId(id);
+            throw new IllegalStateException(
+                String.format("이 양식을 사용하는 결재 요청이 %d건 있어 삭제할 수 없습니다. 양식을 비활성화하거나, 관련 결재 요청을 먼저 삭제해주세요.", count)
+            );
+        }
+
         templateRepository.deleteById(id);
         log.info("[ApprovalTemplate] 양식 삭제: id={}", id);
     }

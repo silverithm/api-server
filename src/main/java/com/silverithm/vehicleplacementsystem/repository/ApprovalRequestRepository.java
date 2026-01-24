@@ -48,4 +48,10 @@ public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest
     );
 
     Long countByCompanyIdAndStatus(Long companyId, ApprovalStatus status);
+
+    // 특정 템플릿을 사용하는 결재 요청이 있는지 확인
+    boolean existsByTemplateId(Long templateId);
+
+    // 특정 템플릿을 사용하는 결재 요청 수
+    Long countByTemplateId(Long templateId);
 }

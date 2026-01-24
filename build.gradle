@@ -95,6 +95,10 @@ dependencies {
 
     // WebSocket for Chat
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // AWS S3 SDK
+    implementation platform('software.amazon.awssdk:bom:2.21.0')
+    implementation 'software.amazon.awssdk:s3'
 }
 
 tasks.named('test') {

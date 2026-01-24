@@ -191,6 +191,18 @@ public class ApprovalTemplateController {
                             "message", "양식이 삭제되었습니다."
                     ));
 
+        } catch (IllegalStateException e) {
+            // 비즈니스 로직 에러 (결재 요청이 있어서 삭제 불가 등)
+            log.warn("[ApprovalTemplate API] 삭제 불가: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            // 양식을 찾을 수 없는 경우
+            log.warn("[ApprovalTemplate API] 양식 없음: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[ApprovalTemplate API] 삭제 오류:", e);
             return ResponseEntity.internalServerError()
