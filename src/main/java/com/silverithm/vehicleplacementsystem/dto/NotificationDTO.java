@@ -24,6 +24,8 @@ public class NotificationDTO {
     private String relatedEntityType;
     private Boolean sent;
     private LocalDateTime sentAt;
+    private Boolean isRead;
+    private LocalDateTime readAt;
     private String fcmMessageId;
     private String errorMessage;
     private LocalDateTime createdAt;
@@ -41,6 +43,8 @@ public class NotificationDTO {
                 .relatedEntityType(entity.getRelatedEntityType())
                 .sent(entity.getSent())
                 .sentAt(entity.getSentAt())
+                .isRead(entity.getIsRead())
+                .readAt(entity.getReadAt())
                 .fcmMessageId(entity.getFcmMessageId())
                 .errorMessage(entity.getErrorMessage())
                 .createdAt(entity.getCreatedAt())

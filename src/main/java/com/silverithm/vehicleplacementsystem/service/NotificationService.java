@@ -175,6 +175,37 @@ public class NotificationService {
         log.info("[Notification Service] 실패한 알림 재전송 완료");
     }
     
+    @Transactional
+    public NotificationDTO markAsRead(Long notificationId) {
+        log.info("[Notification Service] 알림 읽음 처리: ID={}", notificationId);
+
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("알림을 찾을 수 없습니다: " + notificationId));
+
+        notification.setIsRead(true);
+        notification.setReadAt(LocalDateTime.now());
+        Notification saved = notificationRepository.save(notification);
+
+        return NotificationDTO.fromEntity(saved);
+    }
+
+    @Transactional
+    public void markAllAsRead(String userId) {
+        log.info("[Notification Service] 전체 알림 읽음 처리: userId={}", userId);
+
+        List<Notification> unreadNotifications = notificationRepository
+                .findByRecipientUserIdAndIsReadFalseOrderByCreatedAtDesc(userId);
+
+        LocalDateTime now = LocalDateTime.now();
+        for (Notification notification : unreadNotifications) {
+            notification.setIsRead(true);
+            notification.setReadAt(now);
+        }
+        notificationRepository.saveAll(unreadNotifications);
+
+        log.info("[Notification Service] {}개 알림 읽음 처리 완료", unreadNotifications.size());
+    }
+
     // 휴가 관련 알림 전송 헬퍼 메서드들
     public NotificationDTO sendVacationApprovedNotification(
             String recipientToken, 

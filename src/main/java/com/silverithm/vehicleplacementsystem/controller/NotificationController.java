@@ -120,6 +120,55 @@ public class NotificationController {
         }
     }
     
+    @PutMapping("/{id}/read")
+    public ResponseEntity<Map<String, Object>> markAsRead(@PathVariable Long id) {
+        try {
+            log.info("[Notification API] 알림 읽음 처리: id={}", id);
+
+            NotificationDTO result = notificationService.markAsRead(id);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "notification", result
+                    ));
+
+        } catch (IllegalArgumentException e) {
+            log.error("[Notification API] 알림 읽음 처리 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Notification API] 알림 읽음 처리 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "알림 읽음 처리 중 오류가 발생했습니다"));
+        }
+    }
+
+    @PutMapping("/user/{userId}/read-all")
+    public ResponseEntity<Map<String, Object>> markAllAsRead(@PathVariable String userId) {
+        try {
+            log.info("[Notification API] 전체 알림 읽음 처리: userId={}", userId);
+
+            notificationService.markAllAsRead(userId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "message", "모든 알림이 읽음 처리되었습니다"
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Notification API] 전체 알림 읽음 처리 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "전체 알림 읽음 처리 중 오류가 발생했습니다"));
+        }
+    }
+
     @GetMapping("/failed")
     public ResponseEntity<Map<String, List<NotificationDTO>>> getFailedNotifications() {
         try {

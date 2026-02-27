@@ -49,9 +49,15 @@ public class Notification {
     
     @Column(nullable = false)
     private Boolean sent;
-    
+
     @Column
     private LocalDateTime sentAt;
+
+    @Column(nullable = false)
+    private Boolean isRead;
+
+    @Column
+    private LocalDateTime readAt;
     
     @Column
     private String fcmMessageId;
@@ -72,6 +78,9 @@ public class Notification {
         if (sent == null) {
             sent = false;
         }
+        if (isRead == null) {
+            isRead = false;
+        }
     }
     
     @PreUpdate
@@ -88,6 +97,8 @@ public class Notification {
         MEMBER_JOIN_APPROVED,   // 회원가입 승인
         MEMBER_JOIN_REJECTED,   // 회원가입 거부
         NOTICE,                 // 공지사항
+        CHAT,                   // 채팅 알림
+        APPROVAL,               // 결재 알림
         GENERAL                 // 일반 알림
     }
 } 
