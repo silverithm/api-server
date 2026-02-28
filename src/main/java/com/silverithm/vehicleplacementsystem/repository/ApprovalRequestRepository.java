@@ -54,4 +54,7 @@ public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest
 
     // 특정 템플릿을 사용하는 결재 요청 수
     Long countByTemplateId(Long templateId);
+
+    // 특정 템플릿을 사용하는 결재 요청 일괄 삭제
+    void deleteByTemplateId(Long templateId);
 }

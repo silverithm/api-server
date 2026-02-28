@@ -101,18 +101,17 @@ public class ApprovalTemplateService {
         return ApprovalTemplateDTO.from(saved);
     }
 
-    // 양식 삭제
+    // 양식 삭제 (관련 결재 요청도 함께 삭제)
     public void deleteTemplate(Long id) {
         if (!templateRepository.existsById(id)) {
             throw new RuntimeException("양식을 찾을 수 없습니다: " + id);
         }
 
-        // 해당 양식을 사용하는 결재 요청이 있는지 확인
+        // 해당 양식을 사용하는 결재 요청이 있으면 먼저 삭제
         if (approvalRequestRepository.existsByTemplateId(id)) {
             Long count = approvalRequestRepository.countByTemplateId(id);
-            throw new IllegalStateException(
-                String.format("이 양식을 사용하는 결재 요청이 %d건 있어 삭제할 수 없습니다. 양식을 비활성화하거나, 관련 결재 요청을 먼저 삭제해주세요.", count)
-            );
+            approvalRequestRepository.deleteByTemplateId(id);
+            log.info("[ApprovalTemplate] 관련 결재 요청 {}건 삭제: templateId={}", count, id);
         }
 
         templateRepository.deleteById(id);
