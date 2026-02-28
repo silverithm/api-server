@@ -338,6 +338,32 @@ public class NoticeService {
     }
 
     /**
+     * 읽지 않은 공지사항 수 조회
+     */
+    @Transactional(readOnly = true)
+    public long getUnreadNoticeCount(Long companyId, String userId) {
+        log.info("[Notice Service] 읽지 않은 공지사항 수 조회: companyId={}, userId={}", companyId, userId);
+
+        // 게시된 공지사항 목록 조회
+        List<Notice> publishedNotices = noticeRepository.findByCompanyIdAndStatusOrderByIsPinnedDescPublishedAtDesc(
+                companyId, Notice.NoticeStatus.PUBLISHED);
+
+        // 사용자가 읽은 공지사항 ID 목록
+        List<NoticeReader> readRecords = noticeReaderRepository.findByUserId(userId);
+        java.util.Set<Long> readNoticeIds = readRecords.stream()
+                .map(r -> r.getNotice().getId())
+                .collect(Collectors.toSet());
+
+        // 읽지 않은 공지사항 수 계산
+        long unreadCount = publishedNotices.stream()
+                .filter(n -> !readNoticeIds.contains(n.getId()))
+                .count();
+
+        log.info("[Notice Service] 읽지 않은 공지사항 수: {}", unreadCount);
+        return unreadCount;
+    }
+
+    /**
      * 전체 회원에게 공지사항 알림 전송
      */
     private void sendNoticeNotificationToAllMembers(Company company, Notice notice) {

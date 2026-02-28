@@ -88,6 +88,31 @@ public class NoticeController {
     }
 
     /**
+     * 읽지 않은 공지사항 수 조회
+     */
+    @GetMapping("/unread-count")
+    public ResponseEntity<Map<String, Object>> getUnreadNoticeCount(
+            @RequestParam Long companyId,
+            @RequestParam String userId) {
+
+        try {
+            log.info("[Notice API] 읽지 않은 공지사항 수 조회: companyId={}, userId={}", companyId, userId);
+
+            long unreadCount = noticeService.getUnreadNoticeCount(companyId, userId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("unreadCount", unreadCount));
+
+        } catch (Exception e) {
+            log.error("[Notice API] 읽지 않은 공지사항 수 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "읽지 않은 공지사항 수 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 공지사항 상세 조회
      */
     @GetMapping("/{id}")
