@@ -77,7 +77,7 @@ public class PositionService {
         position.update(
                 request.getName(),
                 request.getDescription(),
-                parseMemberRole(request.getMemberRole()),
+                resolveMemberRoleForUpdate(position, request.getMemberRole()),
                 request.getSortOrder()
         );
 
@@ -155,5 +155,13 @@ public class PositionService {
         } catch (IllegalArgumentException error) {
             throw new RuntimeException("역할 기본 분류가 올바르지 않습니다: " + memberRole);
         }
+    }
+
+    private Member.Role resolveMemberRoleForUpdate(Position position, String memberRole) {
+        if (memberRole == null || memberRole.isBlank()) {
+            return position.getMemberRole();
+        }
+
+        return parseMemberRole(memberRole);
     }
 }
