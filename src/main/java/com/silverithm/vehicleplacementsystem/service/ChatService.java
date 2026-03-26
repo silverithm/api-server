@@ -31,6 +31,7 @@ public class ChatService {
     private final ChatMessageReactionRepository chatMessageReactionRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
 
@@ -182,11 +183,15 @@ public class ChatService {
      * 채팅방 삭제 (보관 처리)
      */
     @Transactional
-    public void deleteChatRoom(Long roomId) {
-        log.info("[Chat Service] 채팅방 삭제: roomId={}", roomId);
+    public void deleteChatRoom(Long roomId, String requesterIdentifier) {
+        log.info("[Chat Service] 채팅방 삭제: roomId={}, requester={}", roomId, requesterIdentifier);
+
+        if (!isAdminRequester(requesterIdentifier)) {
+            throw new SecurityException("채팅방 삭제 권한이 없습니다");
+        }
 
         ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: " + roomId));
 
         room.delete();
         chatRoomRepository.save(room);
@@ -205,7 +210,10 @@ public class ChatService {
                 chatParticipantRepository.findByChatRoomIdAndIsActiveTrueOrderByJoinedAtAsc(roomId);
 
         return participants.stream()
-                .map(ChatParticipantDTO::fromEntity)
+                .map(participant -> ChatParticipantDTO.fromEntity(
+                        participant,
+                        getParticipantPosition(participant.getUserId())
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -235,7 +243,10 @@ public class ChatService {
                     participant.setLeaveReason(null);
                     participant.setJoinedAt(LocalDateTime.now());
                     chatParticipantRepository.save(participant);
-                    addedParticipants.add(ChatParticipantDTO.fromEntity(participant));
+                    addedParticipants.add(ChatParticipantDTO.fromEntity(
+                            participant,
+                            getParticipantPosition(participant.getUserId())
+                    ));
 
                     if (joinMessage.length() > 0) joinMessage.append(", ");
                     joinMessage.append(participant.getUserName());
@@ -252,7 +263,10 @@ public class ChatService {
                         .build();
 
                 ChatParticipant saved = chatParticipantRepository.save(participant);
-                addedParticipants.add(ChatParticipantDTO.fromEntity(saved));
+                addedParticipants.add(ChatParticipantDTO.fromEntity(
+                        saved,
+                        getParticipantPosition(saved.getUserId())
+                ));
 
                 if (joinMessage.length() > 0) joinMessage.append(", ");
                 joinMessage.append(userName);
@@ -376,16 +390,7 @@ public class ChatService {
         }
 
         // 발신자 직책 조회 (서버에서 직접 조회하여 신뢰성 확보)
-        String senderPosition = null;
-        try {
-            Long senderIdLong = Long.parseLong(request.getSenderId());
-            Optional<Member> senderMember = memberRepository.findById(senderIdLong);
-            if (senderMember.isPresent()) {
-                senderPosition = senderMember.get().getPosition();
-            }
-        } catch (NumberFormatException e) {
-            log.debug("[Chat Service] senderId가 숫자가 아닙니다: {}", request.getSenderId());
-        }
+        String senderPosition = getParticipantPosition(request.getSenderId());
 
         // 메시지 저장
         ChatMessage message = ChatMessage.builder()
@@ -667,14 +672,46 @@ public class ChatService {
     }
 
     private String getParticipantName(String userId) {
+        return findMemberByUserId(userId)
+                .map(Member::getName)
+                .orElse("사용자");
+    }
+
+    private String getParticipantPosition(String userId) {
+        return findMemberByUserId(userId)
+                .map(Member::getPosition)
+                .orElse(null);
+    }
+
+    private Optional<Member> findMemberByUserId(String userId) {
         try {
             Long memberIdLong = Long.parseLong(userId);
-            return memberRepository.findById(memberIdLong)
-                    .map(Member::getName)
-                    .orElse("사용자");
+            return memberRepository.findById(memberIdLong);
         } catch (NumberFormatException e) {
-            return "사용자";
+            log.debug("[Chat Service] userId가 숫자가 아닙니다: {}", userId);
+            return Optional.empty();
         }
+    }
+
+    private boolean isAdminRequester(String requesterIdentifier) {
+        if (requesterIdentifier == null || requesterIdentifier.isBlank()) {
+            return false;
+        }
+
+        Optional<AppUser> appUser = userRepository.findByEmail(requesterIdentifier);
+        if (appUser.isEmpty()) {
+            appUser = Optional.ofNullable(userRepository.findByUsername(requesterIdentifier));
+        }
+
+        if (appUser.isPresent()) {
+            return appUser.get().getUserRole() == UserRole.ROLE_ADMIN;
+        }
+
+        return memberRepository.findByUsername(requesterIdentifier)
+                .map(member -> member.getRole() == Member.Role.ADMIN)
+                .orElseGet(() -> memberRepository.findByEmail(requesterIdentifier)
+                        .map(member -> member.getRole() == Member.Role.ADMIN)
+                        .orElse(false));
     }
 
     private List<ChatReactionDTO.ReactionSummary> buildReactionSummaries(

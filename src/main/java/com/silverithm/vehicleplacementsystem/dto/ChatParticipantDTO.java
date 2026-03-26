@@ -16,6 +16,7 @@ public class ChatParticipantDTO {
     private Long chatRoomId;
     private String userId;
     private String userName;
+    private String position;
     private String role;
     private LocalDateTime joinedAt;
     private LocalDateTime lastReadAt;
@@ -25,11 +26,16 @@ public class ChatParticipantDTO {
     private String leaveReason;
 
     public static ChatParticipantDTO fromEntity(ChatParticipant participant) {
+        return fromEntity(participant, null);
+    }
+
+    public static ChatParticipantDTO fromEntity(ChatParticipant participant, String position) {
         return ChatParticipantDTO.builder()
                 .id(participant.getId())
                 .chatRoomId(participant.getChatRoom() != null ? participant.getChatRoom().getId() : null)
                 .userId(participant.getUserId())
                 .userName(participant.getUserName())
+                .position(position)
                 .role(participant.getRole().name())
                 .joinedAt(participant.getJoinedAt())
                 .lastReadAt(participant.getLastReadAt())

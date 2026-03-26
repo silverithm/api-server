@@ -7,7 +7,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -177,12 +180,14 @@ public class ChatController {
      * 채팅방 삭제
      */
     @DeleteMapping("/rooms/{roomId}")
-    public ResponseEntity<Map<String, Object>> deleteChatRoom(@PathVariable Long roomId) {
+    public ResponseEntity<Map<String, Object>> deleteChatRoom(
+            @PathVariable Long roomId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             log.info("[Chat API] 채팅방 삭제: roomId={}", roomId);
 
-            chatService.deleteChatRoom(roomId);
+            chatService.deleteChatRoom(roomId, userDetails != null ? userDetails.getUsername() : null);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -190,6 +195,18 @@ public class ChatController {
                             "success", true,
                             "message", "채팅방이 삭제되었습니다."
                     ));
+
+        } catch (SecurityException e) {
+            log.error("[Chat API] 채팅방 삭제 권한 오류: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (IllegalArgumentException e) {
+            log.error("[Chat API] 채팅방 삭제 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
 
         } catch (Exception e) {
             log.error("[Chat API] 채팅방 삭제 오류:", e);
