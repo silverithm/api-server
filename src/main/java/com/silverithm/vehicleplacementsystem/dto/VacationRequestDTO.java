@@ -35,7 +35,7 @@ public class VacationRequestDTO {
                 .userName(entity.getUserName())
                 .date(entity.getDate())
                 .status(entity.getStatus().name().toLowerCase())
-                .role(entity.getRole().name().toLowerCase())
+                .role(entity.getNormalizedRole())
                 .reason(entity.getReason())
                 .userId(entity.getUserId())
                 .type(entity.getType())

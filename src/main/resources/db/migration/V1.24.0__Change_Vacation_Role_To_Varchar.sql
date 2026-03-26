@@ -1,0 +1,5 @@
+ALTER TABLE vacation_requests
+    MODIFY COLUMN role VARCHAR(100) NOT NULL COMMENT '직원 역할';
+
+ALTER TABLE vacation_limits
+    MODIFY COLUMN role VARCHAR(100) NOT NULL COMMENT '직원 역할';

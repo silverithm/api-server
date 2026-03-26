@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class VacationService {
+    private static final String ALL_ROLE = "all";
+    private static final String DEFAULT_ROLE = "caregiver";
 
     private final VacationRequestRepository vacationRequestRepository;
     private final VacationLimitRepository vacationLimitRepository;
@@ -53,15 +55,15 @@ public class VacationService {
         List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDateBetween(company, startDate,
                 endDate);
         List<VacationLimit> limits = vacationLimitRepository.findByCompanyAndDateBetween(company, startDate, endDate);
+        String normalizedRoleFilter = normalizeRequestedRole(roleFilter);
 
         // 역할별 필터링
-        if (!"all".equals(roleFilter)) {
-            VacationRequest.Role role = VacationRequest.Role.valueOf(roleFilter.toUpperCase());
+        if (!ALL_ROLE.equals(normalizedRoleFilter)) {
             vacations = vacations.stream()
-                    .filter(v -> v.getRole() == role || v.getRole() == VacationRequest.Role.ALL)
+                    .filter(v -> matchesRole(v.getRole(), normalizedRoleFilter))
                     .collect(Collectors.toList());
             limits = limits.stream()
-                    .filter(l -> l.getRole() == role)
+                    .filter(l -> matchesExactRole(l.getRole(), normalizedRoleFilter))
                     .collect(Collectors.toList());
         }
 
@@ -105,7 +107,7 @@ public class VacationService {
             VacationCalendarResponseDTO.VacationDateInfo dateInfo = dateMap.get(dateKey);
 
             if (dateInfo != null) {
-                dateInfo.setMaxPeople(limit.getMaxPeople());
+                dateInfo.setMaxPeople(Math.max(dateInfo.getMaxPeople(), limit.getMaxPeople()));
             } else {
                 dateMap.put(dateKey, VacationCalendarResponseDTO.VacationDateInfo.builder()
                         .date(dateKey)
@@ -132,12 +134,12 @@ public class VacationService {
 
         // 회사별 휴가 신청 조회
         List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDate(company, date);
+        String normalizedRole = normalizeRequestedRole(role);
 
         // 역할별 필터링
-        if (!"all".equals(role)) {
-            VacationRequest.Role roleEnum = VacationRequest.Role.valueOf(role.toUpperCase());
+        if (!ALL_ROLE.equals(normalizedRole)) {
             vacations = vacations.stream()
-                    .filter(v -> v.getRole() == roleEnum)
+                    .filter(v -> matchesExactRole(v.getRole(), normalizedRole))
                     .collect(Collectors.toList());
         }
 
@@ -158,11 +160,18 @@ public class VacationService {
                 .count();
 
         // 회사별 휴가 제한 조회
-        Integer maxPeople = null;
-        if (!"all".equals(role)) {
-            VacationRequest.Role roleEnum = VacationRequest.Role.valueOf(role.toUpperCase());
-            maxPeople = vacationLimitRepository.findByCompanyAndDateAndRole(company, date, roleEnum)
+        List<VacationLimit> dailyLimits = vacationLimitRepository.findByCompanyAndDate(company, date);
+        Integer maxPeople;
+        if (ALL_ROLE.equals(normalizedRole)) {
+            maxPeople = dailyLimits.stream()
                     .map(VacationLimit::getMaxPeople)
+                    .max(Integer::compareTo)
+                    .orElse(3);
+        } else {
+            maxPeople = dailyLimits.stream()
+                    .filter(limit -> matchesExactRole(limit.getRole(), normalizedRole))
+                    .map(VacationLimit::getMaxPeople)
+                    .findFirst()
                     .orElse(3);
         }
 
@@ -185,13 +194,7 @@ public class VacationService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
-        // Role enum 변환
-        VacationRequest.Role role;
-        try {
-            role = VacationRequest.Role.valueOf(requestDTO.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("잘못된 직원 역할입니다: " + requestDTO.getRole());
-        }
+        String role = normalizePersistedRole(requestDTO.getRole());
 
         // userId 생성 (없으면 자동 생성)
         String userId = requestDTO.getUserId();
@@ -319,11 +322,13 @@ public class VacationService {
         for (VacationLimitRequestDTO.VacationLimitCreateDTO limitDTO : requestDTO.getLimits()) {
             try {
                 LocalDate date = LocalDate.parse(limitDTO.getDate());
-                VacationRequest.Role role = VacationRequest.Role.valueOf(
-                        (limitDTO.getRole() != null ? limitDTO.getRole() : "caregiver").toUpperCase());
+                String role = normalizePersistedRole(limitDTO.getRole());
 
                 // 기존 제한이 있는지 확인 (회사별로)
-                VacationLimit existingLimit = vacationLimitRepository.findByCompanyAndDateAndRole(company, date, role)
+                VacationLimit existingLimit = vacationLimitRepository.findByCompanyAndDate(company, date)
+                        .stream()
+                        .filter(limit -> matchesExactRole(limit.getRole(), role))
+                        .findFirst()
                         .orElse(null);
 
                 if (existingLimit != null) {
@@ -366,30 +371,35 @@ public class VacationService {
 
         // 1. 모든 날짜와 역할 추출 (파싱 한번만)
         List<LocalDate> dates = new ArrayList<>();
-        List<VacationRequest.Role> roles = new ArrayList<>();
         Map<String, VacationLimitRequestDTO.VacationLimitCreateDTO> requestMap = new HashMap<>();
 
         for (VacationLimitRequestDTO.VacationLimitCreateDTO limitDTO : requestDTO.getLimits()) {
             try {
                 LocalDate date = LocalDate.parse(limitDTO.getDate());
-                VacationRequest.Role role = VacationRequest.Role.valueOf(
-                        (limitDTO.getRole() != null ? limitDTO.getRole() : "caregiver").toUpperCase());
+                String role = normalizePersistedRole(limitDTO.getRole());
 
                 dates.add(date);
-                roles.add(role);
-                requestMap.put(date + "_" + role, limitDTO);
+                requestMap.put(buildLimitKey(date, role), limitDTO);
             } catch (Exception e) {
                 log.error("[Vacation Service] 휴가 제한 파싱 실패: {}", limitDTO, e);
             }
         }
 
-        // 2. 한 번에 모든 기존 데이터 조회
+        if (dates.isEmpty()) {
+            return List.of();
+        }
+
+        LocalDate minDate = dates.stream().min(LocalDate::compareTo).orElseThrow();
+        LocalDate maxDate = dates.stream().max(LocalDate::compareTo).orElseThrow();
+
+        // 2. 한 번에 기존 데이터 조회 후 정규화 키로 매핑
         Map<String, VacationLimit> existingMap = vacationLimitRepository
-                .findByCompanyAndDateInAndRoleIn(company, dates, roles)
+                .findByCompanyAndDateBetween(company, minDate, maxDate)
                 .stream()
                 .collect(Collectors.toMap(
-                        limit -> limit.getDate() + "_" + limit.getRole(),
-                        Function.identity()
+                        limit -> buildLimitKey(limit.getDate(), limit.getRole()),
+                        Function.identity(),
+                        (first, second) -> first
                 ));
 
         // 3. 업데이트/생성 처리
@@ -407,9 +417,8 @@ public class VacationService {
                 toSave.add(existingLimit);
             } else {
                 // 새 엔티티 생성
-                String[] parts = key.split("_");
-                LocalDate date = LocalDate.parse(parts[0]);
-                VacationRequest.Role role = VacationRequest.Role.valueOf(parts[1]);
+                LocalDate date = LocalDate.parse(dto.getDate());
+                String role = normalizePersistedRole(dto.getRole());
 
                 VacationLimit newLimit = VacationLimit.builder()
                         .date(date)
@@ -550,19 +559,7 @@ public class VacationService {
             throw new IllegalArgumentException("해당 직원은 이 회사 소속이 아닙니다");
         }
         
-        // 직원의 역할을 VacationRequest.Role로 변환
-        VacationRequest.Role vacationRole;
-        switch (member.getRole()) {
-            case CAREGIVER:
-                vacationRole = VacationRequest.Role.CAREGIVER;
-                break;
-            case OFFICE:
-                vacationRole = VacationRequest.Role.OFFICE;
-                break;
-            default:
-                vacationRole = VacationRequest.Role.ALL;
-                break;
-        }
+        String vacationRole = resolveMemberVacationRole(member);
         
         VacationRequest entity = VacationRequest.builder()
                 .userName(member.getName())
@@ -603,6 +600,49 @@ public class VacationService {
         } else {
             log.warn("[Vacation Service] 직원 FCM 토큰을 찾을 수 없음: {}", member.getName());
         }
+    }
+
+    private String normalizeRequestedRole(String role) {
+        if (role == null || role.isBlank()) {
+            return ALL_ROLE;
+        }
+
+        return VacationRequest.normalizeRole(role);
+    }
+
+    private String normalizePersistedRole(String role) {
+        if (role == null || role.isBlank()) {
+            return DEFAULT_ROLE;
+        }
+
+        return VacationRequest.normalizeRole(role);
+    }
+
+    private boolean matchesRole(String storedRole, String requestedRole) {
+        String normalizedStoredRole = VacationRequest.normalizeRole(storedRole);
+        return normalizedStoredRole.equals(requestedRole) || ALL_ROLE.equals(normalizedStoredRole);
+    }
+
+    private boolean matchesExactRole(String storedRole, String requestedRole) {
+        return VacationRequest.normalizeRole(storedRole)
+                .equals(VacationRequest.normalizeRole(requestedRole));
+    }
+
+    private String buildLimitKey(LocalDate date, String role) {
+        return date + "_" + VacationRequest.normalizeRole(role);
+    }
+
+    private String resolveMemberVacationRole(Member member) {
+        if (member.getPosition() != null && !member.getPosition().isBlank()) {
+            return member.getPosition().trim();
+        }
+
+        return switch (member.getRole()) {
+            case CAREGIVER -> "caregiver";
+            case OFFICE -> "office";
+            case ADMIN -> "admin";
+            default -> "employee";
+        };
     }
     
     // 일괄 승인/거부 메서드들

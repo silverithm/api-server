@@ -15,15 +15,13 @@ import java.util.Optional;
 @Repository
 public interface VacationLimitRepository extends JpaRepository<VacationLimit, Long> {
 
-    Optional<VacationLimit> findByDateAndRole(LocalDate date, VacationRequest.Role role);
+    Optional<VacationLimit> findByDateAndRole(LocalDate date, String role);
 
     List<VacationLimit> findByDateBetween(LocalDate startDate, LocalDate endDate);
 
-    Optional<VacationLimit> findByCompanyAndDateAndRole(Company company, LocalDate date, VacationRequest.Role role);
+    Optional<VacationLimit> findByCompanyAndDateAndRole(Company company, LocalDate date, String role);
 
-    List<VacationLimit> findByCompanyAndDateInAndRoleIn(Company company,
-                                                        List<LocalDate> dates,
-                                                        List<VacationRequest.Role> roles);
+    List<VacationLimit> findByCompanyAndDate(Company company, LocalDate date);
 
     List<VacationLimit> findByCompanyAndDateBetween(Company company, LocalDate startDate, LocalDate endDate);
 
@@ -32,7 +30,7 @@ public interface VacationLimitRepository extends JpaRepository<VacationLimit, Lo
             @Param("company") Company company,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("role") VacationRequest.Role role);
+            @Param("role") String role);
 
     @Query("SELECT v FROM VacationLimit v WHERE v.company = :company ORDER BY v.date ASC")
     List<VacationLimit> findByCompanyOrderByDateAsc(@Param("company") Company company);
@@ -41,5 +39,5 @@ public interface VacationLimitRepository extends JpaRepository<VacationLimit, Lo
     List<VacationLimit> findByDateBetweenAndRole(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("role") VacationRequest.Role role);
-} 
+            @Param("role") String role);
+}

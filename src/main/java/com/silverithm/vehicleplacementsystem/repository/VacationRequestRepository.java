@@ -25,14 +25,14 @@ public interface VacationRequestRepository extends JpaRepository<VacationRequest
     List<VacationRequest> findByCompanyAndDateAndRole(
             @Param("company") Company company, 
             @Param("date") LocalDate date, 
-            @Param("role") VacationRequest.Role role);
+            @Param("role") String role);
     
     @Query("SELECT v FROM VacationRequest v WHERE v.company = :company AND v.date BETWEEN :startDate AND :endDate AND v.role = :role")
     List<VacationRequest> findByCompanyAndDateBetweenAndRole(
             @Param("company") Company company,
             @Param("startDate") LocalDate startDate, 
             @Param("endDate") LocalDate endDate, 
-            @Param("role") VacationRequest.Role role);
+            @Param("role") String role);
     
     @Query("SELECT v FROM VacationRequest v WHERE v.company = :company AND v.userName = :userName AND v.date BETWEEN :startDate AND :endDate")
     List<VacationRequest> findByCompanyAndUserNameAndDateBetween(
@@ -45,13 +45,13 @@ public interface VacationRequestRepository extends JpaRepository<VacationRequest
     List<VacationRequest> findByCompanyOrderByCreatedAtDesc(@Param("company") Company company);
     
     @Query("SELECT v FROM VacationRequest v WHERE v.date = :date AND v.role = :role")
-    List<VacationRequest> findByDateAndRole(@Param("date") LocalDate date, @Param("role") VacationRequest.Role role);
+    List<VacationRequest> findByDateAndRole(@Param("date") LocalDate date, @Param("role") String role);
     
     @Query("SELECT v FROM VacationRequest v WHERE v.date BETWEEN :startDate AND :endDate AND v.role = :role")
     List<VacationRequest> findByDateBetweenAndRole(
             @Param("startDate") LocalDate startDate, 
             @Param("endDate") LocalDate endDate, 
-            @Param("role") VacationRequest.Role role);
+            @Param("role") String role);
     
     @Query("SELECT v FROM VacationRequest v WHERE v.userName = :userName AND v.date BETWEEN :startDate AND :endDate")
     List<VacationRequest> findByUserNameAndDateBetween(

@@ -33,9 +33,8 @@ public class VacationRequest {
     @Column(nullable = false)
     private VacationStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
+    @Column(nullable = false, length = 100)
+    private String role;
 
     @Column(length = 500)
     private String reason;
@@ -89,10 +88,6 @@ public class VacationRequest {
         PENDING, APPROVED, REJECTED
     }
 
-    public enum Role {
-        CAREGIVER, OFFICE, ALL
-    }
-
     public enum VacationDuration {
         FULL_DAY("연차", "하루 종일", 1.0),
         HALF_DAY_AM("오전 반차", "오전 반일", 0.5),
@@ -121,4 +116,24 @@ public class VacationRequest {
             return days;
         }
     }
-} 
+
+    public static String normalizeRole(String role) {
+        if (role == null || role.isBlank()) {
+            return "caregiver";
+        }
+
+        String trimmedRole = role.trim();
+        return switch (trimmedRole.toUpperCase()) {
+            case "CAREGIVER", "ROLE_CAREGIVER", "요양보호사" -> "caregiver";
+            case "OFFICE", "ROLE_OFFICE", "사무직" -> "office";
+            case "ALL" -> "all";
+            case "ADMIN", "ROLE_ADMIN", "관리자" -> "admin";
+            case "EMPLOYEE", "ROLE_EMPLOYEE" -> "employee";
+            default -> trimmedRole;
+        };
+    }
+
+    public String getNormalizedRole() {
+        return normalizeRole(this.role);
+    }
+}

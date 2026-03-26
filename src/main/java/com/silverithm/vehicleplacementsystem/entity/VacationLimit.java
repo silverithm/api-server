@@ -33,9 +33,8 @@ public class VacationLimit {
     @Column(nullable = false)
     private Integer maxPeople;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private VacationRequest.Role role;
+    @Column(nullable = false, length = 100)
+    private String role;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)

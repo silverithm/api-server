@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
 import com.silverithm.vehicleplacementsystem.entity.VacationLimit;
+import com.silverithm.vehicleplacementsystem.entity.VacationRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +25,7 @@ public class VacationLimitDTO {
                 .id(entity.getId())
                 .date(entity.getDate())
                 .maxPeople(entity.getMaxPeople())
-                .role(entity.getRole().name().toLowerCase())
+                .role(VacationRequest.normalizeRole(entity.getRole()))
                 .build();
     }
-} 
+}
