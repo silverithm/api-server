@@ -23,6 +23,7 @@ public class MemberDTO {
     private String status;
     private String department;
     private String position;
+    private Long positionId;
     private CompanyListDTO company;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -38,6 +39,7 @@ public class MemberDTO {
                 .status(entity.getStatus().name().toLowerCase())
                 .department(entity.getDepartment())
                 .position(entity.getPosition())
+                .positionId(entity.getPositionEntity() != null ? entity.getPositionEntity().getId() : null)
                 .company(entity.getCompany() != null ? CompanyListDTO.fromEntity(entity.getCompany()) : null)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

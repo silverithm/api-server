@@ -369,17 +369,37 @@ public class ChatService {
             }
         }
 
+        // 답글 대상 메시지 조회
+        ChatMessage replyTo = null;
+        if (request.getReplyToId() != null) {
+            replyTo = chatMessageRepository.findById(request.getReplyToId()).orElse(null);
+        }
+
+        // 발신자 직책 조회 (서버에서 직접 조회하여 신뢰성 확보)
+        String senderPosition = null;
+        try {
+            Long senderIdLong = Long.parseLong(request.getSenderId());
+            Optional<Member> senderMember = memberRepository.findById(senderIdLong);
+            if (senderMember.isPresent()) {
+                senderPosition = senderMember.get().getPosition();
+            }
+        } catch (NumberFormatException e) {
+            log.debug("[Chat Service] senderId가 숫자가 아닙니다: {}", request.getSenderId());
+        }
+
         // 메시지 저장
         ChatMessage message = ChatMessage.builder()
                 .chatRoom(room)
                 .senderId(request.getSenderId())
                 .senderName(request.getSenderName())
+                .senderPosition(senderPosition)
                 .type(messageType)
                 .content(request.getContent())
                 .fileUrl(request.getFileUrl())
                 .fileName(request.getFileName())
                 .fileSize(request.getFileSize())
                 .mimeType(request.getMimeType())
+                .replyTo(replyTo)
                 .isDeleted(false)
                 .build();
 

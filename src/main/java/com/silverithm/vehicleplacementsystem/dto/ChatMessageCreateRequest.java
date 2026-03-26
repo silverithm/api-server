@@ -16,6 +16,8 @@ public class ChatMessageCreateRequest {
     @NotBlank(message = "발신자 이름은 필수입니다")
     private String senderName;
 
+    private String senderPosition;
+
     private String type; // TEXT, IMAGE, FILE, SYSTEM
 
     private String content;
@@ -25,4 +27,7 @@ public class ChatMessageCreateRequest {
     private String fileName;
     private Long fileSize;
     private String mimeType;
+
+    // 답글 대상 메시지 ID
+    private Long replyToId;
 }

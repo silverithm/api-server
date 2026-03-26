@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.repository;
 
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.entity.Position;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -74,4 +75,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("SELECT m FROM Member m WHERE m.email = :email AND m.status = 'ACTIVE'")
     Optional<Member> findActiveMember(String email);
+
+    List<Member> findByPositionEntity(Position positionEntity);
 }

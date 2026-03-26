@@ -30,6 +30,9 @@ public class ChatMessage {
     @Column(nullable = false)
     private String senderName;
 
+    @Column
+    private String senderPosition;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -44,6 +47,11 @@ public class ChatMessage {
     @Column(nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+
+    // 답글 관련 필드
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_id")
+    private ChatMessage replyTo;
 
     // 파일 관련 필드
     @Column
