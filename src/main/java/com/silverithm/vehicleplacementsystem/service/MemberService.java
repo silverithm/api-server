@@ -6,11 +6,13 @@ import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.MemberJoinRequest;
 import com.silverithm.vehicleplacementsystem.entity.Notification;
+import com.silverithm.vehicleplacementsystem.entity.Position;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.PositionRepository;
 import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,7 @@ public class MemberService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
     private final CompanyCodeService companyCodeService;
+    private final PositionRepository positionRepository;
 
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 노출된 회사 조회");
@@ -58,6 +61,7 @@ public class MemberService {
 
         // 회사 검증
         Company company = resolveCompany(requestDTO);
+        Position requestedPosition = resolveRequestedPosition(requestDTO, company);
 
 
         if (memberRepository.existsByEmail(requestDTO.getEmail())) {
@@ -65,13 +69,7 @@ public class MemberService {
         }
 
 
-        // Role enum 변환
-        Member.Role role;
-        try {
-            role = Member.Role.valueOf(requestDTO.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("잘못된 역할입니다: " + requestDTO.getRole());
-        }
+        Member.Role role = resolveRequestedRole(requestDTO, requestedPosition);
 
         // 관리자 역할은 직접 요청할 수 없음
         if (role == Member.Role.ADMIN) {
@@ -87,7 +85,8 @@ public class MemberService {
                 .phoneNumber(requestDTO.getPhoneNumber())
                 .requestedRole(role)
                 .department(requestDTO.getDepartment())
-                .position(requestDTO.getPosition())
+                .position(requestedPosition != null ? requestedPosition.getName() : requestDTO.getPosition())
+                .positionEntity(requestedPosition)
                 .fcmToken(requestDTO.getFcmToken())
                 .company(company)
                 .status(MemberJoinRequest.RequestStatus.PENDING)
@@ -113,6 +112,37 @@ public class MemberService {
         }
 
         throw new IllegalArgumentException("회사 코드 또는 회사 선택이 필요합니다");
+    }
+
+    private Position resolveRequestedPosition(MemberJoinRequestDTO requestDTO, Company company) {
+        if (requestDTO.getPositionId() == null) {
+            return null;
+        }
+
+        Position position = positionRepository.findById(requestDTO.getPositionId())
+                .orElseThrow(() -> new IllegalArgumentException("선택한 역할을 찾을 수 없습니다."));
+
+        if (!position.getCompany().getId().equals(company.getId())) {
+            throw new IllegalArgumentException("선택한 역할이 해당 회사에 속하지 않습니다.");
+        }
+
+        return position;
+    }
+
+    private Member.Role resolveRequestedRole(MemberJoinRequestDTO requestDTO, Position requestedPosition) {
+        if (requestedPosition != null && requestedPosition.getMemberRole() != null) {
+            return requestedPosition.getMemberRole();
+        }
+
+        if (requestDTO.getRole() == null || requestDTO.getRole().isBlank()) {
+            throw new IllegalArgumentException("역할 기본 분류가 필요합니다.");
+        }
+
+        try {
+            return Member.Role.valueOf(requestDTO.getRole().trim().toUpperCase());
+        } catch (IllegalArgumentException error) {
+            throw new IllegalArgumentException("잘못된 역할입니다: " + requestDTO.getRole());
+        }
     }
 
     public List<MemberJoinRequestResponseDTO> getAllJoinRequests() {
@@ -201,6 +231,7 @@ public class MemberService {
                 .fcmToken(joinRequest.getFcmToken())
                 .department(joinRequest.getDepartment())
                 .position(joinRequest.getPosition())
+                .positionEntity(joinRequest.getPositionEntity())
                 .company(joinRequest.getCompany())
                 .build();
 

@@ -36,6 +36,7 @@ public class MemberJoinRequestDTO {
     private String department;
     private String position;
     private String fcmToken;
+    private Long positionId;
     
     private Long companyId;
 

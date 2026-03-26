@@ -46,7 +46,11 @@ public class MemberJoinRequest {
     
     @Column
     private String position;
-    
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "position_id")
+    private Position positionEntity;
+
     @Column
     private String fcmToken;
     

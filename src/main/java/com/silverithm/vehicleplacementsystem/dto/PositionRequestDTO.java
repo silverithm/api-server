@@ -22,5 +22,7 @@ public class PositionRequestDTO {
     @Size(max = 255, message = "설명은 255자를 초과할 수 없습니다")
     private String description;
 
+    private String memberRole;
+
     private Integer sortOrder;
 }

@@ -18,6 +18,7 @@ public class PositionDTO {
     private Long id;
     private String name;
     private String description;
+    private String memberRole;
     private Integer sortOrder;
     private Long companyId;
     private LocalDateTime createdAt;
@@ -28,6 +29,7 @@ public class PositionDTO {
                 .id(position.getId())
                 .name(position.getName())
                 .description(position.getDescription())
+                .memberRole(position.getMemberRole() != null ? position.getMemberRole().name().toLowerCase() : null)
                 .sortOrder(position.getSortOrder())
                 .companyId(position.getCompany().getId())
                 .createdAt(position.getCreatedAt())

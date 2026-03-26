@@ -32,6 +32,10 @@ public class Position {
     @Column(length = 255)
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "member_role", length = 20)
+    private Member.Role memberRole;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
@@ -53,13 +57,14 @@ public class Position {
         updatedAt = LocalDateTime.now();
     }
 
-    public void update(String name, String description, Integer sortOrder) {
+    public void update(String name, String description, Member.Role memberRole, Integer sortOrder) {
         if (name != null) {
             this.name = name;
         }
         if (description != null) {
             this.description = description;
         }
+        this.memberRole = memberRole;
         if (sortOrder != null) {
             this.sortOrder = sortOrder;
         }

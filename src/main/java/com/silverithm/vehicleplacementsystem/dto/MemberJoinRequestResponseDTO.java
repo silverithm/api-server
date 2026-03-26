@@ -22,6 +22,7 @@ public class MemberJoinRequestResponseDTO {
     private String requestedRole;
     private String department;
     private String position;
+    private Long positionId;
     private CompanyListDTO company;
     private String status;
     private String rejectReason;
@@ -40,6 +41,7 @@ public class MemberJoinRequestResponseDTO {
                 .requestedRole(entity.getRequestedRole().name().toLowerCase())
                 .department(entity.getDepartment())
                 .position(entity.getPosition())
+                .positionId(entity.getPositionEntity() != null ? entity.getPositionEntity().getId() : null)
                 .company(entity.getCompany() != null ? CompanyListDTO.fromEntity(entity.getCompany()) : null)
                 .status(entity.getStatus().name().toLowerCase())
                 .rejectReason(entity.getRejectReason())

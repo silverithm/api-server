@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -121,6 +122,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/members/companies").permitAll()
                                 .requestMatchers("/api/v1/members/signin").permitAll()
                                 .requestMatchers("/api/v1/members/join-request").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/v1/positions").permitAll()
                                 .requestMatchers("/api/v1/members/{id}/fcm-token").permitAll()
                                 .requestMatchers("/api/v1/members/find/password").permitAll()
                                 .requestMatchers("/api/v1/validate-token").permitAll()

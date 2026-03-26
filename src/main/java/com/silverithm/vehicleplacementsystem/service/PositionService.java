@@ -24,11 +24,13 @@ public class PositionService {
     private final PositionRepository positionRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
+    private final CompanyCodeService companyCodeService;
 
     @Transactional(readOnly = true)
-    public List<PositionDTO> getPositions(Long companyId) {
-        log.info("[Position Service] 직책 목록 조회: companyId={}", companyId);
-        return positionRepository.findByCompanyIdOrderBySortOrderAscNameAsc(companyId)
+    public List<PositionDTO> getPositions(Long companyId, String companyCode) {
+        Company company = resolveCompany(companyId, companyCode);
+        log.info("[Position Service] 직책 목록 조회: companyId={}", company.getId());
+        return positionRepository.findByCompanyIdOrderBySortOrderAscNameAsc(company.getId())
                 .stream()
                 .map(PositionDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -49,6 +51,7 @@ public class PositionService {
                 .company(company)
                 .name(request.getName())
                 .description(request.getDescription())
+                .memberRole(parseMemberRole(request.getMemberRole()))
                 .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
                 .build();
 
@@ -71,7 +74,12 @@ public class PositionService {
             throw new RuntimeException("이미 존재하는 직책명입니다: " + request.getName());
         }
 
-        position.update(request.getName(), request.getDescription(), request.getSortOrder());
+        position.update(
+                request.getName(),
+                request.getDescription(),
+                parseMemberRole(request.getMemberRole()),
+                request.getSortOrder()
+        );
 
         Position saved = positionRepository.save(position);
         log.info("[Position Service] 직책 수정 완료: id={}", saved.getId());
@@ -116,5 +124,36 @@ public class PositionService {
 
         memberRepository.save(member);
         log.info("[Position Service] 직책 배정 완료: memberId={}, positionId={}", memberId, positionId);
+    }
+
+    private Company resolveCompany(Long companyId, String companyCode) {
+        if (companyId != null) {
+            return companyRepository.findById(companyId)
+                    .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
+        }
+
+        String normalizedCompanyCode = companyCodeService.normalize(companyCode);
+        if (!normalizedCompanyCode.isEmpty()) {
+            return companyRepository.findByCompanyCodeIgnoreCase(normalizedCompanyCode)
+                    .orElseThrow(() -> new RuntimeException("유효하지 않은 회사 코드입니다."));
+        }
+
+        throw new RuntimeException("companyId 또는 companyCode가 필요합니다.");
+    }
+
+    private Member.Role parseMemberRole(String memberRole) {
+        if (memberRole == null || memberRole.isBlank()) {
+            return null;
+        }
+
+        try {
+            Member.Role parsedRole = Member.Role.valueOf(memberRole.trim().toUpperCase());
+            if (parsedRole != Member.Role.CAREGIVER && parsedRole != Member.Role.OFFICE) {
+                throw new RuntimeException("역할 기본 분류는 caregiver 또는 office만 가능합니다.");
+            }
+            return parsedRole;
+        } catch (IllegalArgumentException error) {
+            throw new RuntimeException("역할 기본 분류가 올바르지 않습니다: " + memberRole);
+        }
     }
 }

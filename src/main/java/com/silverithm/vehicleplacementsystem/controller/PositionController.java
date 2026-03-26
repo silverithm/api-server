@@ -25,13 +25,20 @@ public class PositionController {
     private final PositionService positionService;
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getPositions(@RequestParam Long companyId) {
+    public ResponseEntity<Map<String, Object>> getPositions(
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(required = false) String companyCode) {
         try {
-            log.info("[Position API] 직책 목록 조회: companyId={}", companyId);
-            List<PositionDTO> positions = positionService.getPositions(companyId);
+            log.info("[Position API] 직책 목록 조회: companyId={}, companyCode={}", companyId, companyCode);
+            List<PositionDTO> positions = positionService.getPositions(companyId, companyCode);
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
                     .body(Map.of("success", true, "positions", positions));
+        } catch (RuntimeException e) {
+            log.error("[Position API] 직책 목록 조회 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Position API] 직책 목록 조회 오류:", e);
             return ResponseEntity.internalServerError()
