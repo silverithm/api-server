@@ -212,7 +212,8 @@ public class ChatService {
         return participants.stream()
                 .map(participant -> ChatParticipantDTO.fromEntity(
                         participant,
-                        getParticipantPosition(participant.getUserId())
+                        getParticipantPosition(participant.getUserId()),
+                        getParticipantMemberRole(participant.getUserId())
                 ))
                 .collect(Collectors.toList());
     }
@@ -245,7 +246,8 @@ public class ChatService {
                     chatParticipantRepository.save(participant);
                     addedParticipants.add(ChatParticipantDTO.fromEntity(
                             participant,
-                            getParticipantPosition(participant.getUserId())
+                            getParticipantPosition(participant.getUserId()),
+                            getParticipantMemberRole(participant.getUserId())
                     ));
 
                     if (joinMessage.length() > 0) joinMessage.append(", ");
@@ -265,7 +267,8 @@ public class ChatService {
                 ChatParticipant saved = chatParticipantRepository.save(participant);
                 addedParticipants.add(ChatParticipantDTO.fromEntity(
                         saved,
-                        getParticipantPosition(saved.getUserId())
+                        getParticipantPosition(saved.getUserId()),
+                        getParticipantMemberRole(saved.getUserId())
                 ));
 
                 if (joinMessage.length() > 0) joinMessage.append(", ");
@@ -683,14 +686,34 @@ public class ChatService {
                 .orElse(null);
     }
 
+    private String getParticipantMemberRole(String userId) {
+        return findMemberByUserId(userId)
+                .map(Member::getRole)
+                .map(Enum::name)
+                .orElse(null);
+    }
+
     private Optional<Member> findMemberByUserId(String userId) {
-        try {
-            Long memberIdLong = Long.parseLong(userId);
-            return memberRepository.findById(memberIdLong);
-        } catch (NumberFormatException e) {
-            log.debug("[Chat Service] userId가 숫자가 아닙니다: {}", userId);
+        if (userId == null || userId.isBlank()) {
             return Optional.empty();
         }
+
+        try {
+            Long memberIdLong = Long.parseLong(userId);
+            Optional<Member> memberById = memberRepository.findById(memberIdLong);
+            if (memberById.isPresent()) {
+                return memberById;
+            }
+        } catch (NumberFormatException e) {
+            log.debug("[Chat Service] userId가 숫자가 아닙니다: {}", userId);
+        }
+
+        Optional<Member> memberByUsername = memberRepository.findByUsername(userId);
+        if (memberByUsername.isPresent()) {
+            return memberByUsername;
+        }
+
+        return memberRepository.findByEmail(userId);
     }
 
     private boolean isAdminRequester(String requesterIdentifier) {
