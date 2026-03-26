@@ -32,7 +32,7 @@ public class Position {
     @Column(length = 255)
     private String description;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = MemberRoleConverter.class)
     @Column(name = "member_role", length = 20)
     private Member.Role memberRole;
 
