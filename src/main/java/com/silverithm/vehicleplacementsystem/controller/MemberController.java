@@ -28,12 +28,13 @@ public class MemberController {
      * 멤버 로그인
      */
     @PostMapping("/signin")
-    public ResponseEntity<MemberSigninResponseDTO> signin(@RequestBody MemberSigninDTO signinDTO) {
+    public ResponseEntity<?> signin(@RequestBody MemberSigninDTO signinDTO) {
         try {
             return ResponseEntity.ok(memberService.signin(signinDTO));
         } catch (IllegalArgumentException e) {
             log.error("[Member API] 로그인 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
