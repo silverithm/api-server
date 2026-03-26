@@ -60,6 +60,8 @@ public class ApprovalTemplateService {
                 .company(company)
                 .name(request.getName())
                 .description(request.getDescription())
+                .templateType(request.getTemplateType() != null ? request.getTemplateType() : "file")
+                .formSchema(request.getFormSchema())
                 .fileUrl(request.getFileUrl())
                 .fileName(request.getFileName())
                 .fileSize(request.getFileSize())
@@ -79,6 +81,10 @@ public class ApprovalTemplateService {
 
         template.setName(request.getName());
         template.setDescription(request.getDescription());
+        if (request.getTemplateType() != null) {
+            template.setTemplateType(request.getTemplateType());
+        }
+        template.setFormSchema(request.getFormSchema());
         template.setFileUrl(request.getFileUrl());
         template.setFileName(request.getFileName());
         template.setFileSize(request.getFileSize());

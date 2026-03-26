@@ -24,6 +24,7 @@ public class ApprovalRequestDTO {
     private String requesterId;
     private String requesterName;
     private ApprovalStatus status;
+    private String formData;
     private String attachmentUrl;
     private String attachmentFileName;
     private Long attachmentFileSize;
@@ -43,6 +44,7 @@ public class ApprovalRequestDTO {
                 .requesterId(request.getRequesterId())
                 .requesterName(request.getRequesterName())
                 .status(request.getStatus())
+                .formData(request.getFormData())
                 .attachmentUrl(request.getAttachmentUrl())
                 .attachmentFileName(request.getAttachmentFileName())
                 .attachmentFileSize(request.getAttachmentFileSize())

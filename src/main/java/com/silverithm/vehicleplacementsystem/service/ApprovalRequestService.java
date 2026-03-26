@@ -103,6 +103,7 @@ public class ApprovalRequestService {
                 .requesterId(requesterId)
                 .requesterName(requesterName)
                 .status(ApprovalStatus.PENDING)
+                .formData(dto.getFormData())
                 .attachmentUrl(dto.getAttachmentUrl())
                 .attachmentFileName(dto.getAttachmentFileName())
                 .attachmentFileSize(dto.getAttachmentFileSize())

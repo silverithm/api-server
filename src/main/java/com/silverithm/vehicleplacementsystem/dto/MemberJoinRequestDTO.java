@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Data
@@ -38,6 +37,7 @@ public class MemberJoinRequestDTO {
     private String position;
     private String fcmToken;
     
-    @NotNull(message = "회사 ID는 필수입니다")
     private Long companyId;
-} 
+
+    private String companyCode;
+}

@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import java.util.List;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +29,9 @@ public class Company extends BaseEntity {
     private String name;
 
     private String addressName;
+
+    @Column(name = "company_code", nullable = false, unique = true, length = 32)
+    private String companyCode;
 
     @Column(name = "expose", nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean expose = true;
@@ -49,6 +53,10 @@ public class Company extends BaseEntity {
         this.name = name;
         this.addressName = addressName;
         this.companyAddress = companyAddress;
+        this.companyCode = UUID.randomUUID().toString()
+                .replace("-", "")
+                .substring(0, 12)
+                .toUpperCase();
     }
 
     public static Company of(String companyName, String addressName, Location companyLocation) {
@@ -62,6 +70,10 @@ public class Company extends BaseEntity {
     public void updateAddress(String addressName, Location companyAddress) {
         this.addressName = addressName;
         this.companyAddress = companyAddress;
+    }
+
+    public void updateCompanyCode(String companyCode) {
+        this.companyCode = companyCode;
     }
 
     public void updateExpose(boolean expose) {

@@ -8,5 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ElderRepository extends JpaRepository<Elderly, Long> {
     List<Elderly> findByUserId(Long userId);
 
+    List<Elderly> findByCompanyIdOrderByNameAsc(Long companyId);
 
+    long countByCompanyId(Long companyId);
 }

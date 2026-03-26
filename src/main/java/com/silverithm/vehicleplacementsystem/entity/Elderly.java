@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.entity;
 import com.silverithm.vehicleplacementsystem.dto.Location;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -32,6 +33,10 @@ public class Elderly extends Node {
     @JoinColumn(name = "user_id")
     private AppUser user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private Company company;
+
     public Elderly(String name, String homeAddressName, Location homeAddress, boolean requiredFrontSeat, AppUser user) {
         this.name = name;
         this.homeAddressName = homeAddressName;
@@ -40,12 +45,29 @@ public class Elderly extends Node {
         this.user = user;
     }
 
+    public Elderly(String name, boolean requiredFrontSeat, Company company) {
+        this.name = name;
+        this.requiredFrontSeat = requiredFrontSeat;
+        this.company = company;
+    }
+
+    public Elderly(String name, String homeAddressName, Location homeAddress, boolean requiredFrontSeat, Company company) {
+        this.name = name;
+        this.homeAddressName = homeAddressName;
+        this.homeAddress = homeAddress;
+        this.requiredFrontSeat = requiredFrontSeat;
+        this.company = company;
+    }
 
     public void update(String name, String homeAddressName, Location homeAddress, boolean requiredFrontSeat) {
         this.name = name;
         this.homeAddressName = homeAddressName;
         this.homeAddress = homeAddress;
         this.requiredFrontSeat = requiredFrontSeat;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
     }
 
     public void update(boolean requiredFrontSeat) {

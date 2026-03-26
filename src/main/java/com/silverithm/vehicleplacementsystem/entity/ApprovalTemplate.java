@@ -32,13 +32,20 @@ public class ApprovalTemplate {
     @Column(length = 500)
     private String description;
 
-    @Column(nullable = false)
+    @Builder.Default
+    @Column(name = "template_type", nullable = false, length = 10)
+    private String templateType = "file";
+
+    @Column(name = "form_schema", columnDefinition = "JSON")
+    private String formSchema;
+
+    @Column(nullable = true)
     private String fileUrl;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String fileName;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long fileSize;
 
     @Column(nullable = false)

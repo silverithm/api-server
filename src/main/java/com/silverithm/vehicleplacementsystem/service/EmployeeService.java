@@ -50,6 +50,8 @@ public class EmployeeService {
     private SubscriptionRepository subscriptionRepository;
     @Autowired
     private CompanyRepository companyRepository;
+    @Autowired
+    private CompanyCodeService companyCodeService;
 
     public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) throws Exception {
 
@@ -110,6 +112,7 @@ public class EmployeeService {
         Location location = geocodingService.getAddressCoordinates(createCompanyDto.companyAddressName());
         Company company = Company.of(createCompanyDto.companyName(), createCompanyDto.companyAddressName(),
                 location);
+        company.updateCompanyCode(companyCodeService.generateUniqueCode());
         companyRepository.save(company);
 
         List<Employee> employees = employeeRepository.findByUserId(user.getId());

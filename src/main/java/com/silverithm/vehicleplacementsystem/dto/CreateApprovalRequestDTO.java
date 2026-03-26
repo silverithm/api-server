@@ -19,6 +19,9 @@ public class CreateApprovalRequestDTO {
     @NotBlank(message = "제목은 필수입니다")
     private String title;
 
+    // 폼 데이터 (form 타입 양식)
+    private String formData;
+
     // 첨부파일 정보 (선택)
     private String attachmentUrl;
     private String attachmentFileName;

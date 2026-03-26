@@ -2,11 +2,14 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
+import com.silverithm.vehicleplacementsystem.dto.CompanyElderRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.service.ElderService;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -61,5 +64,33 @@ public class ElderController {
                                 @RequestBody List<AddElderRequest> elderRequests) throws Exception {
         elderService.bulkAddElders(userDetails, elderRequests);
         return "Success";
+    }
+
+    // ==================== Company 기반 어르신 관리 API ====================
+
+    @GetMapping("/api/v1/elders/company/{companyId}")
+    public ResponseEntity<Map<String, Object>> getEldersByCompany(@PathVariable("companyId") Long companyId) {
+        List<ElderlyDTO> elders = elderService.getEldersByCompany(companyId);
+        return ResponseEntity.ok(Map.of("elders", elders));
+    }
+
+    @GetMapping("/api/v1/elders/company/{companyId}/count")
+    public ResponseEntity<Map<String, Long>> getElderCountByCompany(@PathVariable("companyId") Long companyId) {
+        long count = elderService.getElderCountByCompany(companyId);
+        return ResponseEntity.ok(Map.of("count", count));
+    }
+
+    @PostMapping("/api/v1/elders/company/{companyId}")
+    public ResponseEntity<String> addElderToCompany(@PathVariable("companyId") Long companyId,
+                                                     @RequestBody CompanyElderRequestDTO request) throws Exception {
+        elderService.addElderToCompany(companyId, request);
+        return ResponseEntity.ok("Success");
+    }
+
+    @PutMapping("/api/v1/elders/company/elder/{id}")
+    public ResponseEntity<String> updateCompanyElder(@PathVariable("id") Long id,
+                                                      @RequestBody CompanyElderRequestDTO request) throws Exception {
+        elderService.updateCompanyElder(id, request);
+        return ResponseEntity.ok("Success");
     }
 }

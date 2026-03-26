@@ -1,0 +1,5 @@
+{"t":0,"agent":"a1bf4de","agent_type":"unknown","event":"agent_stop","success":true}
+{"t":0,"agent":"ad70bed","agent_type":"architect","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"aade31e","agent_type":"architect","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"ad70bed","agent_type":"architect","event":"agent_stop","success":true,"duration_ms":168689}
+{"t":0,"agent":"aade31e","agent_type":"architect","event":"agent_stop","success":true,"duration_ms":173773}

@@ -109,7 +109,7 @@ public class MemberController {
      * 회원가입 요청
      */
     @PostMapping("/join-request")
-    public ResponseEntity<MemberJoinRequestResponseDTO> submitJoinRequest(
+    public ResponseEntity<?> submitJoinRequest(
             @Valid @RequestBody MemberJoinRequestDTO requestDTO) {
 
         try {
@@ -121,10 +121,12 @@ public class MemberController {
 
         } catch (IllegalArgumentException e) {
             log.error("[Member API] 회원가입 요청 오류: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Member API] 회원가입 요청 서버 오류:", e);
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "회원가입 요청 중 오류가 발생했습니다"));
         }
     }
 

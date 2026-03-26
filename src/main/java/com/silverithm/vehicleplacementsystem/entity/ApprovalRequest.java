@@ -43,6 +43,10 @@ public class ApprovalRequest {
     @Column(nullable = false)
     private ApprovalStatus status;
 
+    // 폼 데이터 (form 타입 양식)
+    @Column(name = "form_data", columnDefinition = "JSON")
+    private String formData;
+
     // 첨부파일 정보
     @Column
     private String attachmentUrl;

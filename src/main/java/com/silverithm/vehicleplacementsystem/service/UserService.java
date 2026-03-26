@@ -77,6 +77,8 @@ public class UserService {
     private CompanyRepository companyRepository;
     @Autowired
     private GeocodingService geocodingService;
+    @Autowired
+    private CompanyCodeService companyCodeService;
 
     private Key secretKey;
 
@@ -106,12 +108,14 @@ public class UserService {
                 return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getId(),
                         findUser.getCompany().getName(),
                         findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
+                        findUser.getCompany().getCompanyCode(),
                         tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey());
             }
 
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getId(),
                     findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
+                    findUser.getCompany().getCompanyCode(),
                     tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
 
         } catch (AuthenticationException e) {
@@ -126,6 +130,7 @@ public class UserService {
         TokenInfo tokenInfo = generateTokenInfo(userDataDTO);
         Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
         Company company = new Company(userDataDTO.getCompanyName(), userDataDTO.getCompanyAddress(), companyLocation);
+        company.updateCompanyCode(companyCodeService.generateUniqueCode());
         String customerKey = generateUniqueCustomerKey();
 
         companyRepository.save(company);
@@ -425,12 +430,14 @@ public class UserService {
             return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                     findUser.getCompany().getId(), findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
+                    findUser.getCompany().getCompanyCode(),
                     new SubscriptionResponseDTO(), findUser.getCustomerKey());
         }
         
         return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                 findUser.getCompany().getId(), findUser.getCompany().getName(),
                 findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
+                findUser.getCompany().getCompanyCode(),
                 new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
     }
 
@@ -445,4 +452,3 @@ public class UserService {
         log.info("[User Service] FCM 토큰 업데이트 완료: userId={}", userId);
     }
 }
-

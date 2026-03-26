@@ -39,6 +39,7 @@ public class MemberService {
     private final SlackService slackService;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
+    private final CompanyCodeService companyCodeService;
 
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 노출된 회사 조회");
@@ -56,8 +57,7 @@ public class MemberService {
                 requestDTO.getUsername(), requestDTO.getEmail(), requestDTO.getCompanyId());
 
         // 회사 검증
-        Company company = companyRepository.findById(requestDTO.getCompanyId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
+        Company company = resolveCompany(requestDTO);
 
 
         if (memberRepository.existsByEmail(requestDTO.getEmail())) {
@@ -98,6 +98,21 @@ public class MemberService {
         log.info("[Member Service] 회원가입 요청 생성 완료: 회사 {}, ID={}", company.getName(), saved.getId());
 
         return MemberJoinRequestResponseDTO.fromEntity(saved);
+    }
+
+    private Company resolveCompany(MemberJoinRequestDTO requestDTO) {
+        if (requestDTO.getCompanyId() != null) {
+            return companyRepository.findById(requestDTO.getCompanyId())
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + requestDTO.getCompanyId()));
+        }
+
+        String normalizedCompanyCode = companyCodeService.normalize(requestDTO.getCompanyCode());
+        if (!normalizedCompanyCode.isEmpty()) {
+            return companyRepository.findByCompanyCodeIgnoreCase(normalizedCompanyCode)
+                    .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 회사 코드입니다"));
+        }
+
+        throw new IllegalArgumentException("회사 코드 또는 회사 선택이 필요합니다");
     }
 
     public List<MemberJoinRequestResponseDTO> getAllJoinRequests() {
