@@ -421,7 +421,8 @@ public class ChatService {
         // 발신자 읽음 처리
         markMessageAsRead(saved, request.getSenderId(), request.getSenderName());
 
-        ChatMessageDTO dto = ChatMessageDTO.fromEntity(saved);
+        // 발신자 읽음이 보장되므로 readCount=1로 설정
+        ChatMessageDTO dto = ChatMessageDTO.fromEntityWithReadCount(saved, 1);
 
         // WebSocket으로 메시지 전송
         ChatWebSocketMessage wsMessage = ChatWebSocketMessage.messageEvent(roomId, dto);

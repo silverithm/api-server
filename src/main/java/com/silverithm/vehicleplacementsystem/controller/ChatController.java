@@ -309,12 +309,13 @@ public class ChatController {
     public ResponseEntity<Map<String, Object>> getMessages(
             @PathVariable Long roomId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String userId) {
 
         try {
-            log.info("[Chat API] 메시지 목록 조회: roomId={}, page={}, size={}", roomId, page, size);
+            log.info("[Chat API] 메시지 목록 조회: roomId={}, page={}, size={}, userId={}", roomId, page, size, userId);
 
-            List<ChatMessageDTO> messages = chatService.getMessages(roomId, page, size);
+            List<ChatMessageDTO> messages = chatService.getMessages(roomId, page, size, userId);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())

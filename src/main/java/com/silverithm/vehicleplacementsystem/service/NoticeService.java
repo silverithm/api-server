@@ -18,6 +18,7 @@ import com.silverithm.vehicleplacementsystem.repository.NoticeReaderRepository;
 import com.silverithm.vehicleplacementsystem.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -122,6 +123,8 @@ public class NoticeService {
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
 
+        noticeCommentRepository.deleteByNoticeId(noticeId);
+        noticeReaderRepository.deleteByNoticeId(noticeId);
         noticeRepository.delete(notice);
         log.info("[Notice Service] 공지사항 삭제 완료: id={}", noticeId);
     }
@@ -323,17 +326,25 @@ public class NoticeService {
         return noticeReaderRepository.findByNoticeIdAndUserId(noticeId, userId)
                 .map(NoticeReaderDTO::fromEntity)
                 .orElseGet(() -> {
-                    NoticeReader reader = NoticeReader.builder()
-                            .notice(notice)
-                            .userId(userId)
-                            .userName(userName)
-                            .readAt(LocalDateTime.now())
-                            .build();
+                    try {
+                        NoticeReader reader = NoticeReader.builder()
+                                .notice(notice)
+                                .userId(userId)
+                                .userName(userName)
+                                .readAt(LocalDateTime.now())
+                                .build();
 
-                    NoticeReader saved = noticeReaderRepository.save(reader);
-                    log.info("[Notice Service] 읽음 표시 완료: id={}", saved.getId());
+                        NoticeReader saved = noticeReaderRepository.saveAndFlush(reader);
+                        log.info("[Notice Service] 읽음 표시 완료: id={}", saved.getId());
 
-                    return NoticeReaderDTO.fromEntity(saved);
+                        return NoticeReaderDTO.fromEntity(saved);
+                    } catch (DataIntegrityViolationException e) {
+                        // 동시 요청으로 UNIQUE 제약 위반 시 기존 기록 반환
+                        log.warn("[Notice Service] 중복 읽음 기록 감지, 기존 기록 반환: noticeId={}, userId={}", noticeId, userId);
+                        return noticeReaderRepository.findByNoticeIdAndUserId(noticeId, userId)
+                                .map(NoticeReaderDTO::fromEntity)
+                                .orElseThrow(() -> new RuntimeException("읽음 기록을 찾을 수 없습니다"));
+                    }
                 });
     }
 
