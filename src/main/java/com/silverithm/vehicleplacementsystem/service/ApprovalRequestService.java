@@ -175,12 +175,8 @@ public class ApprovalRequestService {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
 
-        if (request.getStatus() != ApprovalStatus.PENDING) {
-            throw new RuntimeException("대기중인 결재만 취소할 수 있습니다.");
-        }
-
         requestRepository.deleteById(id);
-        log.info("[ApprovalRequest] 결재 요청 취소: id={}", id);
+        log.info("[ApprovalRequest] 결재 요청 삭제: id={}, status={}", id, request.getStatus());
     }
 
     // 통계 조회
