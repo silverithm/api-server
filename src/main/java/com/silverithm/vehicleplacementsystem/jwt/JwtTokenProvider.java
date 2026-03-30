@@ -142,6 +142,12 @@ public class JwtTokenProvider {
         return false;
     }
 
+    // 토큰 타입이 refresh인지 검증
+    public boolean isRefreshToken(String token) {
+        Claims claims = parseClaims(token);
+        return TYPE_REFRESH.equals(claims.get("type"));
+    }
+
     private Claims parseClaims(String accessToken) {
         try {
             return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(accessToken).getBody();

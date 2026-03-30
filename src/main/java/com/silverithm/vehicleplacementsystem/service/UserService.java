@@ -27,6 +27,7 @@ import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -169,26 +170,38 @@ public class UserService {
     public void logout(HttpServletRequest request) {
 
         String accessToken = jwtTokenProvider.resolveToken(request);
-        //Access Token 검증
-        if (!jwtTokenProvider.validateToken(accessToken)) {
+
+        if (accessToken == null) {
+            return;
         }
 
-        Claims claims = Jwts.parser()
-                .setSigningKey(secretKey)
-                .parseClaimsJws(accessToken)
-                .getBody();
+        Claims claims;
+        try {
+            claims = Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(accessToken)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            // 만료된 토큰이라도 claims를 추출하여 블랙리스트 처리
+            claims = e.getClaims();
+        } catch (Exception e) {
+            log.warn("로그아웃 토큰 파싱 실패: {}", e.getMessage());
+            return;
+        }
 
         String userEmail = claims.getSubject();
         long time = claims.getExpiration().getTime() - System.currentTimeMillis();
 
-        //Access Token blacklist에 등록하여 만료시키기
-        //해당 엑세스 토큰의 남은 유효시간을 얻음
-        redisUtils.setBlackList(accessToken, userEmail, time);
-        //DB에 저장된 Refresh Token 제거
-//        refreshTokenRepository.deleteById(userEmail);
+        if (time > 0) {
+            // Access Token blacklist에 등록하여 만료시키기
+            redisUtils.setBlackList(accessToken, userEmail, time);
+        }
 
+        // DB에 저장된 Refresh Token 제거 (관리자만 해당, 직원은 DB에 저장 안 함)
         AppUser findUser = userRepository.findByUsername(userEmail);
-        findUser.updateRefreshToken(null);
+        if (findUser != null) {
+            findUser.updateRefreshToken(null);
+        }
     }
 
     public AppUser loadUserByUsername(String username) {
@@ -292,14 +305,19 @@ public class UserService {
     @Transactional
     public UserResponseDTO.TokenInfo refreshToken(TokenRefreshRequest tokenRefreshRequest) {
 
-        log.info("refresh Toekn !!! : " + new Date());
-
-        String userName = jwtTokenProvider.getUsernameFromToken(tokenRefreshRequest.refreshToken());
-        Authentication authentication = jwtTokenProvider.getAuthentication(tokenRefreshRequest.refreshToken());
+        log.info("refresh Token !!! : " + new Date());
 
         if (!jwtTokenProvider.validateToken(tokenRefreshRequest.refreshToken())) {
             throw new CustomException("유효하지 않은 리프레시 토큰입니다", HttpStatus.UNAUTHORIZED);
         }
+
+        // access 토큰이 refresh 용도로 사용되는 것을 방지
+        if (!jwtTokenProvider.isRefreshToken(tokenRefreshRequest.refreshToken())) {
+            throw new CustomException("리프레시 토큰이 아닙니다", HttpStatus.UNAUTHORIZED);
+        }
+
+        String userName = jwtTokenProvider.getUsernameFromToken(tokenRefreshRequest.refreshToken());
+        Authentication authentication = jwtTokenProvider.getAuthentication(tokenRefreshRequest.refreshToken());
 
         UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(userName,
                 authentication.getAuthorities());
