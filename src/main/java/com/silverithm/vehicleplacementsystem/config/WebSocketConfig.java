@@ -73,7 +73,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             log.warn("[WebSocket] 토큰 검증 실패: {}", e.getMessage());
                         }
                     } else {
-                        log.warn("[WebSocket] Authorization 헤더 없음: sessionId={}", accessor.getSessionId());
+                        log.warn("[WebSocket] Authorization 헤더 없음 — 연결 거부: sessionId={}", accessor.getSessionId());
+                        throw new org.springframework.messaging.MessageDeliveryException("인증이 필요합니다");
                     }
                 }
 

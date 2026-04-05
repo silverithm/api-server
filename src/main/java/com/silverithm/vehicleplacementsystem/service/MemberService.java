@@ -13,6 +13,7 @@ import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.PositionRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,17 +47,30 @@ public class MemberService {
     private final EmailService emailService;
     private final CompanyCodeService companyCodeService;
     private final PositionRepository positionRepository;
+    private final UserRepository userRepository;
 
     /**
      * JWT 인증된 사용자로부터 adminId를 결정한다.
-     * JWT principal에서 memberId를 조회하고, fallback으로 클라이언트가 보낸 adminId 사용.
+     * 관리자는 AppUser(app_users)일 수도, Member(members)일 수도 있으므로 둘 다 조회.
      */
     public Long resolveAdminId(UserDetails userDetails, Long fallbackAdminId) {
-        if (userDetails != null) {
-            return memberRepository.findByUsername(userDetails.getUsername())
-                    .map(Member::getId)
-                    .orElse(fallbackAdminId);
+        if (userDetails == null) {
+            return fallbackAdminId;
         }
+        String username = userDetails.getUsername();
+
+        // 1. Member 테이블에서 조회
+        var memberOpt = memberRepository.findByUsername(username);
+        if (memberOpt.isPresent()) {
+            return memberOpt.get().getId();
+        }
+
+        // 2. AppUser 테이블에서 조회 (관리자)
+        var appUserOpt = userRepository.findByEmail(username);
+        if (appUserOpt.isPresent()) {
+            return appUserOpt.get().getId();
+        }
+
         return fallbackAdminId;
     }
 
