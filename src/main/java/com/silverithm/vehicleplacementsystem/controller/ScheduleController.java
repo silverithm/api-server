@@ -2,6 +2,10 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ScheduleDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleRequestDTO;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Member;
+import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import com.silverithm.vehicleplacementsystem.service.ScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +20,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/schedules")
@@ -26,6 +31,8 @@ import java.util.Map;
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
+    private final UserRepository userRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * 일정 목록 조회
@@ -112,8 +119,9 @@ public class ScheduleController {
             log.info("[Schedule API] 일정 등록: companyId={}, title={}", companyId, request.getTitle());
 
             // 인증 정보에서 작성자 정보 추출
-            String authorId = authentication != null ? authentication.getName() : "unknown";
-            String authorName = "관리자"; // 필요시 인증 정보에서 이름 추출
+            String authName = authentication != null ? authentication.getName() : "unknown";
+            String authorId = resolveAuthorEmail(authName);
+            String authorName = resolveAuthorName(authName);
 
             ScheduleDTO schedule = scheduleService.createSchedule(companyId, authorId, authorName, request);
 
@@ -254,6 +262,40 @@ public class ScheduleController {
         return ResponseEntity.ok()
                 .headers(getCorsHeaders())
                 .build();
+    }
+
+    /**
+     * authentication.getName()은 관리자=email, 직원=username을 반환.
+     * authorId를 항상 email로 통일하여 프론트엔드와 비교 가능하게 한다.
+     */
+    private String resolveAuthorEmail(String authName) {
+        // 직원: username으로 검색 → email 반환
+        Optional<Member> member = memberRepository.findByUsername(authName);
+        if (member.isEmpty()) {
+            member = memberRepository.findByEmail(authName);
+        }
+        if (member.isPresent()) {
+            return member.get().getEmail();
+        }
+        // 관리자: authName이 이미 email
+        return authName;
+    }
+
+    private String resolveAuthorName(String authName) {
+        // 직원: username 또는 email로 검색
+        Optional<Member> member = memberRepository.findByUsername(authName);
+        if (member.isEmpty()) {
+            member = memberRepository.findByEmail(authName);
+        }
+        if (member.isPresent()) {
+            return member.get().getName();
+        }
+        // 관리자: email로 검색
+        Optional<AppUser> appUser = userRepository.findByEmail(authName);
+        if (appUser.isPresent() && appUser.get().getUsername() != null) {
+            return appUser.get().getUsername();
+        }
+        return authName;
     }
 
     private HttpHeaders getCorsHeaders() {
