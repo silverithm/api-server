@@ -26,7 +26,6 @@ import java.util.Map;
 @RequestMapping("/api/vacation")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class VacationController {
     

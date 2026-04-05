@@ -23,7 +23,6 @@ import java.util.Map;
 @RequestMapping("/api/v1/notices")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class NoticeController {
 

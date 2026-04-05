@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +46,19 @@ public class MemberService {
     private final EmailService emailService;
     private final CompanyCodeService companyCodeService;
     private final PositionRepository positionRepository;
+
+    /**
+     * JWT 인증된 사용자로부터 adminId를 결정한다.
+     * JWT principal에서 memberId를 조회하고, fallback으로 클라이언트가 보낸 adminId 사용.
+     */
+    public Long resolveAdminId(UserDetails userDetails, Long fallbackAdminId) {
+        if (userDetails != null) {
+            return memberRepository.findByUsername(userDetails.getUsername())
+                    .map(Member::getId)
+                    .orElse(fallbackAdminId);
+        }
+        return fallbackAdminId;
+    }
 
     public List<CompanyListDTO> getAllCompanies() {
         log.info("[Member Service] 노출된 회사 조회");
@@ -770,7 +784,19 @@ public class MemberService {
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + username));
 
-        member.updateRole(Member.Role.valueOf(role.toUpperCase()));
+        Member.Role newRole;
+        try {
+            newRole = Member.Role.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("유효하지 않은 역할입니다: " + role);
+        }
+
+        // ADMIN 역할로 자체 ��격 방지
+        if (newRole == Member.Role.ADMIN) {
+            throw new IllegalArgumentException("관리자 역할은 직접 변경할 수 없습니다");
+        }
+
+        member.updateRole(newRole);
     }
 
     @Transactional

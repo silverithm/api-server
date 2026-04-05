@@ -19,7 +19,6 @@ import java.util.Set;
 @RequestMapping("/api/v1/members")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class MemberController {
 
@@ -182,12 +181,15 @@ public class MemberController {
     @PutMapping("/join-requests/{id}/approve")
     public ResponseEntity<Map<String, String>> approveJoinRequest(
             @PathVariable Long id,
-            @RequestParam Long adminId) {
+            @RequestParam(required = false) Long adminId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            log.info("[Member API] 가입 요청 승인: requestId={}, adminId={}", id, adminId);
+            // JWT에서 사용자 조회하여 adminId 결정
+            Long resolvedAdminId = memberService.resolveAdminId(userDetails, adminId);
+            log.info("[Member API] 가입 요청 승인: requestId={}, adminId={}", id, resolvedAdminId);
 
-            memberService.approveJoinRequest(id, adminId);
+            memberService.approveJoinRequest(id, resolvedAdminId);
 
             return ResponseEntity.ok(Map.of("message", "가입 요청이 승인되었습니다"));
 
@@ -208,13 +210,15 @@ public class MemberController {
     @PutMapping("/join-requests/{id}/reject")
     public ResponseEntity<Map<String, String>> rejectJoinRequest(
             @PathVariable Long id,
-            @RequestParam Long adminId,
+            @RequestParam(required = false) Long adminId,
+            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody MemberJoinRequestProcessDTO processDTO) {
 
         try {
-            log.info("[Member API] 가입 요청 거부: requestId={}, adminId={}", id, adminId);
+            Long resolvedAdminId = memberService.resolveAdminId(userDetails, adminId);
+            log.info("[Member API] 가입 요청 거부: requestId={}, adminId={}", id, resolvedAdminId);
 
-            memberService.rejectJoinRequest(id, adminId, processDTO);
+            memberService.rejectJoinRequest(id, resolvedAdminId, processDTO);
 
             return ResponseEntity.ok(Map.of("message", "가입 요청이 거부되었습니다"));
 

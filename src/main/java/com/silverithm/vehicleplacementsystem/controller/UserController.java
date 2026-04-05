@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -75,8 +74,10 @@ public class UserController {
 
 
     @PostMapping("api/v1/change/password")
-    public ResponseEntity<String> changePassword(@RequestBody PasswordChangeRequest passwordChangeRequest) {
-        userService.changePassword(passwordChangeRequest);
+    public ResponseEntity<String> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody PasswordChangeRequest passwordChangeRequest) {
+        userService.changePassword(userDetails.getUsername(), passwordChangeRequest);
         return ResponseEntity.ok().body("success");
     }
 

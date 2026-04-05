@@ -26,7 +26,6 @@ import java.util.Optional;
 @RequestMapping("/api/v1/schedules")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class ScheduleController {
 

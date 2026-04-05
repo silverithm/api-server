@@ -18,7 +18,6 @@ import java.util.Map;
 @RequestMapping("/api/v1/approval-templates")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class ApprovalTemplateController {
 

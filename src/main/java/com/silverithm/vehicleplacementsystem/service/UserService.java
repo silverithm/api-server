@@ -254,8 +254,8 @@ public class UserService {
         emailService.sendEmailAsync(email, subject, content);
     }
 
-    public void changePassword(PasswordChangeRequest passwordChangeRequest) {
-        AppUser findUser = userRepository.findActiveByEmail(passwordChangeRequest.email())
+    public void changePassword(String authenticatedEmail, PasswordChangeRequest passwordChangeRequest) {
+        AppUser findUser = userRepository.findActiveByEmail(authenticatedEmail)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
 
         if (!passwordEncoder.matches(passwordChangeRequest.currentPassword(), findUser.getPassword())) {

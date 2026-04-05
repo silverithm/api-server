@@ -21,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/approvals")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class ApprovalRequestController {
 

@@ -106,10 +106,7 @@ public class WebSecurityConfigure {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorize -> authorize
-                                .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
                                 .requestMatchers("/*").permitAll()
-                                .requestMatchers("/metrics/*").permitAll()
-                                .requestMatchers("/actuator/*").permitAll()
                                 .requestMatchers("/h2-console/*").permitAll()
                                 .requestMatchers("api/v1/signin").permitAll()
                                 .requestMatchers("api/v1/find/password").permitAll()
@@ -123,17 +120,12 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/members/signin").permitAll()
                                 .requestMatchers("/api/v1/members/join-request").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/positions").permitAll()
-                                .requestMatchers("/api/v1/members/{id}/fcm-token").permitAll()
                                 .requestMatchers("/api/v1/members/find/password").permitAll()
                                 .requestMatchers("/api/v1/validate-token").permitAll()
                                 .requestMatchers("/api/v1/app-version").permitAll()
                                 // WebSocket endpoints
                                 .requestMatchers("/ws/**").permitAll()
                                 .requestMatchers("/ws/chat/**").permitAll()
-                                // Chat API endpoints
-                                .requestMatchers("/api/v1/chat/**").permitAll()
-                                // File API endpoints
-                                .requestMatchers("/api/v1/files/**").permitAll()
                                 .anyRequest().authenticated()
                 ).addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider, redisUtils),
                         UsernamePasswordAuthenticationFilter.class);

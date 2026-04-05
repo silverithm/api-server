@@ -50,7 +50,14 @@ public class SubscriptionController {
 
     @PostMapping("/admin/{userId}")
     public ResponseEntity<SubscriptionResponseDTO> createSubscriptionToUser(
+            @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody SubscriptionRequestDTO requestDto, @PathVariable Long userId) {
+        // 관리자 권한 확인
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isAdmin) {
+            return ResponseEntity.status(403).build();
+        }
         return ResponseEntity.ok(subscriptionService.createSubscriptionToUser(requestDto, userId));
     }
 

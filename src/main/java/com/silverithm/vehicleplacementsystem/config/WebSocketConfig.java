@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.config;
 
+import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @RequiredArgsConstructor
 @Slf4j
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -54,14 +57,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         message, StompHeaderAccessor.class);
 
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    // 연결 시 로깅
                     log.info("[WebSocket] 새 연결 시도: sessionId={}", accessor.getSessionId());
 
-                    // JWT 토큰 검증 (필요시 활성화)
-                    // String token = accessor.getFirstNativeHeader("Authorization");
-                    // if (token != null && token.startsWith("Bearer ")) {
-                    //     validateToken(token.substring(7));
-                    // }
+                    // JWT 토큰 검증
+                    String token = accessor.getFirstNativeHeader("Authorization");
+                    if (token != null && token.startsWith("Bearer ")) {
+                        try {
+                            String jwt = token.substring(7);
+                            if (jwtTokenProvider.validateToken(jwt)) {
+                                var auth = jwtTokenProvider.getAuthentication(jwt);
+                                accessor.setUser(auth);
+                                log.info("[WebSocket] 인증 성공: user={}", auth.getName());
+                            }
+                        } catch (Exception e) {
+                            log.warn("[WebSocket] 토큰 검증 실패: {}", e.getMessage());
+                        }
+                    } else {
+                        log.warn("[WebSocket] Authorization 헤더 없음: sessionId={}", accessor.getSessionId());
+                    }
                 }
 
                 if (accessor != null && StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {

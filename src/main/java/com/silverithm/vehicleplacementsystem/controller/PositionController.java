@@ -18,7 +18,6 @@ import java.util.Map;
 @RequestMapping("/api/v1/positions")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 @Validated
 public class PositionController {
 
