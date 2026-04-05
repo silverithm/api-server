@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -355,6 +356,51 @@ public class MemberController {
         }
     }
 
+
+    /**
+     * 멤버 권한 조회
+     */
+    @GetMapping("/{id}/permissions")
+    public ResponseEntity<?> getMemberPermissions(@PathVariable Long id) {
+        try {
+            log.info("[Member API] 멤버 권한 조회: id={}", id);
+            List<String> permissions = memberService.getMemberPermissions(id);
+            return ResponseEntity.ok(Map.of("permissions", permissions));
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 멤버 권한 조회 오류: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[Member API] 멤버 권한 조회 서버 오류:", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 멤버 권한 수정
+     */
+    @PutMapping("/{id}/permissions")
+    public ResponseEntity<?> updateMemberPermissions(
+            @PathVariable Long id,
+            @RequestBody Map<String, List<String>> body) {
+        try {
+            log.info("[Member API] 멤버 권한 수정: id={}", id);
+            List<String> permissions = body.get("permissions");
+            if (permissions == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "permissions 필드가 필요합니다"));
+            }
+            List<String> updated = memberService.updateMemberPermissions(id, permissions);
+            return ResponseEntity.ok(Map.of("permissions", updated));
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 멤버 권한 수정 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Member API] 멤버 권한 수정 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "권한 수정 중 오류가 발생했습니다"));
+        }
+    }
 
     @PutMapping("/role")
     public ResponseEntity<Map<String, String>> updateMemberRole(@AuthenticationPrincipal UserDetails userDetails,

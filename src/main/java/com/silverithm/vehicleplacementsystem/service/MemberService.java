@@ -24,8 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -728,6 +730,39 @@ public class MemberService {
         String content = temporaryPassword;
 
         emailService.sendEmailAsync(email, subject, content);
+    }
+
+    private static final Set<String> VALID_PERMISSIONS = Set.of(
+            "NOTICE_MANAGE", "SCHEDULE_MANAGE", "SCHEDULE_DISPATCH",
+            "APPROVAL_MANAGE", "APPROVAL_TEMPLATE", "WORK_MANAGE",
+            "MEMBER_VIEW", "MEMBER_MANAGE", "SENIOR_MANAGE"
+    );
+
+    public List<String> getMemberPermissions(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        Set<String> perms = member.getPermissions();
+        return perms != null ? List.copyOf(perms) : List.of();
+    }
+
+    @Transactional
+    public List<String> updateMemberPermissions(Long memberId, List<String> permissions) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+
+        // 유효하지 않은 권한 검증
+        for (String perm : permissions) {
+            if (!VALID_PERMISSIONS.contains(perm)) {
+                throw new IllegalArgumentException("유효하지 않은 권한입니다: " + perm);
+            }
+        }
+
+        member.setPermissions(new HashSet<>(permissions));
+        memberRepository.save(member);
+
+        log.info("[Member Service] 멤버 권한 수정 완료: memberId={}, permissions={}", memberId, permissions);
+
+        return List.copyOf(member.getPermissions());
     }
 
     @Transactional

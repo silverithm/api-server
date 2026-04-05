@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "members")
@@ -70,7 +72,13 @@ public class Member {
     
     @Column
     private LocalDateTime lastLoginAt;
-    
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "member_permissions", joinColumns = @JoinColumn(name = "member_id"))
+    @Column(name = "permission")
+    @Builder.Default
+    private Set<String> permissions = new HashSet<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

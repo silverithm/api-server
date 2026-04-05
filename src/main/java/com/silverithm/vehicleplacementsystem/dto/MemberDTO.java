@@ -7,13 +7,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class MemberDTO {
-    
+
     private Long id;
     private String username;
     private String name;
@@ -25,10 +27,12 @@ public class MemberDTO {
     private String position;
     private Long positionId;
     private CompanyListDTO company;
+    private List<String> permissions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+
     public static MemberDTO fromEntity(Member entity) {
+        Set<String> perms = entity.getPermissions();
         return MemberDTO.builder()
                 .id(entity.getId())
                 .username(entity.getUsername())
@@ -41,6 +45,7 @@ public class MemberDTO {
                 .position(entity.getPosition())
                 .positionId(entity.getPositionEntity() != null ? entity.getPositionEntity().getId() : null)
                 .company(entity.getCompany() != null ? CompanyListDTO.fromEntity(entity.getCompany()) : null)
+                .permissions(perms != null ? List.copyOf(perms) : List.of())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
