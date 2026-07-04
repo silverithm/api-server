@@ -469,4 +469,15 @@ public class UserService {
         userRepository.save(user);
         log.info("[User Service] FCM 토큰 업데이트 완료: userId={}", userId);
     }
+
+    /** 로그아웃 시 기기 토큰 폐기 — 로그아웃한 기기로 알림이 가지 않도록 한다 */
+    @Transactional
+    public void clearFcmToken(Long userId) {
+        log.info("[User Service] FCM 토큰 삭제: userId={}", userId);
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + userId));
+
+        user.updateFcmToken(null);
+        userRepository.save(user);
+    }
 }

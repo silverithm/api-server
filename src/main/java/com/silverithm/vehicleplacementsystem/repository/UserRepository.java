@@ -13,6 +13,8 @@ public interface UserRepository extends JpaRepository<AppUser, Long>, UserReposi
 
     Optional<AppUser> findByEmail(String email);
 
+    List<AppUser> findByFcmToken(String fcmToken);
+
     AppUser findByUsername(String username);
 
     boolean existsByUsername(String username);

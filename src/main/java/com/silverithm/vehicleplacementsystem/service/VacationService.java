@@ -512,8 +512,9 @@ public class VacationService {
                 return null; // FCM 토큰이 없는 경우 null 반환
             }
         } catch (Exception e) {
+            // 알림은 부수 기능 — 토큰 조회 실패가 승인/거절 본 처리를 깨뜨리지 않도록 null 반환
             log.error("[Vacation Service] FCM 토큰 조회 중 오류 발생: userId={}, userName={}", userId, userName, e);
-            throw new CustomException("FCM 토큰 조회 중 오류 발생: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return null;
         }
     }
 

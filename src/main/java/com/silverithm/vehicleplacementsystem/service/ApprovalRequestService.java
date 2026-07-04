@@ -2,13 +2,17 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest.ApprovalStatus;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplate;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalTemplateRepository;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
+import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +36,8 @@ public class ApprovalRequestService {
     private final ApprovalTemplateRepository templateRepository;
     private final CompanyRepository companyRepository;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
+    private final MemberRepository memberRepository;
 
     // 결재 요청 목록 조회 (관리자용, 필터 적용)
     @Transactional(readOnly = true)
@@ -112,6 +118,8 @@ public class ApprovalRequestService {
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 요청 생성: id={}, title={}, requester={}", saved.getId(), saved.getTitle(), requesterName);
 
+        notifyAdminsOfSubmission(saved);
+
         return toDTO(saved);
     }
 
@@ -131,6 +139,8 @@ public class ApprovalRequestService {
 
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 승인: id={}, processedBy={}", saved.getId(), processedByName);
+
+        notifyRequesterOfResult(saved, true, null);
 
         return toDTO(saved);
     }
@@ -152,6 +162,8 @@ public class ApprovalRequestService {
 
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 반려: id={}, processedBy={}, reason={}", saved.getId(), processedByName, reason);
+
+        notifyRequesterOfResult(saved, false, reason);
 
         return toDTO(saved);
     }
@@ -177,6 +189,93 @@ public class ApprovalRequestService {
 
         requestRepository.deleteById(id);
         log.info("[ApprovalRequest] 결재 요청 삭제: id={}, status={}", id, request.getStatus());
+    }
+
+    // ─── 알림 헬퍼 ───
+
+    /** 결재 상신 시 회사 관리자(AppUser)들에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음. */
+    private void notifyAdminsOfSubmission(ApprovalRequest request) {
+        try {
+            Company company = request.getCompany();
+            if (company == null || company.getUsers() == null) {
+                return;
+            }
+            for (AppUser admin : company.getUsers()) {
+                String token = admin.getFcmToken();
+                if (token == null || token.isEmpty()) {
+                    continue;
+                }
+                try {
+                    notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
+                            .recipientToken(token)
+                            .title("새 전자결재 요청")
+                            .message(request.getRequesterName() + "님이 '" + request.getTitle() + "' 결재를 상신했습니다.")
+                            .recipientUserId(String.valueOf(admin.getId()))
+                            .recipientUserName(admin.getUsername())
+                            .type("approval")
+                            .relatedEntityId(request.getId())
+                            .relatedEntityType("approval_request")
+                            .data(Map.of(
+                                    "type", "approval",
+                                    "requestId", String.valueOf(request.getId())
+                            ))
+                            .build());
+                } catch (Exception e) {
+                    log.error("[ApprovalRequest] 관리자 결재 알림 전송 실패: adminId={}, {}", admin.getId(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("[ApprovalRequest] 결재 상신 알림 처리 실패: requestId={}, {}", request.getId(), e.getMessage());
+        }
+    }
+
+    /** 결재 승인/반려 시 기안자(Member)에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음. */
+    private void notifyRequesterOfResult(ApprovalRequest request, boolean approved, String reason) {
+        try {
+            Member requester = findRequester(request.getRequesterId());
+            if (requester == null || requester.getFcmToken() == null || requester.getFcmToken().isEmpty()) {
+                log.debug("[ApprovalRequest] 기안자 FCM 토큰 없음: requesterId={}", request.getRequesterId());
+                return;
+            }
+
+            String title = approved ? "전자결재 승인" : "전자결재 반려";
+            StringBuilder message = new StringBuilder()
+                    .append("'").append(request.getTitle()).append("' 결재가 ")
+                    .append(approved ? "승인" : "반려").append("되었습니다.");
+            if (!approved && reason != null && !reason.isBlank()) {
+                message.append(" 사유: ").append(reason);
+            }
+
+            notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
+                    .recipientToken(requester.getFcmToken())
+                    .title(title)
+                    .message(message.toString())
+                    .recipientUserId(String.valueOf(requester.getId()))
+                    .recipientUserName(requester.getName())
+                    .type("approval")
+                    .relatedEntityId(request.getId())
+                    .relatedEntityType("approval_request")
+                    .data(Map.of(
+                            "type", "approval",
+                            "requestId", String.valueOf(request.getId()),
+                            "result", approved ? "approved" : "rejected"
+                    ))
+                    .build());
+        } catch (Exception e) {
+            log.error("[ApprovalRequest] 결재 결과 알림 전송 실패: requestId={}, {}", request.getId(), e.getMessage());
+        }
+    }
+
+    /** requesterId(Member id 또는 username)로 기안자 조회 */
+    private Member findRequester(String requesterId) {
+        if (requesterId == null || requesterId.isBlank()) {
+            return null;
+        }
+        try {
+            return memberRepository.findById(Long.valueOf(requesterId)).orElse(null);
+        } catch (NumberFormatException e) {
+            return memberRepository.findByUsername(requesterId).orElse(null);
+        }
     }
 
     // 통계 조회
