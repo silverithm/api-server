@@ -7,6 +7,7 @@ import com.silverithm.vehicleplacementsystem.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -22,7 +23,9 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final FCMService fcmService;
     
-    @Transactional
+    // REQUIRES_NEW: 알림 저장/전송 실패가 호출한 쪽의 본 트랜잭션(결재 생성 등)을
+    // rollback-only로 오염시키지 않도록 독립 트랜잭션에서 실행한다
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NotificationDTO sendAndSaveNotification(FCMNotificationRequestDTO requestDTO) {
         log.info("[Notification Service] 알림 전송 및 저장: {}", requestDTO.getTitle());
         
