@@ -10,6 +10,8 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 
 import jakarta.annotation.PostConstruct;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -33,17 +35,20 @@ public class FirebaseConfig {
                     return;
                 }
                 
-                // 클래스패스에서 Firebase 설정 파일 로드
+                // 파일시스템 경로 우선, 없으면 클래스패스에서 로드
+                // (키 파일은 저장소에 커밋하지 않고 배포 환경에 직접 배치한다)
+                File configFile = new File(firebaseConfigPath);
+                if (configFile.isFile()) {
+                    try (InputStream serviceAccount = new FileInputStream(configFile)) {
+                        initializeWithStream(serviceAccount);
+                    }
+                    return;
+                }
+
                 ClassPathResource resource = new ClassPathResource(firebaseConfigPath);
-                
                 if (resource.exists()) {
                     try (InputStream serviceAccount = resource.getInputStream()) {
-                        FirebaseOptions options = FirebaseOptions.builder()
-                                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                                .build();
-                        
-                        FirebaseApp.initializeApp(options);
-                        log.info("[Firebase Config] Firebase 초기화 완료");
+                        initializeWithStream(serviceAccount);
                     }
                 } else {
                     log.warn("[Firebase Config] Firebase 설정 파일을 찾을 수 없습니다: {}", firebaseConfigPath);
@@ -59,5 +64,13 @@ public class FirebaseConfig {
             log.error("[Firebase Config] Firebase 초기화 중 예상치 못한 오류 발생", e);
             log.warn("[Firebase Config] FCM 서비스가 개발 모드로 동작합니다");
         }
+    }
+
+    private void initializeWithStream(InputStream serviceAccount) throws IOException {
+        FirebaseOptions options = FirebaseOptions.builder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .build();
+        FirebaseApp.initializeApp(options);
+        log.info("[Firebase Config] Firebase 초기화 완료");
     }
 }
