@@ -48,10 +48,10 @@ public class ApprovalRequest {
     private String formData;
 
     // 첨부파일 정보
-    @Column
+    @Column(length = 1000)
     private String attachmentUrl;
 
-    @Column
+    @Column(length = 500)
     private String attachmentFileName;
 
     @Column

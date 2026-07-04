@@ -123,6 +123,34 @@ public class ApprovalRequestService {
         return toDTO(saved);
     }
 
+    // 진행중 결재의 첨부파일 교체 (기안자 본인만)
+    public ApprovalRequestDTO updateAttachment(
+            Long id,
+            String requesterId,
+            String attachmentUrl,
+            String attachmentFileName,
+            Long attachmentFileSize
+    ) {
+        ApprovalRequest request = requestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
+
+        if (request.getStatus() != ApprovalStatus.PENDING) {
+            throw new RuntimeException("진행중인 결재만 첨부파일을 수정할 수 있습니다.");
+        }
+        if (requesterId == null || !requesterId.equals(request.getRequesterId())) {
+            throw new RuntimeException("본인이 상신한 결재만 수정할 수 있습니다.");
+        }
+
+        request.setAttachmentUrl(attachmentUrl);
+        request.setAttachmentFileName(attachmentFileName);
+        request.setAttachmentFileSize(attachmentFileSize);
+
+        ApprovalRequest saved = requestRepository.save(request);
+        log.info("[ApprovalRequest] 첨부파일 수정: id={}, requester={}, file={}", saved.getId(), requesterId, attachmentFileName);
+
+        return toDTO(saved);
+    }
+
     // 결재 승인 (관리자)
     public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName) {
         ApprovalRequest request = requestRepository.findById(id)

@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.UpdateApprovalAttachmentRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ApprovalRequestService;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -178,6 +179,37 @@ public class ApprovalRequestController {
     /**
      * 결재 승인 (관리자)
      */
+    @PutMapping("/{id}/attachment")
+    public ResponseEntity<Map<String, Object>> updateAttachment(
+            @PathVariable Long id,
+            @RequestParam String requesterId,
+            @Valid @RequestBody UpdateApprovalAttachmentRequestDTO request) {
+
+        try {
+            log.info("[Approval API] 첨부파일 수정: id={}, requesterId={}", id, requesterId);
+
+            ApprovalRequestDTO approval = approvalService.updateAttachment(
+                    id, requesterId,
+                    request.getAttachmentUrl(),
+                    request.getAttachmentFileName(),
+                    request.getAttachmentFileSize());
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "approval", approval,
+                            "message", "첨부파일이 수정되었습니다."
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Approval API] 첨부파일 수정 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "첨부파일 수정 중 오류가 발생했습니다."));
+        }
+    }
+
     @PutMapping("/{id}/approve")
     public ResponseEntity<Map<String, Object>> approveRequest(
             @PathVariable Long id,
