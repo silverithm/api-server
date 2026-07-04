@@ -41,6 +41,24 @@ public class MemberController {
     /**
      * FCM 토큰 업데이트
      */
+    /**
+     * FCM 토큰 삭제 (로그아웃 시)
+     */
+    @DeleteMapping("/{id}/fcm-token")
+    public ResponseEntity<Map<String, String>> deleteFcmToken(@PathVariable Long id) {
+        try {
+            log.info("[Member API] FCM 토큰 삭제: memberId={}", id);
+            memberService.clearFcmToken(id);
+            return ResponseEntity.ok(Map.of("message", "FCM 토큰이 삭제되었습니다"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[Member API] FCM 토큰 삭제 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "FCM 토큰 삭제 중 오류가 발생했습니다"));
+        }
+    }
+
     @PutMapping("/{id}/fcm-token")
     public ResponseEntity<Map<String, String>> updateFcmToken(
             @PathVariable Long id,
@@ -385,9 +403,11 @@ public class MemberController {
     @PutMapping("/{id}/permissions")
     public ResponseEntity<?> updateMemberPermissions(
             @PathVariable Long id,
-            @RequestBody Map<String, List<String>> body) {
+            @RequestBody Map<String, List<String>> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
             log.info("[Member API] 멤버 권한 수정: id={}", id);
+            memberService.verifyPermissionManageAccess(userDetails, id);
             List<String> permissions = body.get("permissions");
             if (permissions == null) {
                 return ResponseEntity.badRequest()
@@ -395,6 +415,10 @@ public class MemberController {
             }
             List<String> updated = memberService.updateMemberPermissions(id, permissions);
             return ResponseEntity.ok(Map.of("permissions", updated));
+        } catch (SecurityException e) {
+            log.warn("[Member API] 멤버 권한 수정 거부: id={}, reason={}", id, e.getMessage());
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.error("[Member API] 멤버 권한 수정 오류: {}", e.getMessage());
             return ResponseEntity.badRequest()

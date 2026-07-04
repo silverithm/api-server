@@ -505,7 +505,7 @@ public class MemberService {
 
     // 알림 전송 헬퍼 메서드들
     private void sendJoinRequestNotificationToAdmins(MemberJoinRequest joinRequest) {
-        List<String> adminFcmTokens = getAdminFcmTokens();
+        List<String> adminFcmTokens = getAdminFcmTokens(joinRequest.getCompany());
 
         for (String adminToken : adminFcmTokens) {
             try {
@@ -582,10 +582,16 @@ public class MemberService {
         }
     }
 
-    // TODO: 실제 환경에서는 관리자 목록과 FCM 토큰을 조회해야 함
-    private List<String> getAdminFcmTokens() {
+    /** 회사 관리자(AppUser)들의 FCM 토큰 목록 조회 */
+    private List<String> getAdminFcmTokens(Company company) {
         log.debug("[Member Service] 관리자 FCM 토큰 목록 조회");
-        return List.of("test-admin-token-1", "test-admin-token-2");
+        if (company == null || company.getUsers() == null) {
+            return List.of();
+        }
+        return company.getUsers().stream()
+                .map(AppUser::getFcmToken)
+                .filter(token -> token != null && !token.isEmpty())
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -637,6 +643,18 @@ public class MemberService {
         log.info("[Member Service] FCM 토큰 업데이트 완료: memberId={}", memberId);
     }
 
+    /** 로그아웃 시 기기 토큰 폐기 — 로그아웃한 기기로 알림이 가지 않도록 한다 */
+    @Transactional
+    public void clearFcmToken(Long memberId) {
+        log.info("[Member Service] FCM 토큰 삭제: memberId={}", memberId);
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+
+        member.setFcmToken(null);
+        memberRepository.save(member);
+    }
+
     /**
      * 회원탈퇴 처리
      */
@@ -685,7 +703,7 @@ public class MemberService {
      * 관리자에게 회원탈퇴 알림 전송
      */
     private void sendMemberWithdrawalNotificationToAdmins(Member member) {
-        List<String> adminFcmTokens = getAdminFcmTokens();
+        List<String> adminFcmTokens = getAdminFcmTokens(member.getCompany());
 
         for (String adminToken : adminFcmTokens) {
             try {
@@ -771,6 +789,51 @@ public class MemberService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
         Set<String> perms = member.getPermissions();
         return perms != null ? List.copyOf(perms) : List.of();
+    }
+
+    /**
+     * 권한 수정 요청자가 대상 멤버의 권한을 관리할 수 있는지 검증한다.
+     * - ROLE_ADMIN(관리자): 같은 회사의 멤버만 수정 가능
+     * - MEMBER_MANAGE 권한을 위임받은 멤버: 같은 회사의 다른 멤버만 수정 가능 (자기 자신 불가)
+     */
+    public void verifyPermissionManageAccess(UserDetails userDetails, Long targetMemberId) {
+        if (userDetails == null) {
+            throw new SecurityException("인증 정보가 없습니다");
+        }
+
+        Member target = memberRepository.findById(targetMemberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + targetMemberId));
+        Long targetCompanyId = target.getCompany() != null ? target.getCompany().getId() : null;
+
+        String username = userDetails.getUsername();
+        boolean hasAdminAuthority = userDetails.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+
+        if (hasAdminAuthority) {
+            Long adminCompanyId = userRepository.findByEmail(username)
+                    .map(u -> u.getCompany() != null ? u.getCompany().getId() : null)
+                    .orElseGet(() -> memberRepository.findByUsername(username)
+                            .map(m -> m.getCompany() != null ? m.getCompany().getId() : null)
+                            .orElse(null));
+            if (adminCompanyId == null || !adminCompanyId.equals(targetCompanyId)) {
+                throw new SecurityException("다른 회사 회원의 권한은 수정할 수 없습니다");
+            }
+            return;
+        }
+
+        Member caller = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new SecurityException("권한을 수정할 수 있는 권한이 없습니다"));
+        Set<String> callerPermissions = caller.getPermissions();
+        if (callerPermissions == null || !callerPermissions.contains("MEMBER_MANAGE")) {
+            throw new SecurityException("권한을 수정할 수 있는 권한이 없습니다");
+        }
+        if (caller.getId().equals(target.getId())) {
+            throw new SecurityException("자신의 권한은 수정할 수 없습니다");
+        }
+        Long callerCompanyId = caller.getCompany() != null ? caller.getCompany().getId() : null;
+        if (callerCompanyId == null || !callerCompanyId.equals(targetCompanyId)) {
+            throw new SecurityException("다른 회사 회원의 권한은 수정할 수 없습니다");
+        }
     }
 
     @Transactional
