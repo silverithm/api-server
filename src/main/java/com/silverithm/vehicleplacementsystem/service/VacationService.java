@@ -209,7 +209,6 @@ public class VacationService {
         }
 
         String type = requestDTO.getType() != null ? requestDTO.getType() : VacationRequest.TYPE_REGULAR;
-        boolean substitute = VacationRequest.isSubstituteType(type);
 
         VacationRequest entity = VacationRequest.builder()
                 .userName(requestDTO.getUserName())
@@ -218,8 +217,7 @@ public class VacationService {
                 .role(role)
                 .type(type)
                 .vacationType(resolveVacationType(type, requestDTO.getVacationType()))
-                // 대체휴무는 연차에서 차감하지 않으므로 항상 UNUSED로 저장한다
-                .duration(resolveDuration(requestDTO.getDuration(), !substitute))
+                .duration(resolveDuration(requestDTO.getDuration(), true))
                 .userId(userId)
                 .company(company)
                 .status(VacationRequest.VacationStatus.PENDING)
@@ -575,10 +573,7 @@ public class VacationService {
         String vacationRole = resolveMemberVacationRole(member);
         
         String type = requestDTO.getType() != null ? requestDTO.getType() : "admin_created";
-        boolean substitute = VacationRequest.isSubstituteType(type);
-        // 대체휴무는 연차에서 차감하지 않으므로 연차 사용 여부와 무관하게 UNUSED로 저장한다
-        boolean useAnnualLeave = !substitute
-                && !Boolean.FALSE.equals(requestDTO.getUseAnnualLeave());
+        boolean useAnnualLeave = !Boolean.FALSE.equals(requestDTO.getUseAnnualLeave());
 
         VacationRequest entity = VacationRequest.builder()
                 .userName(member.getName())
@@ -609,8 +604,8 @@ public class VacationService {
     }
     
     /**
-     * 연차를 사용하지 않는 휴무는 연차 차감이 없다는 뜻으로 UNUSED를 저장한다.
-     * 대체휴무 역시 연차에서 차감되지 않으므로 같은 규칙을 따른다.
+     * duration은 휴무를 종일 쓰는지 반일 쓰는지에 대한 표시값이다.
+     * 연차를 사용하지 않는 휴무는 종일/반차 구분이 의미가 없으므로 UNUSED를 저장한다.
      */
     private String resolveDuration(VacationRequest.VacationDuration requested, boolean useAnnualLeave) {
         if (!useAnnualLeave) {

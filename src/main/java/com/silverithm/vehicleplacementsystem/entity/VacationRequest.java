@@ -104,7 +104,7 @@ public class VacationRequest {
     }
 
     /**
-     * 대체휴무 여부. 공휴일·휴일 근무에 대한 보상 휴무이며 연차에서 차감하지 않는다.
+     * 대체휴무 여부. 일반/필수 휴무와 동일하게 동작하며 표시상 구분만 다르다.
      */
     public boolean isSubstitute() {
         return isSubstituteType(this.type) || isSubstituteType(this.vacationType);
