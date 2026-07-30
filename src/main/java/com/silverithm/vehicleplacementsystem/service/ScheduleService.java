@@ -170,6 +170,29 @@ public class ScheduleService {
     }
 
     /**
+     * 일정 수행완료 상태 변경 (진행도 체크)
+     * 작성자 본인 또는 관리자만 변경 가능하다.
+     */
+    @Transactional
+    public ScheduleDTO updateCompletion(Long scheduleId, boolean completed, String userId,
+                                        String userName, boolean isAdmin) {
+        log.info("[Schedule Service] 일정 수행완료 변경: id={}, completed={}, user={}", scheduleId, completed, userId);
+
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+
+        boolean isAuthor = userId != null && userId.equals(schedule.getAuthorId());
+        if (!isAdmin && !isAuthor) {
+            throw new IllegalStateException("본인이 등록한 일정만 수행완료 처리할 수 있습니다.");
+        }
+
+        schedule.updateCompletion(completed, userId, userName);
+        Schedule saved = scheduleRepository.save(schedule);
+
+        return ScheduleDTO.fromEntity(saved);
+    }
+
+    /**
      * 일정 삭제
      */
     @Transactional

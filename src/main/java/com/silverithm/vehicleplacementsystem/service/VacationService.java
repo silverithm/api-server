@@ -21,8 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,11 +58,12 @@ public class VacationService {
                 endDate);
         List<VacationLimit> limits = vacationLimitRepository.findByCompanyAndDateBetween(company, startDate, endDate);
         String normalizedRoleFilter = normalizeRequestedRole(roleFilter);
+        MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
 
-        // 역할별 필터링
+        // 역할별 필터링 (신청 당시 값이 아니라 현재 배정된 역할 기준)
         if (!ALL_ROLE.equals(normalizedRoleFilter)) {
             vacations = vacations.stream()
-                    .filter(v -> matchesRole(v.getRole(), normalizedRoleFilter))
+                    .filter(v -> matchesRole(roleResolver.resolve(v), normalizedRoleFilter))
                     .collect(Collectors.toList());
             limits = limits.stream()
                     .filter(l -> matchesExactRole(l.getRole(), normalizedRoleFilter))
@@ -85,7 +88,7 @@ public class VacationService {
             String dateKey = date.toString();
 
             List<VacationRequestDTO> vacationDTOs = dateVacations.stream()
-                    .map(VacationRequestDTO::fromEntity)
+                    .map(vacation -> VacationRequestDTO.fromEntity(vacation, roleResolver.resolve(vacation)))
                     .collect(Collectors.toList());
 
             // 거부되지 않은 휴가만 카운트
@@ -135,11 +138,12 @@ public class VacationService {
         // 회사별 휴가 신청 조회
         List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDate(company, date);
         String normalizedRole = normalizeRequestedRole(role);
+        MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
 
-        // 역할별 필터링
+        // 역할별 필터링 (신청 당시 값이 아니라 현재 배정된 역할 기준)
         if (!ALL_ROLE.equals(normalizedRole)) {
             vacations = vacations.stream()
-                    .filter(v -> matchesExactRole(v.getRole(), normalizedRole))
+                    .filter(v -> matchesExactRole(roleResolver.resolve(v), normalizedRole))
                     .collect(Collectors.toList());
         }
 
@@ -151,7 +155,7 @@ public class VacationService {
         }
 
         List<VacationRequestDTO> vacationDTOs = vacations.stream()
-                .map(VacationRequestDTO::fromEntity)
+                .map(vacation -> VacationRequestDTO.fromEntity(vacation, roleResolver.resolve(vacation)))
                 .collect(Collectors.toList());
 
         // 거부되지 않은 휴가만 카운트
@@ -194,7 +198,9 @@ public class VacationService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
-        String role = normalizePersistedRole(requestDTO.getRole());
+        // 클라이언트가 보낸 legacy role(caregiver/office)보다 회원에게 배정된 역할을 우선한다
+        String role = resolveRoleForNewRequest(company, requestDTO.getUserId(), requestDTO.getUserName(),
+                requestDTO.getRole());
 
         // userId 생성 (없으면 자동 생성)
         String userId = requestDTO.getUserId();
@@ -202,13 +208,18 @@ public class VacationService {
             userId = "user_" + System.currentTimeMillis();
         }
 
+        String type = requestDTO.getType() != null ? requestDTO.getType() : VacationRequest.TYPE_REGULAR;
+        boolean substitute = VacationRequest.isSubstituteType(type);
+
         VacationRequest entity = VacationRequest.builder()
                 .userName(requestDTO.getUserName())
                 .date(requestDTO.getDate())
                 .reason(requestDTO.getReason())
                 .role(role)
-                .type(requestDTO.getType() != null ? requestDTO.getType() : "regular")
-                .duration(requestDTO.getDuration() != null ? requestDTO.getDuration().name() : "FULL_DAY")
+                .type(type)
+                .vacationType(resolveVacationType(type, requestDTO.getVacationType()))
+                // 대체휴무는 연차에서 차감하지 않으므로 항상 UNUSED로 저장한다
+                .duration(resolveDuration(requestDTO.getDuration(), !substitute))
                 .userId(userId)
                 .company(company)
                 .status(VacationRequest.VacationStatus.PENDING)
@@ -287,11 +298,12 @@ public class VacationService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
         List<VacationRequest> vacations = vacationRequestRepository.findByCompanyOrderByCreatedAtDesc(company);
+        MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
 
         log.info("[Vacation Service] 휴가 요청 조회 완료: 회사 {}, {}건", company.getName(), vacations.size());
 
         return vacations.stream()
-                .map(VacationRequestDTO::fromEntity)
+                .map(vacation -> VacationRequestDTO.fromEntity(vacation, roleResolver.resolve(vacation)))
                 .collect(Collectors.toList());
     }
 
@@ -562,13 +574,20 @@ public class VacationService {
         
         String vacationRole = resolveMemberVacationRole(member);
         
+        String type = requestDTO.getType() != null ? requestDTO.getType() : "admin_created";
+        boolean substitute = VacationRequest.isSubstituteType(type);
+        // 대체휴무는 연차에서 차감하지 않으므로 연차 사용 여부와 무관하게 UNUSED로 저장한다
+        boolean useAnnualLeave = !substitute
+                && !Boolean.FALSE.equals(requestDTO.getUseAnnualLeave());
+
         VacationRequest entity = VacationRequest.builder()
                 .userName(member.getName())
                 .date(requestDTO.getDate())
                 .reason(requestDTO.getReason() != null ? requestDTO.getReason() : "관리자 대신 신청")
                 .role(vacationRole)
-                .type(requestDTO.getType() != null ? requestDTO.getType() : "admin_created")
-                .duration(requestDTO.getDuration() != null ? requestDTO.getDuration().name() : "FULL_DAY")
+                .type(type)
+                .vacationType(resolveVacationType(type, requestDTO.getVacationType()))
+                .duration(resolveDuration(requestDTO.getDuration(), useAnnualLeave))
                 .userId(member.getId().toString())
                 .company(company)
                 .status(VacationRequest.VacationStatus.PENDING) // 관리자가 신청해도 대기중 상태로 생성
@@ -589,6 +608,36 @@ public class VacationService {
         return VacationRequestDTO.fromEntity(saved);
     }
     
+    /**
+     * 연차를 사용하지 않는 휴무는 연차 차감이 없다는 뜻으로 UNUSED를 저장한다.
+     * 대체휴무 역시 연차에서 차감되지 않으므로 같은 규칙을 따른다.
+     */
+    private String resolveDuration(VacationRequest.VacationDuration requested, boolean useAnnualLeave) {
+        if (!useAnnualLeave) {
+            return VacationRequest.VacationDuration.UNUSED.name();
+        }
+
+        return requested != null
+                ? requested.name()
+                : VacationRequest.VacationDuration.FULL_DAY.name();
+    }
+
+    /**
+     * 대체휴무는 세부 유형도 substitute로 고정한다. 그 외에는 클라이언트가 보낸 값을 그대로 보존한다.
+     * (기존에는 vacationType을 받고도 저장하지 않아 병가/긴급 등의 정보가 유실됐다)
+     */
+    private String resolveVacationType(String type, String requestedVacationType) {
+        if (VacationRequest.isSubstituteType(type)) {
+            return VacationRequest.TYPE_SUBSTITUTE;
+        }
+
+        if (requestedVacationType == null || requestedVacationType.isBlank()) {
+            return null;
+        }
+
+        return requestedVacationType.trim();
+    }
+
     private void sendVacationCreatedByAdminNotificationToUser(VacationRequest vacation, Member member) {
         if (member.getFcmToken() != null && !member.getFcmToken().isEmpty()) {
             notificationService.sendVacationApprovedNotification(
@@ -644,6 +693,101 @@ public class VacationService {
             case ADMIN -> "admin";
             default -> "employee";
         };
+    }
+
+    /**
+     * 휴가 신청에 저장된 역할 대신 회원에게 현재 배정된 역할(position)을 우선 사용하기 위한 해석기.
+     * 신청 시점 이후에 역할이 새로 만들어지거나 재배정되어도 화면에 최신 역할이 보이도록 한다.
+     */
+    private record MemberRoleResolver(Map<String, String> roleByMemberId, Map<String, String> roleByMemberName) {
+
+        String resolve(String userId, String userName, String storedRole) {
+            if (userId != null && !userId.isBlank()) {
+                String roleById = roleByMemberId.get(userId.trim());
+                if (roleById != null) {
+                    return roleById;
+                }
+            }
+
+            if (userName != null && !userName.isBlank()) {
+                String roleByName = roleByMemberName.get(userName.trim());
+                if (roleByName != null) {
+                    return roleByName;
+                }
+            }
+
+            return VacationRequest.normalizeRole(storedRole);
+        }
+
+        String resolve(VacationRequest vacation) {
+            return resolve(vacation.getUserId(), vacation.getUserName(), vacation.getRole());
+        }
+    }
+
+    private MemberRoleResolver buildMemberRoleResolver(Company company) {
+        Map<String, String> roleByMemberId = new HashMap<>();
+        Map<String, String> roleByMemberName = new HashMap<>();
+        Set<String> ambiguousNames = new HashSet<>();
+
+        for (Member member : memberRepository.findByCompanyOrderByCreatedAtDesc(company)) {
+            String position = member.getPosition() == null ? "" : member.getPosition().trim();
+            if (position.isEmpty()) {
+                continue;
+            }
+
+            roleByMemberId.put(member.getId().toString(), position);
+
+            String name = member.getName() == null ? "" : member.getName().trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+
+            String previousPosition = roleByMemberName.put(name, position);
+            if (previousPosition != null && !previousPosition.equals(position)) {
+                // 동명이인이 서로 다른 역할이면 이름만으로는 판단할 수 없다
+                ambiguousNames.add(name);
+            }
+        }
+
+        ambiguousNames.forEach(roleByMemberName::remove);
+
+        return new MemberRoleResolver(roleByMemberId, roleByMemberName);
+    }
+
+    /**
+     * 신규 휴가 신청에 저장할 역할 결정. 회원을 찾을 수 있으면 배정된 역할을, 못 찾으면 요청값을 쓴다.
+     */
+    private String resolveRoleForNewRequest(Company company, String userId, String userName, String requestedRole) {
+        Member member = findCompanyMember(company, userId, userName);
+        if (member != null) {
+            return resolveMemberVacationRole(member);
+        }
+
+        return normalizePersistedRole(requestedRole);
+    }
+
+    private Member findCompanyMember(Company company, String userId, String userName) {
+        if (userId != null && userId.trim().matches("\\d+")) {
+            Member member = memberRepository.findById(Long.parseLong(userId.trim())).orElse(null);
+            if (member != null && member.getCompany() != null
+                    && member.getCompany().getId().equals(company.getId())) {
+                return member;
+            }
+        }
+
+        if (userName != null && !userName.isBlank()) {
+            String trimmedUserName = userName.trim();
+            List<Member> matches = memberRepository.findByCompanyOrderByCreatedAtDesc(company).stream()
+                    .filter(member -> trimmedUserName.equals(member.getName()))
+                    .collect(Collectors.toList());
+
+            // 동명이인이면 어느 쪽인지 알 수 없으므로 요청값을 그대로 둔다
+            if (matches.size() == 1) {
+                return matches.get(0);
+            }
+        }
+
+        return null;
     }
     
     // 일괄 승인/거부 메서드들
@@ -815,11 +959,13 @@ public class VacationService {
         // 최신순으로 정렬
         myVacations.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
 
+        MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
+
         log.info("[Vacation Service] 개인 휴무 신청 조회 완료: 회사 {}, 사용자 {}({}), {}건",
                 company.getName(), userName, userId, myVacations.size());
 
         return myVacations.stream()
-                .map(VacationRequestDTO::fromEntity)
+                .map(vacation -> VacationRequestDTO.fromEntity(vacation, roleResolver.resolve(vacation)))
                 .collect(Collectors.toList());
     }
 

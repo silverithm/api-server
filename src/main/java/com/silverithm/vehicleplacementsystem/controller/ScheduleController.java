@@ -170,6 +170,55 @@ public class ScheduleController {
     }
 
     /**
+     * 일정 수행완료 상태 변경 (진행도 체크)
+     */
+    @PutMapping("/{id}/completion")
+    public ResponseEntity<Map<String, Object>> updateScheduleCompletion(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+
+        try {
+            boolean completed = Boolean.TRUE.equals(body.get("completed"))
+                    || "true".equalsIgnoreCase(String.valueOf(body.get("completed")));
+
+            String authName = authentication != null ? authentication.getName() : null;
+            if (authName == null) {
+                return ResponseEntity.status(401)
+                        .headers(getCorsHeaders())
+                        .body(Map.of("error", "인증 정보가 필요합니다."));
+            }
+
+            String userId = resolveAuthorEmail(authName);
+            String userName = resolveAuthorName(authName);
+            boolean isAdmin = resolveIsScheduleManager(authName);
+
+            log.info("[Schedule API] 일정 수행완료 변경: id={}, completed={}, user={}", id, completed, userId);
+
+            ScheduleDTO schedule = scheduleService.updateCompletion(id, completed, userId, userName, isAdmin);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "schedule", schedule,
+                            "message", completed ? "수행완료로 변경되었습니다." : "수행완료가 해제되었습니다."
+                    ));
+
+        } catch (IllegalStateException e) {
+            log.warn("[Schedule API] 일정 수행완료 권한 없음: id={}, {}", id, e.getMessage());
+            return ResponseEntity.status(403)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Schedule API] 일정 수행완료 변경 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "수행완료 처리 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 일정 삭제
      */
     @DeleteMapping("/{id}")
@@ -295,6 +344,25 @@ public class ScheduleController {
             return appUser.get().getUsername();
         }
         return authName;
+    }
+
+    /**
+     * 일정 관리 권한 보유 여부.
+     * Member로 조회되지 않으면 관리자 계정(AppUser)이므로 권한이 있다고 본다.
+     */
+    private boolean resolveIsScheduleManager(String authName) {
+        Optional<Member> member = memberRepository.findByUsername(authName);
+        if (member.isEmpty()) {
+            member = memberRepository.findByEmail(authName);
+        }
+        if (member.isEmpty()) {
+            return true; // 관리자 계정
+        }
+        Member found = member.get();
+        if (found.getRole() == Member.Role.ADMIN) {
+            return true;
+        }
+        return found.getPermissions() != null && found.getPermissions().contains("SCHEDULE_MANAGE");
     }
 
     private HttpHeaders getCorsHeaders() {

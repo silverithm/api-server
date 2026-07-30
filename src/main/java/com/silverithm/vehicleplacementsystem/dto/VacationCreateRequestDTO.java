@@ -25,7 +25,9 @@ public class VacationCreateRequestDTO {
     @NotBlank(message = "직원 역할은 필수입니다")
     private String role;
 
-    private String type;
+    private String type;  // regular(일반) / mandatory(필수) / substitute(대체휴무)
+
+    private String vacationType;  // 연차 미사용 휴무의 세부 유형 (personal, sick, emergency, family, other)
 
     private VacationRequest.VacationDuration duration;
 

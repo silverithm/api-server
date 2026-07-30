@@ -42,8 +42,14 @@ public class VacationRequest {
     @Column
     private String userId;
 
+    // 휴무 종류: regular(일반) / mandatory(필수) / substitute(대체휴무).
+    // 레거시 데이터에는 '휴가', 'admin_created' 등도 존재하므로 enum이 아닌 문자열로 둔다.
     @Column
     private String type;
+
+    // 연차를 사용하지 않는 휴무의 세부 유형: personal, sick, emergency, family, other, substitute
+    @Column(length = 50)
+    private String vacationType;
 
     @Column(nullable = false)
     @Builder.Default
@@ -86,6 +92,22 @@ public class VacationRequest {
 
     public enum VacationStatus {
         PENDING, APPROVED, REJECTED
+    }
+
+    // 휴무 종류 상수 (type 컬럼 값)
+    public static final String TYPE_REGULAR = "regular";
+    public static final String TYPE_MANDATORY = "mandatory";
+    public static final String TYPE_SUBSTITUTE = "substitute";
+
+    public static boolean isSubstituteType(String type) {
+        return TYPE_SUBSTITUTE.equalsIgnoreCase(type == null ? null : type.trim());
+    }
+
+    /**
+     * 대체휴무 여부. 공휴일·휴일 근무에 대한 보상 휴무이며 연차에서 차감하지 않는다.
+     */
+    public boolean isSubstitute() {
+        return isSubstituteType(this.type) || isSubstituteType(this.vacationType);
     }
 
     public enum VacationDuration {

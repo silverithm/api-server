@@ -65,6 +65,16 @@ public class Schedule {
     @Builder.Default
     private Boolean sendNotification = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isCompleted = false;
+
+    private LocalDateTime completedAt;
+
+    private String completedById;
+
+    private String completedByName;
+
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ScheduleParticipant> participants = new ArrayList<>();
@@ -93,6 +103,9 @@ public class Schedule {
         }
         if (sendNotification == null) {
             sendNotification = false;
+        }
+        if (isCompleted == null) {
+            isCompleted = false;
         }
     }
 
@@ -131,6 +144,22 @@ public class Schedule {
         }
         if (sendNotification != null) {
             this.sendNotification = sendNotification;
+        }
+    }
+
+    /**
+     * 수행완료 상태 변경. 완료 해제 시 처리자/시각 정보를 비운다.
+     */
+    public void updateCompletion(boolean completed, String userId, String userName) {
+        this.isCompleted = completed;
+        if (completed) {
+            this.completedAt = LocalDateTime.now();
+            this.completedById = userId;
+            this.completedByName = userName;
+        } else {
+            this.completedAt = null;
+            this.completedById = null;
+            this.completedByName = null;
         }
     }
 }

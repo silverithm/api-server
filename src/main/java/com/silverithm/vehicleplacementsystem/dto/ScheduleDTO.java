@@ -32,6 +32,10 @@ public class ScheduleDTO {
     private LocalTime endTime;
     private Boolean isAllDay;
     private Boolean sendNotification;
+    private Boolean isCompleted;
+    private LocalDateTime completedAt;
+    private String completedById;
+    private String completedByName;
     private List<ScheduleParticipantDTO> participants;
     private String authorId;
     private String authorName;
@@ -53,6 +57,10 @@ public class ScheduleDTO {
                 .endTime(schedule.getEndTime())
                 .isAllDay(schedule.getIsAllDay())
                 .sendNotification(schedule.getSendNotification())
+                .isCompleted(Boolean.TRUE.equals(schedule.getIsCompleted()))
+                .completedAt(schedule.getCompletedAt())
+                .completedById(schedule.getCompletedById())
+                .completedByName(schedule.getCompletedByName())
                 .authorId(schedule.getAuthorId())
                 .authorName(schedule.getAuthorName())
                 .companyId(schedule.getCompany().getId())
