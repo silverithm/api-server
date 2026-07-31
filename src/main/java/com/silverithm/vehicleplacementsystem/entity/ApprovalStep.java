@@ -34,8 +34,9 @@ public class ApprovalStep {
     @Column(name = "step_order", nullable = false)
     private Integer stepOrder;
 
+    // Hibernate 6는 STRING enum을 MySQL ENUM 타입으로 기대하므로 VARCHAR를 명시 (ddl-auto=validate)
     @Enumerated(EnumType.STRING)
-    @Column(name = "approver_type", nullable = false, length = 10)
+    @Column(name = "approver_type", nullable = false, columnDefinition = "varchar(10)")
     private ApproverType approverType;
 
     @Column(name = "approver_ref_id", nullable = false)
@@ -49,11 +50,11 @@ public class ApprovalStep {
     private String approverName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role_label", nullable = false, length = 20)
+    @Column(name = "role_label", nullable = false, columnDefinition = "varchar(20)")
     private StepRole roleLabel;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "varchar(20)")
     private StepStatus status;
 
     @Column(name = "signature_url", length = 1000)
