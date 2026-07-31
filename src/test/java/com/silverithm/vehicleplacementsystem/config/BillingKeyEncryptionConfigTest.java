@@ -56,9 +56,14 @@ class BillingKeyEncryptionConfigTest {
         SecretKey key = config.billingKeySecretKey();
 
         String encrypted = config.encrypt("billing_key_abc_123", key);
-        String tampered = encrypted.substring(0, encrypted.length() - 2)
-                + (encrypted.endsWith("A") ? "B=" : "A=");
 
+        // 문자열 끝을 갈아끼우면 원본과 같아질 수 있어(마지막 base64 문자는 4비트만 표현)
+        // 페이로드를 디코드해 암호문 바이트를 직접 뒤집는다.
+        byte[] payload = Base64.getDecoder().decode(encrypted.substring("v2:".length()));
+        payload[payload.length - 1] ^= 0x01;
+        String tampered = "v2:" + Base64.getEncoder().encodeToString(payload);
+
+        assertThat(tampered).isNotEqualTo(encrypted);
         assertThatThrownBy(() -> config.decrypt(tampered, key))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("빌링키 복호화 실패");

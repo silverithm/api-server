@@ -80,7 +80,7 @@ class ScheduleCompletionServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ScheduleDTO result = scheduleService.updateCompletion(10L, true, "author@carev.kr", "김작성", false);
+        ScheduleDTO result = scheduleService.updateCompletion(10L, true, "author@carev.kr", "김작성", null, false);
 
         assertTrue(result.getIsCompleted());
         assertEquals("김작성", result.getCompletedByName());
@@ -94,7 +94,7 @@ class ScheduleCompletionServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ScheduleDTO result = scheduleService.updateCompletion(10L, true, "admin@carev.kr", "이관리", true);
+        ScheduleDTO result = scheduleService.updateCompletion(10L, true, "admin@carev.kr", "이관리", null, true);
 
         assertTrue(result.getIsCompleted());
         assertEquals("이관리", result.getCompletedByName());
@@ -106,7 +106,7 @@ class ScheduleCompletionServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
 
         assertThrows(IllegalStateException.class,
-                () -> scheduleService.updateCompletion(10L, true, "other@carev.kr", "박직원", false));
+                () -> scheduleService.updateCompletion(10L, true, "other@carev.kr", "박직원", null, false));
 
         assertFalse(schedule.getIsCompleted());
         verify(scheduleRepository, never()).save(any(Schedule.class));
@@ -119,7 +119,7 @@ class ScheduleCompletionServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ScheduleDTO result = scheduleService.updateCompletion(10L, false, "author@carev.kr", "김작성", false);
+        ScheduleDTO result = scheduleService.updateCompletion(10L, false, "author@carev.kr", "김작성", null, false);
 
         assertFalse(result.getIsCompleted());
         assertNull(result.getCompletedAt());
@@ -133,7 +133,7 @@ class ScheduleCompletionServiceTest {
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
         when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ScheduleDTO dto = scheduleService.updateCompletion(10L, true, "author@carev.kr", "김작성", false);
+        ScheduleDTO dto = scheduleService.updateCompletion(10L, true, "author@carev.kr", "김작성", null, false);
 
         String json = new com.fasterxml.jackson.databind.ObjectMapper()
                 .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -145,11 +145,39 @@ class ScheduleCompletionServiceTest {
     }
 
     @Test
+    @DisplayName("담당자가 지정된 일정은 담당자 본인만 수행완료할 수 있다")
+    void onlyAssignedManagerCanComplete() {
+        schedule.setManagerMemberId(7L);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ScheduleDTO result = scheduleService.updateCompletion(10L, true, "manager@carev.kr", "정담당", 7L, false);
+
+        assertTrue(result.getIsCompleted());
+        assertEquals("정담당", result.getCompletedByName());
+    }
+
+    @Test
+    @DisplayName("담당자가 지정된 일정은 작성자도 관리자도 대신 완료할 수 없다")
+    void authorAndAdminCannotCompleteWhenManagerAssigned() {
+        schedule.setManagerMemberId(7L);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+
+        assertThrows(IllegalStateException.class,
+                () -> scheduleService.updateCompletion(10L, true, "author@carev.kr", "김작성", 99L, false));
+        assertThrows(IllegalStateException.class,
+                () -> scheduleService.updateCompletion(10L, true, "admin@carev.kr", "이관리", null, true));
+
+        assertFalse(schedule.getIsCompleted());
+        verify(scheduleRepository, never()).save(any(Schedule.class));
+    }
+
+    @Test
     @DisplayName("존재하지 않는 일정이면 예외가 발생한다")
     void missingScheduleThrows() {
         when(scheduleRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(RuntimeException.class,
-                () -> scheduleService.updateCompletion(99L, true, "author@carev.kr", "김작성", true));
+                () -> scheduleService.updateCompletion(99L, true, "author@carev.kr", "김작성", null, true));
     }
 }
