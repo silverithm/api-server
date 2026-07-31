@@ -105,6 +105,28 @@ public class RedisUtils {
         return currentCount > limit;
     }
 
+    // 체험하기 어뷰즈 방지: IP당 시간당 3회, 전체 하루 200회
+    private static final int MAX_DEMO_START_PER_IP_PER_HOUR = 3;
+    private static final int MAX_DEMO_START_PER_DAY_GLOBAL = 200;
+
+    public boolean isExceededDemoStartIpLimit(String clientIp) {
+        String key = "demo:start:ip:" + clientIp;
+        Long count = incrementRequestCount(key);
+        if (isFirstRequest(count)) {
+            integerRedisTemplate.expire(key, 1, TimeUnit.HOURS);
+        }
+        return isLimitExceeded(count, MAX_DEMO_START_PER_IP_PER_HOUR);
+    }
+
+    public boolean isExceededDemoStartGlobalLimit() {
+        String key = "demo:start:global";
+        Long count = incrementRequestCount(key);
+        if (isFirstRequest(count)) {
+            integerRedisTemplate.expire(key, calculateSecondsUntilNextMidnight(), TimeUnit.SECONDS);
+        }
+        return isLimitExceeded(count, MAX_DEMO_START_PER_DAY_GLOBAL);
+    }
+
     public int getDailyDispatchLimit(String username) {
         Object count = redisTemplate.opsForValue().get(username);
         return count == null ? MAX_DISPATCH_LIMIT

@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.repository;
 
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,4 +18,6 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
     
     @Query("SELECT c FROM Company c LEFT JOIN FETCH c.users WHERE c.expose = true")
     List<Company> findByExposeTrueWithUsers();
+
+    List<Company> findByIsDemoTrueAndDemoExpiresAtBefore(LocalDateTime cutoff);
 }

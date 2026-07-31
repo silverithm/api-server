@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -29,18 +30,28 @@ public class CallerCompanyResolver {
      */
     @Transactional(readOnly = true)
     public Optional<Long> resolveCompanyId(String username) {
+        return resolveCompany(username).map(Company::getId);
+    }
+
+    /** 요청자가 체험(데모) 기관 소속인지 여부. 사용자를 찾지 못하면 false. */
+    @Transactional(readOnly = true)
+    public boolean isDemoCaller(String username) {
+        return resolveCompany(username).map(Company::isDemoCompany).orElse(false);
+    }
+
+    private Optional<Company> resolveCompany(String username) {
         if (username == null || username.isBlank()) {
             return Optional.empty();
         }
 
         Optional<Member> member = memberRepository.findByUsername(username);
         if (member.isPresent()) {
-            return Optional.ofNullable(member.get().getCompany()).map(c -> c.getId());
+            return Optional.ofNullable(member.get().getCompany());
         }
 
         Optional<AppUser> appUser = userRepository.findByEmail(username);
         if (appUser.isPresent()) {
-            return Optional.ofNullable(appUser.get().getCompany()).map(c -> c.getId());
+            return Optional.ofNullable(appUser.get().getCompany());
         }
 
         return Optional.empty();

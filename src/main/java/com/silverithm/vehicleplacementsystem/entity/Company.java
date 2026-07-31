@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -45,6 +46,12 @@ public class Company extends BaseEntity {
 
     @Column(name = "seal_url", length = 1000)
     private String sealUrl;
+
+    @Column(name = "is_demo", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean isDemo = false;
+
+    @Column(name = "demo_expires_at")
+    private LocalDateTime demoExpiresAt;
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
     private List<AppUser> users;
@@ -85,5 +92,14 @@ public class Company extends BaseEntity {
 
     public void updateSeal(String sealUrl) {
         this.sealUrl = sealUrl;
+    }
+
+    public void markAsDemo(LocalDateTime expiresAt) {
+        this.isDemo = true;
+        this.demoExpiresAt = expiresAt;
+    }
+
+    public boolean isDemoCompany() {
+        return Boolean.TRUE.equals(this.isDemo);
     }
 }
