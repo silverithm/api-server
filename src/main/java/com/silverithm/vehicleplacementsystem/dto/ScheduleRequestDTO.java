@@ -52,4 +52,7 @@ public class ScheduleRequestDTO {
     private Boolean sendNotification = false;
 
     private List<Long> participantIds;
+
+    /** 담당자 member id (미지정 시 null) */
+    private Long managerId;
 }

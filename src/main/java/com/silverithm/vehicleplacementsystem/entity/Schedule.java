@@ -84,6 +84,11 @@ public class Schedule {
     @Builder.Default
     private List<ScheduleTask> tasks = new ArrayList<>();
 
+    /** 담당자 (참석자와 구분되는 단일 지정, 미지정 가능) */
+    private Long managerMemberId;
+
+    private String managerName;
+
     @Column(nullable = false)
     private String authorId;
 
