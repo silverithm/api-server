@@ -46,6 +46,9 @@ class ScheduleCompletionServiceTest {
     @Mock
     private FCMService fcmService;
 
+    @Mock
+    private ResourceScopeGuard resourceScopeGuard;
+
     @InjectMocks
     private ScheduleService scheduleService;
 

@@ -39,6 +39,7 @@ class ScheduleTaskServiceTest {
     @Mock private CompanyRepository companyRepository;
     @Mock private MemberRepository memberRepository;
     @Mock private FCMService fcmService;
+    @Mock private ResourceScopeGuard resourceScopeGuard;
 
     @InjectMocks private ScheduleService scheduleService;
 

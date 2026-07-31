@@ -40,6 +40,7 @@ public class VacationService {
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     public VacationCalendarResponseDTO getVacationCalendar(
             Long companyId,
@@ -244,6 +245,7 @@ public class VacationService {
 
         VacationRequest vacation = vacationRequestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(vacation.getCompany());
 
         vacation.setStatus(VacationRequest.VacationStatus.APPROVED);
         VacationRequest saved = vacationRequestRepository.save(vacation);
@@ -264,6 +266,7 @@ public class VacationService {
 
         VacationRequest vacation = vacationRequestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(vacation.getCompany());
 
         vacation.setStatus(VacationRequest.VacationStatus.REJECTED);
         VacationRequest saved = vacationRequestRepository.save(vacation);
@@ -284,6 +287,7 @@ public class VacationService {
 
         VacationRequest vacation = vacationRequestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(vacation.getCompany());
 
         vacationRequestRepository.delete(vacation);
 
@@ -983,6 +987,7 @@ public class VacationService {
 
         VacationRequest vacation = vacationRequestRepository.findById(vacationId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 휴가 신청을 찾을 수 없습니다: " + vacationId));
+        resourceScopeGuard.requireSameCompany(vacation.getCompany());
 
         // userId와 userName 모두 일치하는지 확인
         if (!userId.equals(vacation.getUserId()) || !userName.equals(vacation.getUserName())) {

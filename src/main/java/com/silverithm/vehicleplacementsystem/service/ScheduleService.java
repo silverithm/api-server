@@ -43,6 +43,7 @@ public class ScheduleService {
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final FCMService fcmService;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     // ==================== Schedule CRUD ====================
 
@@ -80,6 +81,8 @@ public class ScheduleService {
                 .authorName(authorName)
                 .build();
 
+        applyManager(schedule, request.getManagerId());
+
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 저장 완료: id={}", saved.getId());
 
@@ -111,6 +114,20 @@ public class ScheduleService {
         return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved));
     }
 
+    /** 담당자 지정/해제 — memberId가 유효하면 이름을 조회해 함께 저장, null이면 해제 */
+    private void applyManager(Schedule schedule, Long managerId) {
+        if (managerId == null) {
+            schedule.setManagerMemberId(null);
+            schedule.setManagerName(null);
+            return;
+        }
+        Member manager = memberRepository.findById(managerId).orElse(null);
+        if (manager != null) {
+            schedule.setManagerMemberId(manager.getId());
+            schedule.setManagerName(manager.getName());
+        }
+    }
+
     /**
      * 일정 수정
      */
@@ -120,6 +137,7 @@ public class ScheduleService {
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+        resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
         ScheduleLabel label = null;
         if (request.getLabelId() != null) {
@@ -140,6 +158,8 @@ public class ScheduleService {
                 request.getIsAllDay(),
                 request.getSendNotification()
         );
+
+        applyManager(schedule, request.getManagerId());
 
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 수정 완료: id={}", saved.getId());
@@ -186,6 +206,7 @@ public class ScheduleService {
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+        resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
         boolean isAuthor = userId != null && userId.equals(schedule.getAuthorId());
         if (!isAdmin && !isAuthor) {
@@ -212,6 +233,7 @@ public class ScheduleService {
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+        resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
         String assigneeName = resolveMemberName(request.getAssigneeMemberId());
         int nextOrder = (int) scheduleTaskRepository.countByScheduleId(scheduleId);
@@ -246,6 +268,8 @@ public class ScheduleService {
                                       String userId, Long memberId, boolean isAdmin) {
         ScheduleTask task = scheduleTaskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+        resourceScopeGuard.requireSameCompany(
+                task.getSchedule() != null ? task.getSchedule().getCompany() : null);
 
         if (!canEditTask(task, userId, memberId, isAdmin)) {
             throw new IllegalStateException("이 할 일을 수정할 권한이 없습니다.");
@@ -276,6 +300,8 @@ public class ScheduleService {
     public void deleteTask(Long taskId, String userId, Long memberId, boolean isAdmin) {
         ScheduleTask task = scheduleTaskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+        resourceScopeGuard.requireSameCompany(
+                task.getSchedule() != null ? task.getSchedule().getCompany() : null);
 
         if (!canEditTask(task, userId, memberId, isAdmin)) {
             throw new IllegalStateException("이 할 일을 삭제할 권한이 없습니다.");
@@ -300,6 +326,8 @@ public class ScheduleService {
                                                 Long memberId, boolean isAdmin) {
         ScheduleTask task = scheduleTaskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+        resourceScopeGuard.requireSameCompany(
+                task.getSchedule() != null ? task.getSchedule().getCompany() : null);
 
         boolean isAssignee = task.getAssigneeMemberId() != null
                 && task.getAssigneeMemberId().equals(memberId);
@@ -416,6 +444,7 @@ public class ScheduleService {
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+        resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
         scheduleRepository.delete(schedule);
         log.info("[Schedule Service] 일정 삭제 완료: id={}", scheduleId);
@@ -430,6 +459,7 @@ public class ScheduleService {
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+        resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
         return ScheduleDTO.fromEntity(schedule);
     }
@@ -523,6 +553,7 @@ public class ScheduleService {
 
         ScheduleLabel label = scheduleLabelRepository.findById(labelId)
                 .orElseThrow(() -> new RuntimeException("라벨을 찾을 수 없습니다: " + labelId));
+        resourceScopeGuard.requireSameCompany(label.getCompany());
 
         // 중복 이름 체크 (자기 자신 제외)
         if (request.getName() != null &&
@@ -548,6 +579,7 @@ public class ScheduleService {
 
         ScheduleLabel label = scheduleLabelRepository.findById(labelId)
                 .orElseThrow(() -> new RuntimeException("라벨을 찾을 수 없습니다: " + labelId));
+        resourceScopeGuard.requireSameCompany(label.getCompany());
 
         // 사용 중인 일정 확인
         long usageCount = scheduleRepository.countByLabelId(labelId);

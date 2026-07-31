@@ -21,6 +21,7 @@ public class AttendanceService {
     private final MemberRepository memberRepository;
     private final ElderRepository elderRepository;
     private final CompanyRepository companyRepository;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     // ==================== 직원 출석 ====================
 
@@ -51,6 +52,7 @@ public class AttendanceService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
         Member member = memberRepository.findById(request.memberId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다: " + request.memberId()));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         LocalDate today = LocalDate.now();
         AttendanceStatus status = AttendanceStatus.valueOf(request.status());
@@ -102,6 +104,8 @@ public class AttendanceService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
         Elderly elderly = elderRepository.findById(request.elderlyId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 어르신입니다: " + request.elderlyId()));
+        resourceScopeGuard.requireSameCompany(elderly.getCompany(),
+                elderly.getUser() != null ? elderly.getUser().getCompany() : null);
 
         LocalDate today = LocalDate.now();
         ElderAttendanceStatus status = ElderAttendanceStatus.valueOf(request.status());

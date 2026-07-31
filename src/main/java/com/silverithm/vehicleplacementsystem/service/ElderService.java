@@ -54,6 +54,9 @@ public class ElderService {
     @Autowired
     private CompanyRepository companyRepository;
 
+    @Autowired
+    private ResourceScopeGuard resourceScopeGuard;
+
     public void addElder(Long userId, AddElderRequest addElderRequest) throws Exception {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addElderRequest.homeAddress());
@@ -87,6 +90,8 @@ public class ElderService {
     public void updateElder(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) throws Exception {
         Location updatedHomeAddress = geocodingService.getAddressCoordinates(elderUpdateRequestDTO.homeAddress());
         Elderly elderly = elderRepository.findById(id).orElseThrow();
+        resourceScopeGuard.requireSameCompany(elderly.getCompany(),
+                elderly.getUser() != null ? elderly.getUser().getCompany() : null);
         elderly.update(elderUpdateRequestDTO.name(), elderUpdateRequestDTO.homeAddress(), updatedHomeAddress,
                 elderUpdateRequestDTO.requiredFrontSeat());
     }
@@ -94,6 +99,8 @@ public class ElderService {
     @Transactional
     public void updateElderRequiredFrontSeat(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) {
         Elderly elderly = elderRepository.findById(id).orElseThrow();
+        resourceScopeGuard.requireSameCompany(elderly.getCompany(),
+                elderly.getUser() != null ? elderly.getUser().getCompany() : null);
         elderly.update(elderUpdateRequestDTO.requiredFrontSeat());
     }
 
@@ -143,6 +150,8 @@ public class ElderService {
     public void updateCompanyElder(Long id, CompanyElderRequestDTO request) throws Exception {
         Elderly elderly = elderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 어르신입니다: " + id));
+        resourceScopeGuard.requireSameCompany(elderly.getCompany(),
+                elderly.getUser() != null ? elderly.getUser().getCompany() : null);
 
         if (request.homeAddress() != null && !request.homeAddress().isBlank()) {
             Location updatedHomeAddress = geocodingService.getAddressCoordinates(request.homeAddress());

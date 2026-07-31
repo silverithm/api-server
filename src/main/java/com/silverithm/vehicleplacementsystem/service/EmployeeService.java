@@ -53,6 +53,9 @@ public class EmployeeService {
     @Autowired
     private CompanyCodeService companyCodeService;
 
+    @Autowired
+    private ResourceScopeGuard resourceScopeGuard;
+
     public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) throws Exception {
 
         Location homeAddress = geocodingService.getAddressCoordinates(addEmployeeRequest.homeAddress());
@@ -98,6 +101,8 @@ public class EmployeeService {
         Location updatedWorkPlace = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.workPlace());
 
         Employee employee = employeeRepository.findById(id).orElseThrow();
+        resourceScopeGuard.requireSameCompany(employee.getCompany(),
+                employee.getUser() != null ? employee.getUser().getCompany() : null);
 
         employee.update(employeeUpdateRequestDTO.homeAddress(), employeeUpdateRequestDTO.workPlace(),
                 employeeUpdateRequestDTO.name(), updatedHomeAddress,

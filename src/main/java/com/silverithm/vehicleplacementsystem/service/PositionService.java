@@ -25,6 +25,7 @@ public class PositionService {
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final CompanyCodeService companyCodeService;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     @Transactional(readOnly = true)
     public List<PositionDTO> getPositions(Long companyId, String companyCode) {
@@ -66,6 +67,7 @@ public class PositionService {
 
         Position position = positionRepository.findById(positionId)
                 .orElseThrow(() -> new RuntimeException("직책을 찾을 수 없습니다: " + positionId));
+        resourceScopeGuard.requireSameCompany(position.getCompany());
 
         // 이름 중복 검사 (자기 자신 제외)
         if (request.getName() != null &&
@@ -92,6 +94,7 @@ public class PositionService {
 
         Position position = positionRepository.findById(positionId)
                 .orElseThrow(() -> new RuntimeException("직책을 찾을 수 없습니다: " + positionId));
+        resourceScopeGuard.requireSameCompany(position.getCompany());
 
         // 해당 직책을 사용 중인 회원들의 position_id를 null로 설정
         List<Member> members = memberRepository.findByPositionEntity(position);
@@ -111,6 +114,7 @@ public class PositionService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new RuntimeException("회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         if (positionId != null) {
             Position position = positionRepository.findById(positionId)

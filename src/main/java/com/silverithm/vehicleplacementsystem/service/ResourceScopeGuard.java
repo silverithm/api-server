@@ -40,6 +40,17 @@ public class ResourceScopeGuard {
         requireSameCompany(resourceCompany != null ? resourceCompany.getId() : null);
     }
 
+    /**
+     * 소속 기관을 두 경로로 확인한다.
+     *
+     * <p>어르신·직원 일부 레거시 데이터는 {@code company}가 비어 있고 등록자({@code user})로만
+     * 기관이 연결돼 있다. 이런 행을 무조건 거부하면 정상 데이터의 수정이 막히므로 대체 경로를 함께 본다.
+     */
+    @Transactional(readOnly = true)
+    public void requireSameCompany(Company primary, Company fallback) {
+        requireSameCompany(primary != null ? primary : fallback);
+    }
+
     /** {@link #requireSameCompany(Company)}의 ID 버전 */
     @Transactional(readOnly = true)
     public void requireSameCompany(Long resourceCompanyId) {

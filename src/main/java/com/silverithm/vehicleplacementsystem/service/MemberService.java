@@ -43,6 +43,7 @@ public class MemberService {
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
+    private final ResourceScopeGuard resourceScopeGuard;
     private final SlackService slackService;
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
@@ -237,6 +238,7 @@ public class MemberService {
 
         MemberJoinRequest joinRequest = memberJoinRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 가입 요청을 찾을 수 없습니다: " + requestId));
+        resourceScopeGuard.requireSameCompany(joinRequest.getCompany());
 
         if (joinRequest.getStatus() != MemberJoinRequest.RequestStatus.PENDING) {
             throw new IllegalArgumentException("이미 처리된 요청입니다");
@@ -320,6 +322,7 @@ public class MemberService {
 
         MemberJoinRequest joinRequest = memberJoinRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 가입 요청을 찾을 수 없습니다: " + requestId));
+        resourceScopeGuard.requireSameCompany(joinRequest.getCompany());
 
         if (joinRequest.getStatus() != MemberJoinRequest.RequestStatus.PENDING) {
             throw new IllegalArgumentException("이미 처리된 요청입니다");
@@ -442,6 +445,7 @@ public class MemberService {
 
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         return MemberDTO.fromEntity(member);
     }
@@ -452,6 +456,7 @@ public class MemberService {
 
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         // 이메일 중복 체크 (본인 제외)
         if (updateDTO.getEmail() != null && !updateDTO.getEmail().equals(member.getEmail())) {
@@ -499,6 +504,7 @@ public class MemberService {
 
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         memberRepository.delete(member);
 
@@ -638,6 +644,7 @@ public class MemberService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         member.setFcmToken(tokenUpdateDTO.getFcmToken());
         memberRepository.save(member);
@@ -652,6 +659,7 @@ public class MemberService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         member.setFcmToken(null);
         memberRepository.save(member);
@@ -789,6 +797,7 @@ public class MemberService {
     public List<String> getMemberPermissions(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
         Set<String> perms = member.getPermissions();
         return perms != null ? List.copyOf(perms) : List.of();
     }
@@ -842,6 +851,7 @@ public class MemberService {
     public List<String> updateMemberPermissions(Long memberId, List<String> permissions) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
 
         // 유효하지 않은 권한 검증
         for (String perm : permissions) {
