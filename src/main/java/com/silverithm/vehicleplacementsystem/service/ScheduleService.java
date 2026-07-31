@@ -197,7 +197,7 @@ public class ScheduleService {
 
     /**
      * 일정 수행완료 상태 변경 (진행도 체크)
-     * 담당자가 지정된 일정은 담당자 본인만, 미지정 일정은 작성자 본인 또는 관리자만 변경 가능하다.
+     * 담당자가 지정된 일정은 담당자 본인 또는 관리자(대행), 미지정 일정은 작성자 본인 또는 관리자만 변경 가능하다.
      */
     @Transactional
     public ScheduleDTO updateCompletion(Long scheduleId, boolean completed, String userId,
@@ -210,8 +210,8 @@ public class ScheduleService {
 
         Long managerMemberId = schedule.getManagerMemberId();
         if (managerMemberId != null) {
-            if (!managerMemberId.equals(memberId)) {
-                throw new IllegalStateException("담당자만 수행완료 처리할 수 있습니다.");
+            if (!managerMemberId.equals(memberId) && !isAdmin) {
+                throw new IllegalStateException("담당자 또는 관리자만 수행완료 처리할 수 있습니다.");
             }
         } else {
             boolean isAuthor = userId != null && userId.equals(schedule.getAuthorId());
@@ -340,8 +340,8 @@ public class ScheduleService {
                 && task.getAssigneeMemberId().equals(memberId);
         boolean unassigned = task.getAssigneeMemberId() == null;
 
-        if (!unassigned && !isAssignee) {
-            throw new IllegalStateException("담당자 본인만 수행완료 처리할 수 있습니다.");
+        if (!unassigned && !isAssignee && !isAdmin) {
+            throw new IllegalStateException("담당자 본인 또는 관리자만 수행완료 처리할 수 있습니다.");
         }
 
         task.updateCompletion(completed, userId, userName);
