@@ -105,8 +105,9 @@ public class RedisUtils {
         return currentCount > limit;
     }
 
-    // 체험하기 어뷰즈 방지: IP당 시간당 3회, 전체 하루 200회
-    private static final int MAX_DEMO_START_PER_IP_PER_HOUR = 3;
+    // 체험하기 어뷰즈 방지: 기관 사무실은 공용 IP를 쓰므로 IP당은 봇 폭주만 막을 만큼 넉넉하게,
+    // 실질적인 상한은 전역 하루 한도로 건다.
+    private static final int MAX_DEMO_START_PER_IP_PER_HOUR = 20;
     private static final int MAX_DEMO_START_PER_DAY_GLOBAL = 200;
 
     public boolean isExceededDemoStartIpLimit(String clientIp) {
