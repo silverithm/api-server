@@ -110,6 +110,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/signin").permitAll()
                                 .requestMatchers("/api/v1/find/password").permitAll()
                                 .requestMatchers("/api/v1/signup").permitAll()
+                                // 체험하기 — 비로그인 방문자가 데모 테넌트를 발급받는 엔드포인트
+                                .requestMatchers("/api/v1/demo/start").permitAll()
                                 .requestMatchers("/api/v1/refresh-token").permitAll()
                                 .requestMatchers("/api/v1/members/companies").permitAll()
                                 .requestMatchers("/api/v1/members/signin").permitAll()
@@ -120,6 +122,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/app-version").permitAll()
                                 // 케어브이 광장 — 읽기(뉴스·게시글·자료 목록·다운로드)는 비로그인 공개, 쓰기는 인증 필요
                                 .requestMatchers(HttpMethod.GET, "/api/v1/news").permitAll()
+                                // 공개 페이지 문의 접수 — 비로그인 방문자가 보낸다(서비스에서 IP 단위 제한)
+                                .requestMatchers(HttpMethod.POST, "/api/v1/contact").permitAll()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/plaza/**").permitAll()
                                 // 블루그린 배포 헬스체크
                                 .requestMatchers("/health").permitAll()
