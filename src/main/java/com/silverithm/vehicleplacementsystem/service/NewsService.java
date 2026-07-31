@@ -14,6 +14,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,20 @@ public class NewsService {
 
     /** 카테고리별 수집 키워드 (검색어 → 카테고리) */
     private static final Map<String, NewsCategory> KEYWORDS = buildKeywords();
+
+    /**
+     * 관련성 필터 — 키워드 검색은 본문 우연 일치로 무관 기사가 섞이므로,
+     * 제목에 요양 도메인 용어가 있어야 저장한다.
+     */
+    private static final List<String> RELEVANT_TERMS = List.of(
+            "요양", "주간보호", "노인학대", "노인 학대", "치매", "돌봄", "어르신",
+            "노인복지", "노인 복지", "데이케어", "복지용구", "장기요양", "실버케어", "재가급여", "재가서비스"
+    );
+
+    /** 다이제스트·연성 기사 배제어 (제목 기준) */
+    private static final List<String> EXCLUDED_TERMS = List.of(
+            "손바닥뉴스", "운세", "부고", "[포토]", "포토뉴스", "오늘의 날씨", "TV하이라이트"
+    );
 
     /** 주요 언론사 도메인 → 표시 이름 */
     private static final Map<String, String> PRESS_NAMES = buildPressNames();
@@ -111,16 +126,28 @@ public class NewsService {
         return articles.map(NewsArticleDTO::from);
     }
 
-    /** 서버 기동 직후 저장된 기사가 없으면 1회 수집 (첫 배포에서도 바로 데이터가 보이도록) */
+    /** 서버 기동 직후: 관련성 필터 미통과 기존 기사 정리 + 기사가 없으면 1회 수집 */
     @EventListener(ApplicationReadyEvent.class)
     public void collectOnStartupIfEmpty() {
         try {
+            cleanupIrrelevantArticles();
             if (isConfigured() && newsArticleRepository.count() == 0) {
                 log.info("[News] 저장된 기사가 없어 초기 수집을 시작합니다");
                 collectNews();
             }
         } catch (Exception e) {
             log.error("[News] 초기 수집 실패 (서비스 기동에는 영향 없음)", e);
+        }
+    }
+
+    /** 필터 도입 전에 수집된 무관 기사 삭제 (기동 시 1회 — 데이터 소량이라 전체 스캔) */
+    private void cleanupIrrelevantArticles() {
+        List<NewsArticle> irrelevant = newsArticleRepository.findAll().stream()
+                .filter(article -> !isRelevant(article.getTitle()))
+                .toList();
+        if (!irrelevant.isEmpty()) {
+            newsArticleRepository.deleteAll(irrelevant);
+            log.info("[News] 관련성 필터 미통과 기사 {}건 정리 완료", irrelevant.size());
         }
     }
 
@@ -155,6 +182,21 @@ public class NewsService {
                 && naverClientSecret != null && !naverClientSecret.isBlank();
     }
 
+    /** 제목 기준 관련성 판정: 배제어가 있으면 제외, 도메인 용어가 하나라도 있어야 통과 */
+    private boolean isRelevant(String title) {
+        for (String excluded : EXCLUDED_TERMS) {
+            if (title.contains(excluded)) {
+                return false;
+            }
+        }
+        for (String term : RELEVANT_TERMS) {
+            if (title.contains(term)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private int collectByKeyword(String keyword, NewsCategory category) throws Exception {
         String url = "https://openapi.naver.com/v1/search/news.json?query="
                 + URLEncoder.encode(keyword, StandardCharsets.UTF_8)
@@ -180,6 +222,9 @@ public class NewsService {
             String pubDate = item.path("pubDate").asText(null);
 
             if (title == null || title.isBlank() || link == null || link.length() > MAX_LINK_LENGTH) {
+                continue;
+            }
+            if (!isRelevant(title)) {
                 continue;
             }
             if (title.length() > MAX_TITLE_LENGTH) {
