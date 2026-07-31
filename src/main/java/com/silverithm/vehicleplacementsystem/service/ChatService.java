@@ -34,6 +34,7 @@ public class ChatService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     // ==================== 채팅방 관리 ====================
 
@@ -120,6 +121,7 @@ public class ChatService {
 
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
 
         return ChatRoomDTO.fromEntityWithParticipants(room);
     }
@@ -133,6 +135,7 @@ public class ChatService {
 
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
 
         if (request.getName() != null) {
             room.setName(request.getName());
@@ -165,6 +168,7 @@ public class ChatService {
         // 시스템 메시지 전송
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다"));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
         createSystemMessage(room, participant.getUserName() + "님이 나갔습니다.");
 
         // WebSocket으로 퇴장 알림
@@ -192,6 +196,7 @@ public class ChatService {
 
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: " + roomId));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
 
         room.delete();
         chatRoomRepository.save(room);
@@ -227,6 +232,7 @@ public class ChatService {
 
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
 
         List<ChatParticipantDTO> addedParticipants = new ArrayList<>();
         StringBuilder joinMessage = new StringBuilder();
@@ -305,6 +311,7 @@ public class ChatService {
         // 시스템 메시지
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다"));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
 
         String message = isKicked ?
                 participant.getUserName() + "님이 퇴장되었습니다." :

@@ -39,6 +39,7 @@ public class NoticeService {
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     /**
      * 공지사항 생성
@@ -84,6 +85,7 @@ public class NoticeService {
 
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(notice.getCompany());
 
         if (request.getTitle() != null) {
             notice.setTitle(request.getTitle());
@@ -122,6 +124,7 @@ public class NoticeService {
 
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(notice.getCompany());
 
         noticeCommentRepository.deleteByNoticeId(noticeId);
         noticeReaderRepository.deleteByNoticeId(noticeId);
@@ -138,6 +141,7 @@ public class NoticeService {
 
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(notice.getCompany());
 
         return NoticeDTO.fromEntity(notice);
     }
@@ -151,6 +155,7 @@ public class NoticeService {
 
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(notice.getCompany());
 
         notice.incrementViewCount();
         Notice saved = noticeRepository.save(notice);
@@ -236,8 +241,9 @@ public class NoticeService {
         log.info("[Notice Service] 댓글 목록 조회: noticeId={}", noticeId);
 
         // 공지사항 존재 확인
-        noticeRepository.findById(noticeId)
+        Notice scopedNotice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(scopedNotice.getCompany());
 
         List<NoticeComment> comments = noticeCommentRepository.findByNoticeIdOrderByCreatedAtAsc(noticeId);
 
@@ -255,6 +261,7 @@ public class NoticeService {
 
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(notice.getCompany());
 
         NoticeComment comment = NoticeComment.builder()
                 .notice(notice)
@@ -277,8 +284,9 @@ public class NoticeService {
         log.info("[Notice Service] 댓글 삭제: noticeId={}, commentId={}", noticeId, commentId);
 
         // 공지사항 존재 확인
-        noticeRepository.findById(noticeId)
+        Notice scopedNotice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(scopedNotice.getCompany());
 
         NoticeComment comment = noticeCommentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("댓글을 찾을 수 없습니다: " + commentId));
@@ -302,8 +310,9 @@ public class NoticeService {
         log.info("[Notice Service] 읽은 사용자 목록 조회: noticeId={}", noticeId);
 
         // 공지사항 존재 확인
-        noticeRepository.findById(noticeId)
+        Notice scopedNotice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(scopedNotice.getCompany());
 
         List<NoticeReader> readers = noticeReaderRepository.findByNoticeIdOrderByReadAtDesc(noticeId);
 
@@ -321,6 +330,7 @@ public class NoticeService {
 
         Notice notice = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new RuntimeException("공지사항을 찾을 수 없습니다: " + noticeId));
+        resourceScopeGuard.requireSameCompany(notice.getCompany());
 
         // 이미 읽은 경우 기존 기록 반환
         return noticeReaderRepository.findByNoticeIdAndUserId(noticeId, userId)

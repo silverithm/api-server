@@ -57,6 +57,7 @@ public class ApprovalRequestService {
     private final UserRepository userRepository;
     private final ApprovalAccessService accessService;
     private final DocumentNumberCounterRepository docNumberCounterRepository;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     // 결재 요청 목록 조회 (관리자용, 필터 적용)
     @Transactional(readOnly = true)
@@ -105,6 +106,7 @@ public class ApprovalRequestService {
     public ApprovalRequestDTO getApprovalRequest(Long id) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(request.getCompany());
         return toDTO(request);
     }
 
@@ -120,6 +122,7 @@ public class ApprovalRequestService {
 
         ApprovalTemplate template = templateRepository.findById(dto.getTemplateId())
                 .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + dto.getTemplateId()));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
 
         ApprovalRequest request = ApprovalRequest.builder()
                 .company(company)
@@ -207,6 +210,7 @@ public class ApprovalRequestService {
     ) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(request.getCompany());
 
         if (requesterId == null || !requesterId.equals(request.getRequesterId())) {
             throw new RuntimeException("본인이 상신한 결재만 수정할 수 있습니다.");
@@ -227,6 +231,7 @@ public class ApprovalRequestService {
                                              UserDetails userDetails, String signatureBase64) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(request.getCompany());
 
         if (request.getStatus() != ApprovalStatus.PENDING) {
             throw new RuntimeException("이미 처리된 결재 요청입니다.");
@@ -289,6 +294,7 @@ public class ApprovalRequestService {
                                             UserDetails userDetails) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(request.getCompany());
 
         if (request.getStatus() != ApprovalStatus.PENDING) {
             throw new RuntimeException("이미 처리된 결재 요청입니다.");
@@ -360,6 +366,7 @@ public class ApprovalRequestService {
     public void deleteRequest(Long id, UserDetails userDetails) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(request.getCompany());
 
         CallerIdentity caller = accessService.resolveCaller(userDetails);
         boolean isRequester = caller != null && caller.legacyId().equals(request.getRequesterId());

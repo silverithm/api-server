@@ -24,6 +24,7 @@ public class ApprovalTemplateService {
     private final ApprovalTemplateRepository templateRepository;
     private final ApprovalRequestRepository approvalRequestRepository;
     private final CompanyRepository companyRepository;
+    private final ResourceScopeGuard resourceScopeGuard;
 
     // 전체 양식 조회 (관리자용)
     @Transactional(readOnly = true)
@@ -48,6 +49,7 @@ public class ApprovalTemplateService {
     public ApprovalTemplateDTO getTemplate(Long id) {
         ApprovalTemplate template = templateRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
         return ApprovalTemplateDTO.from(template);
     }
 
@@ -78,6 +80,7 @@ public class ApprovalTemplateService {
     public ApprovalTemplateDTO updateTemplate(Long id, CreateApprovalTemplateRequestDTO request) {
         ApprovalTemplate template = templateRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
 
         template.setName(request.getName());
         template.setDescription(request.getDescription());
@@ -99,6 +102,7 @@ public class ApprovalTemplateService {
     public ApprovalTemplateDTO toggleActive(Long id) {
         ApprovalTemplate template = templateRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
 
         template.setIsActive(!template.getIsActive());
         ApprovalTemplate saved = templateRepository.save(template);
