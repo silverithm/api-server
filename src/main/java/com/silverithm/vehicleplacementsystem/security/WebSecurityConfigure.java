@@ -118,6 +118,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/members/find/password").permitAll()
                                 .requestMatchers("/api/v1/validate-token").permitAll()
                                 .requestMatchers("/api/v1/app-version").permitAll()
+                                // 케어브이 광장 요양 소식 — 비로그인 공개 페이지에서도 조회 가능
+                                .requestMatchers(HttpMethod.GET, "/api/v1/news").permitAll()
                                 // 블루그린 배포 헬스체크
                                 .requestMatchers("/health").permitAll()
                                 // 프로메테우스 메트릭 (management port 9101 — 호스트/외부 미노출, 컨테이너 네트워크 전용)
