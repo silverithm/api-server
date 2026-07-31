@@ -197,7 +197,8 @@ public class ScheduleController {
 
             log.info("[Schedule API] 일정 수행완료 변경: id={}, completed={}, user={}", id, completed, userId);
 
-            ScheduleDTO schedule = scheduleService.updateCompletion(id, completed, userId, userName, isAdmin);
+            ScheduleDTO schedule = scheduleService.updateCompletion(
+                    id, completed, userId, userName, resolveMemberId(authName), isAdmin);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())

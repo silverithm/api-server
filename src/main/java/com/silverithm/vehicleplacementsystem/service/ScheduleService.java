@@ -197,20 +197,27 @@ public class ScheduleService {
 
     /**
      * 일정 수행완료 상태 변경 (진행도 체크)
-     * 작성자 본인 또는 관리자만 변경 가능하다.
+     * 담당자가 지정된 일정은 담당자 본인만, 미지정 일정은 작성자 본인 또는 관리자만 변경 가능하다.
      */
     @Transactional
     public ScheduleDTO updateCompletion(Long scheduleId, boolean completed, String userId,
-                                        String userName, boolean isAdmin) {
+                                        String userName, Long memberId, boolean isAdmin) {
         log.info("[Schedule Service] 일정 수행완료 변경: id={}, completed={}, user={}", scheduleId, completed, userId);
 
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
         resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
-        boolean isAuthor = userId != null && userId.equals(schedule.getAuthorId());
-        if (!isAdmin && !isAuthor) {
-            throw new IllegalStateException("본인이 등록한 일정만 수행완료 처리할 수 있습니다.");
+        Long managerMemberId = schedule.getManagerMemberId();
+        if (managerMemberId != null) {
+            if (!managerMemberId.equals(memberId)) {
+                throw new IllegalStateException("담당자만 수행완료 처리할 수 있습니다.");
+            }
+        } else {
+            boolean isAuthor = userId != null && userId.equals(schedule.getAuthorId());
+            if (!isAdmin && !isAuthor) {
+                throw new IllegalStateException("본인이 등록한 일정만 수행완료 처리할 수 있습니다.");
+            }
         }
 
         schedule.updateCompletion(completed, userId, userName);
@@ -333,7 +340,7 @@ public class ScheduleService {
                 && task.getAssigneeMemberId().equals(memberId);
         boolean unassigned = task.getAssigneeMemberId() == null;
 
-        if (!isAdmin && !isAssignee && !unassigned) {
+        if (!unassigned && !isAssignee) {
             throw new IllegalStateException("담당자 본인만 수행완료 처리할 수 있습니다.");
         }
 
