@@ -63,6 +63,20 @@ public class PlazaController {
         }
     }
 
+    /**
+     * [운영] 시스템 공지 목록 — 관리자 대시보드 공지 위젯에서 기관 공지와 함께 보여준다.
+     * 비로그인도 조회 가능(GET permitAll).
+     */
+    @GetMapping("/notices")
+    public ResponseEntity<?> getOfficialNotices(@RequestParam(defaultValue = "5") int size) {
+        try {
+            return ResponseEntity.ok(Map.of("notices", plazaService.getOfficialNotices(size)));
+        } catch (Exception e) {
+            log.error("[Plaza API] 운영 공지 조회 오류:", e);
+            return ResponseEntity.ok(Map.of("notices", java.util.List.of()));
+        }
+    }
+
     // ── 게시글 ─────────────────────────────────────────────
 
     @GetMapping("/posts")

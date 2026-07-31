@@ -187,6 +187,27 @@ public class PlazaService {
         postRepository.delete(post); // 댓글/좋아요/조회는 FK ON DELETE CASCADE
     }
 
+    /**
+     * [운영] 시스템 공지 목록 (제목·작성일 중심의 가벼운 응답).
+     * 기관 공지와 함께 대시보드에 띄우기 위한 용도라 좋아요/댓글 집계는 하지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getOfficialNotices(int size) {
+        return postRepository.findOfficial(PageRequest.of(0, Math.min(Math.max(size, 1), 20)))
+                .getContent().stream()
+                .map(post -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", post.getId());
+                    item.put("board", post.getBoard().getKey());
+                    item.put("title", post.getTitle());
+                    item.put("displayAuthor", PlazaDTO.postAuthor(post));
+                    item.put("isPinned", post.isPinned());
+                    item.put("createdAt", post.getCreatedAt());
+                    return item;
+                })
+                .toList();
+    }
+
     /** 광장 운영자 여부 — 기관 관리자와는 별개 권한이다. */
     @Transactional(readOnly = true)
     public boolean isPlazaAdmin(String userId) {
