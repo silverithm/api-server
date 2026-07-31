@@ -88,3 +88,7 @@ build_backup/
 
 # Firebase 서비스 계정 키 — 절대 커밋 금지
 *firebase-adminsdk*.json
+
+# 시크릿 운영 문서 (키 위치·복구 절차 — 커밋 금지)
+SECRETS.local.md
+*.local.md
