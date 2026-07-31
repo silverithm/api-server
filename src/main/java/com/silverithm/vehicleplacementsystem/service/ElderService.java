@@ -47,8 +47,6 @@ public class ElderService {
     private UserRepository userRepository;
 
     @Autowired
-    private GeocodingService geocodingService;
-    @Autowired
     private SubscriptionRepository subscriptionRepository;
 
     @Autowired
@@ -59,7 +57,7 @@ public class ElderService {
 
     public void addElder(Long userId, AddElderRequest addElderRequest) throws Exception {
 
-        Location homeAddress = geocodingService.getAddressCoordinates(addElderRequest.homeAddress());
+        Location homeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
@@ -88,7 +86,7 @@ public class ElderService {
 
     @Transactional
     public void updateElder(Long id, ElderUpdateRequestDTO elderUpdateRequestDTO) throws Exception {
-        Location updatedHomeAddress = geocodingService.getAddressCoordinates(elderUpdateRequestDTO.homeAddress());
+        Location updatedHomeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
         Elderly elderly = elderRepository.findById(id).orElseThrow();
         resourceScopeGuard.requireSameCompany(elderly.getCompany(),
                 elderly.getUser() != null ? elderly.getUser().getCompany() : null);
@@ -109,7 +107,7 @@ public class ElderService {
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
         for (AddElderRequest elderRequest : elderRequests) {
-            Location homeAddress = geocodingService.getAddressCoordinates(elderRequest.homeAddress());
+            Location homeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
 
             Elderly elderly = new Elderly(elderRequest.name(), elderRequest.homeAddress(), homeAddress,
                     elderRequest.requiredFrontSeat(), user);
@@ -136,7 +134,7 @@ public class ElderService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
         if (request.homeAddress() != null && !request.homeAddress().isBlank()) {
-            Location homeAddress = geocodingService.getAddressCoordinates(request.homeAddress());
+            Location homeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
             Elderly elderly = new Elderly(request.name(), request.homeAddress(), homeAddress,
                     request.requiredFrontSeat(), company);
             elderRepository.save(elderly);
@@ -154,7 +152,7 @@ public class ElderService {
                 elderly.getUser() != null ? elderly.getUser().getCompany() : null);
 
         if (request.homeAddress() != null && !request.homeAddress().isBlank()) {
-            Location updatedHomeAddress = geocodingService.getAddressCoordinates(request.homeAddress());
+            Location updatedHomeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
             elderly.update(request.name(), request.homeAddress(), updatedHomeAddress, request.requiredFrontSeat());
         } else {
             elderly.updateName(request.name());

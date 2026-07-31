@@ -43,8 +43,6 @@ public class EmployeeService {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private GeocodingService geocodingService;
 
     @Autowired
     private SubscriptionRepository subscriptionRepository;
@@ -58,12 +56,8 @@ public class EmployeeService {
 
     public void addEmployee(Long userId, AddEmployeeRequest addEmployeeRequest) throws Exception {
 
-        Location homeAddress = geocodingService.getAddressCoordinates(addEmployeeRequest.homeAddress());
-        Location workPlace = geocodingService.getAddressCoordinates(addEmployeeRequest.workPlace());
-
-        if (homeAddress == null || workPlace == null) {
-            throw new Exception();
-        }
+        Location homeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
+        Location workPlace = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
 
         AppUser user = userRepository.findById(userId).orElseThrow();
 
@@ -97,8 +91,8 @@ public class EmployeeService {
 
     @Transactional
     public void updateEmployee(Long id, EmployeeUpdateRequestDTO employeeUpdateRequestDTO) throws Exception {
-        Location updatedHomeAddress = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.homeAddress());
-        Location updatedWorkPlace = geocodingService.getAddressCoordinates(employeeUpdateRequestDTO.workPlace());
+        Location updatedHomeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
+        Location updatedWorkPlace = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
 
         Employee employee = employeeRepository.findById(id).orElseThrow();
         resourceScopeGuard.requireSameCompany(employee.getCompany(),
@@ -114,7 +108,7 @@ public class EmployeeService {
     public void createEmployeeCompany(Long userId, CreateCompanyDto createCompanyDto) throws Exception {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
-        Location location = geocodingService.getAddressCoordinates(createCompanyDto.companyAddressName());
+        Location location = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
         Company company = Company.of(createCompanyDto.companyName(), createCompanyDto.companyAddressName(),
                 location);
         company.updateCompanyCode(companyCodeService.generateUniqueCode());
@@ -137,12 +131,8 @@ public class EmployeeService {
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
         for (AddEmployeeRequest employeeRequest : employeeRequests) {
-            Location homeAddress = geocodingService.getAddressCoordinates(employeeRequest.homeAddress());
-            Location workPlace = geocodingService.getAddressCoordinates(employeeRequest.workPlace());
-
-            if (homeAddress == null || workPlace == null) {
-                throw new CustomException("유효하지 않은 주소입니다", HttpStatus.BAD_REQUEST);
-            }
+            Location homeAddress = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
+            Location workPlace = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
 
             Employee employee = new Employee(employeeRequest.homeAddress(), employeeRequest.name(),
                     user.getCompany(), homeAddress, employeeRequest.maxCapacity(), employeeRequest.isDriver(), user);

@@ -79,8 +79,6 @@ public class UserService {
     @Autowired
     private CompanyRepository companyRepository;
     @Autowired
-    private GeocodingService geocodingService;
-    @Autowired
     private CompanyCodeService companyCodeService;
     @Autowired
     private FileStorageService fileStorageService;
@@ -133,7 +131,7 @@ public class UserService {
         validateEmailNotExists(userDataDTO.getEmail());
 
         TokenInfo tokenInfo = generateTokenInfo(userDataDTO);
-        Location companyLocation = geocodingService.getAddressCoordinates(userDataDTO.getCompanyAddress());
+        Location companyLocation = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
         Company company = new Company(userDataDTO.getCompanyName(), userDataDTO.getCompanyAddress(), companyLocation);
         company.updateCompanyCode(companyCodeService.generateUniqueCode());
         String customerKey = generateUniqueCustomerKey();
@@ -285,7 +283,7 @@ public class UserService {
             throws Exception {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
-        Location companyLocation = geocodingService.getAddressCoordinates(updateCompanyAddressDTO.companyAddress());
+        Location companyLocation = null; // 좌표 미사용 — 주소 좌표 변환 기능 제거 (배차 서비스 종료)
         findUser.updateCompanyAddress(companyLocation, updateCompanyAddressDTO.companyAddress());
 
         return new UpdateCompanyAddressResponse(updateCompanyAddressDTO.companyAddress(), companyLocation);
