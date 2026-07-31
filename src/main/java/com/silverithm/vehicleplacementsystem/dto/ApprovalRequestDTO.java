@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -35,6 +37,13 @@ public class ApprovalRequestDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // 결재선/공문 확장 (전부 additive — 앱은 무시)
+    private Boolean hasApprovalLine;
+    private List<ApprovalStepDTO> approvalLine;
+    private String docNumber;
+    private String docNumberDisplay;
+    private String companySealUrl;   // 최종 승인된 결재선 문서에만 세팅
+
     public static ApprovalRequestDTO from(ApprovalRequest request) {
         return ApprovalRequestDTO.builder()
                 .id(request.getId())
@@ -54,6 +63,13 @@ public class ApprovalRequestDTO {
                 .rejectReason(request.getRejectReason())
                 .createdAt(request.getCreatedAt())
                 .updatedAt(request.getUpdatedAt())
+                .hasApprovalLine(Boolean.TRUE.equals(request.getHasApprovalLine()))
+                .approvalLine(request.getSteps() == null ? List.of()
+                        : request.getSteps().stream()
+                                .map(ApprovalStepDTO::from)
+                                .collect(Collectors.toList()))
+                .docNumber(request.getDocNumber())
+                .docNumberDisplay(request.getDocNumberDisplay())
                 .build();
     }
 }

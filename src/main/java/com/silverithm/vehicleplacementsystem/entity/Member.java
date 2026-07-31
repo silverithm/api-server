@@ -79,6 +79,9 @@ public class Member {
     @Builder.Default
     private Set<String> permissions = new HashSet<>();
 
+    @Column(name = "signature_url", length = 1000)
+    private String signatureUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -96,6 +99,10 @@ public class Member {
 
     public void updateRole(Role role) {
         this.role = role;
+    }
+
+    public void updateSignature(String signatureUrl) {
+        this.signatureUrl = signatureUrl;
     }
 
     public enum Role {

@@ -1,6 +1,8 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApproveRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApproverCandidateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateApprovalAttachmentRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ApprovalRequestService;
@@ -8,8 +10,11 @@ import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -214,12 +219,16 @@ public class ApprovalRequestController {
     public ResponseEntity<Map<String, Object>> approveRequest(
             @PathVariable Long id,
             @RequestParam String processedBy,
-            @RequestParam String processedByName) {
+            @RequestParam String processedByName,
+            @RequestBody(required = false) ApproveRequestDTO body,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             log.info("[Approval API] 결재 승인: id={}, processedBy={}", id, processedByName);
 
-            ApprovalRequestDTO approval = approvalService.approveRequest(id, processedBy, processedByName);
+            String signatureBase64 = body != null ? body.getSignatureBase64() : null;
+            ApprovalRequestDTO approval = approvalService.approveRequest(
+                    id, processedBy, processedByName, userDetails, signatureBase64);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -229,6 +238,11 @@ public class ApprovalRequestController {
                             "message", "결재가 승인되었습니다."
                     ));
 
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 승인 권한 거부: id={}, {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Approval API] 승인 오류:", e);
             return ResponseEntity.internalServerError()
@@ -245,13 +259,15 @@ public class ApprovalRequestController {
             @PathVariable Long id,
             @RequestParam String processedBy,
             @RequestParam String processedByName,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             String reason = body.get("reason");
             log.info("[Approval API] 결재 반려: id={}, processedBy={}", id, processedByName);
 
-            ApprovalRequestDTO approval = approvalService.rejectRequest(id, processedBy, processedByName, reason);
+            ApprovalRequestDTO approval = approvalService.rejectRequest(id, processedBy, processedByName, reason,
+                    userDetails);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -261,6 +277,11 @@ public class ApprovalRequestController {
                             "message", "결재가 반려되었습니다."
                     ));
 
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 반려 권한 거부: id={}, {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Approval API] 반려 오류:", e);
             return ResponseEntity.internalServerError()
@@ -276,20 +297,22 @@ public class ApprovalRequestController {
     public ResponseEntity<Map<String, Object>> bulkApprove(
             @RequestParam String processedBy,
             @RequestParam String processedByName,
-            @RequestBody Map<String, List<Long>> body) {
+            @RequestBody Map<String, List<Long>> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             List<Long> ids = body.get("ids");
             log.info("[Approval API] 일괄 승인: ids={}, processedBy={}", ids.size(), processedByName);
 
-            List<ApprovalRequestDTO> approvals = approvalService.bulkApprove(ids, processedBy, processedByName);
+            List<ApprovalRequestDTO> approvals = approvalService.bulkApprove(ids, processedBy, processedByName,
+                    userDetails);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
                     .body(Map.of(
                             "success", true,
                             "approvals", approvals,
-                            "message", ids.size() + "건의 결재가 승인되었습니다."
+                            "message", approvals.size() + "건의 결재가 승인되었습니다."
                     ));
 
         } catch (Exception e) {
@@ -307,7 +330,8 @@ public class ApprovalRequestController {
     public ResponseEntity<Map<String, Object>> bulkReject(
             @RequestParam String processedBy,
             @RequestParam String processedByName,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             @SuppressWarnings("unchecked")
@@ -315,14 +339,15 @@ public class ApprovalRequestController {
             String reason = (String) body.get("reason");
             log.info("[Approval API] 일괄 반려: ids={}, processedBy={}", ids.size(), processedByName);
 
-            List<ApprovalRequestDTO> approvals = approvalService.bulkReject(ids, processedBy, processedByName, reason);
+            List<ApprovalRequestDTO> approvals = approvalService.bulkReject(ids, processedBy, processedByName, reason,
+                    userDetails);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
                     .body(Map.of(
                             "success", true,
                             "approvals", approvals,
-                            "message", ids.size() + "건의 결재가 반려되었습니다."
+                            "message", approvals.size() + "건의 결재가 반려되었습니다."
                     ));
 
         } catch (Exception e) {
@@ -337,11 +362,13 @@ public class ApprovalRequestController {
      * 결재 요청 삭제/취소 (직원)
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteApproval(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deleteApproval(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
             log.info("[Approval API] 결재 취소: id={}", id);
 
-            approvalService.deleteRequest(id);
+            approvalService.deleteRequest(id, userDetails);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -350,11 +377,38 @@ public class ApprovalRequestController {
                             "message", "결재 요청이 취소되었습니다."
                     ));
 
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 취소 권한 거부: id={}, {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Approval API] 취소 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "결재 취소 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 결재선 지정 가능 결재자 후보 목록 (회사 관리자 + 결재 권한 보유 직원)
+     */
+    @GetMapping("/approver-candidates")
+    public ResponseEntity<Map<String, Object>> getApproverCandidates(@RequestParam Long companyId) {
+        try {
+            log.info("[Approval API] 결재자 후보 조회: companyId={}", companyId);
+
+            List<ApproverCandidateDTO> candidates = approvalService.getApproverCandidates(companyId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("candidates", candidates));
+
+        } catch (Exception e) {
+            log.error("[Approval API] 결재자 후보 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "결재자 후보 조회 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 

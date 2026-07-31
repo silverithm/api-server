@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,4 +28,7 @@ public class CreateApprovalRequestDTO {
     private String attachmentUrl;
     private String attachmentFileName;
     private Long attachmentFileSize;
+
+    // 결재선 (선택 — 없으면 기존 단일 승인 방식, 앱은 이 필드를 보내지 않음)
+    private List<ApprovalLineEntryDTO> approvalLine;
 }

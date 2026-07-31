@@ -106,6 +106,35 @@ public class UserController {
     }
 
 
+    @PutMapping("api/v1/users/company-seal")
+    public ResponseEntity<Map<String, Object>> updateCompanySeal(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> body) {
+        try {
+            String sealUrl = userService.updateCompanySeal(body.get("imageBase64"), userDetails.getUsername());
+            return ResponseEntity.ok().body(Map.of(
+                    "success", true,
+                    "sealUrl", sealUrl,
+                    "message", "기관 직인이 등록되었습니다."
+            ));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("api/v1/users/company-seal")
+    public ResponseEntity<Map<String, Object>> deleteCompanySeal(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            userService.deleteCompanySeal(userDetails.getUsername());
+            return ResponseEntity.ok().body(Map.of("success", true, "message", "기관 직인이 삭제되었습니다."));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PutMapping("api/v1/users/customer-key")
     public ResponseEntity<String> updateCustomerKey() {
         userService.updateCustomerKey();

@@ -68,6 +68,9 @@ public class AppUser extends BaseEntity {
 
     private LocalDateTime deletedAt;
 
+    @Column(name = "signature_url", length = 1000)
+    private String signatureUrl;
+
 
 
     public AppUser(String name, String email, String encode, UserRole role, String refreshToken,
@@ -119,6 +122,10 @@ public class AppUser extends BaseEntity {
 
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void updateSignature(String signatureUrl) {
+        this.signatureUrl = signatureUrl;
     }
 
 

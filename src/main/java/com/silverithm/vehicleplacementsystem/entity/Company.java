@@ -43,6 +43,9 @@ public class Company extends BaseEntity {
     })
     private Location companyAddress;
 
+    @Column(name = "seal_url", length = 1000)
+    private String sealUrl;
+
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL)
     private List<AppUser> users;
 
@@ -78,5 +81,9 @@ public class Company extends BaseEntity {
 
     public void updateExpose(boolean expose) {
         this.expose = expose;
+    }
+
+    public void updateSeal(String sealUrl) {
+        this.sealUrl = sealUrl;
     }
 }

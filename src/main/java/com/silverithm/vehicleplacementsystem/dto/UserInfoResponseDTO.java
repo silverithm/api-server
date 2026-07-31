@@ -4,5 +4,6 @@ public record UserInfoResponseDTO(Long userId, String userName, String userEmail
                                 Location companyAddress,
                                 String companyAddressName,
                                 String companyCode,
-                                SubscriptionResponseDTO subscription, String customerKey) {
+                                SubscriptionResponseDTO subscription, String customerKey,
+                                String companySealUrl) {
 }

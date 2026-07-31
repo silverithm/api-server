@@ -22,6 +22,7 @@ import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
+import com.silverithm.vehicleplacementsystem.entity.UserRole;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
@@ -80,6 +81,8 @@ public class UserService {
     private GeocodingService geocodingService;
     @Autowired
     private CompanyCodeService companyCodeService;
+    @Autowired
+    private FileStorageService fileStorageService;
 
     private Key secretKey;
 
@@ -443,20 +446,90 @@ public class UserService {
     public UserInfoResponseDTO getUserInfo(String userEmail) {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
-        
+
+        String companySealUrl = resolveCompanySealUrl(findUser.getCompany());
+
         if (findUser.getSubscription() == null) {
             return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                     findUser.getCompany().getId(), findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     findUser.getCompany().getCompanyCode(),
-                    new SubscriptionResponseDTO(), findUser.getCustomerKey());
+                    new SubscriptionResponseDTO(), findUser.getCustomerKey(), companySealUrl);
         }
-        
+
         return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                 findUser.getCompany().getId(), findUser.getCompany().getName(),
                 findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                 findUser.getCompany().getCompanyCode(),
-                new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
+                new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(), companySealUrl);
+    }
+
+    private String resolveCompanySealUrl(Company company) {
+        if (company == null || company.getSealUrl() == null || company.getSealUrl().isEmpty()) {
+            return null;
+        }
+        String sealUrl = company.getSealUrl();
+        if (sealUrl.startsWith("http://") || sealUrl.startsWith("https://")) {
+            return sealUrl;
+        }
+        try {
+            return fileStorageService.getFileUrl(sealUrl);
+        } catch (Exception e) {
+            log.warn("[User Service] 직인 URL 변환 실패: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 기관 직인 등록 (ROLE_ADMIN 전용) */
+    @Transactional
+    public String updateCompanySeal(String imageBase64, String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (findUser.getUserRole() != UserRole.ROLE_ADMIN) {
+            throw new SecurityException("기관 직인은 관리자만 등록할 수 있습니다");
+        }
+
+        try {
+            byte[] bytes = SignatureService.decodePngBase64(imageBase64);
+            String newPath = fileStorageService.storeBytes(bytes, ".png", "seals");
+
+            deleteSealFileQuietly(findUser.getCompany().getSealUrl());
+            findUser.getCompany().updateSeal(newPath);
+
+            log.info("[User Service] 기관 직인 등록: companyId={}, path={}", findUser.getCompany().getId(), newPath);
+            return fileStorageService.getFileUrl(newPath);
+        } catch (SecurityException | IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CustomException("직인 등록에 실패했습니다: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /** 기관 직인 삭제 (ROLE_ADMIN 전용) */
+    @Transactional
+    public void deleteCompanySeal(String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (findUser.getUserRole() != UserRole.ROLE_ADMIN) {
+            throw new SecurityException("기관 직인은 관리자만 삭제할 수 있습니다");
+        }
+
+        deleteSealFileQuietly(findUser.getCompany().getSealUrl());
+        findUser.getCompany().updateSeal(null);
+        log.info("[User Service] 기관 직인 삭제: companyId={}", findUser.getCompany().getId());
+    }
+
+    private void deleteSealFileQuietly(String path) {
+        if (path == null || path.isEmpty()) {
+            return;
+        }
+        try {
+            fileStorageService.deleteFile(path);
+        } catch (Exception e) {
+            log.warn("[User Service] 기존 직인 파일 삭제 실패(무시): {}", e.getMessage());
+        }
     }
 
     @Transactional

@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "approval_requests")
@@ -70,6 +72,25 @@ public class ApprovalRequest {
     @Column(length = 1000)
     private String rejectReason;
 
+    // 결재선 (없으면 legacy 단일 승인 방식)
+    @OneToMany(mappedBy = "approvalRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("stepOrder ASC")
+    @Builder.Default
+    private List<ApprovalStep> steps = new ArrayList<>();
+
+    @Column(name = "doc_number", length = 50)
+    private String docNumber;
+
+    @Column(name = "doc_number_display", length = 50)
+    private String docNumberDisplay;
+
+    @Column(name = "current_step_order")
+    private Integer currentStepOrder;
+
+    @Column(name = "has_approval_line", nullable = false)
+    @Builder.Default
+    private Boolean hasApprovalLine = false;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -88,6 +109,25 @@ public class ApprovalRequest {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public boolean hasSteps() {
+        return Boolean.TRUE.equals(hasApprovalLine) && steps != null && !steps.isEmpty();
+    }
+
+    public ApprovalStep currentStep() {
+        if (!hasSteps() || currentStepOrder == null) {
+            return null;
+        }
+
+        return steps.stream()
+                .filter(step -> currentStepOrder.equals(step.getStepOrder()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public boolean isFinalStep(ApprovalStep step) {
+        return step != null && step.getRoleLabel() == ApprovalStep.StepRole.FINAL;
     }
 
     public enum ApprovalStatus {

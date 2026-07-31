@@ -137,6 +137,42 @@ public class FileStorageService {
     }
 
     /**
+     * 바이트 배열 저장 (서명/직인 등 base64 디코드 이미지용)
+     *
+     * @param bytes        파일 내용
+     * @param extension    확장자 (예: ".png")
+     * @param subDirectory 하위 디렉토리 (예: "signatures", "seals")
+     * @return 저장된 파일 경로 (S3 key, folder prefix 제외)
+     */
+    public String storeBytes(byte[] bytes, String extension, String subDirectory) throws IOException {
+        checkS3Enabled();
+
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("파일 내용이 비어 있습니다.");
+        }
+
+        String storedFileName = UUID.randomUUID().toString() + extension;
+        String relativePath = subDirectory + "/" + storedFileName;
+        String s3Key = folder + relativePath;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(s3Key)
+                    .contentType(determineContentType(extension))
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
+
+            log.info("[FileStorage] PutObject(bytes) 성공: key={}, size={}bytes", s3Key, bytes.length);
+            return relativePath;
+        } catch (S3Exception e) {
+            log.error("[FileStorage] PutObject(bytes) 실패: key={}, {}", s3Key, e.getMessage());
+            throw new IOException("S3 파일 업로드에 실패했습니다: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 파일 읽기
      */
     public byte[] loadFile(String filePath) throws IOException {

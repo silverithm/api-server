@@ -1,29 +1,43 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.ApprovalLineEntryDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalStepDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApproverCandidateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest.ApprovalStatus;
+import com.silverithm.vehicleplacementsystem.entity.ApprovalStep;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplate;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.entity.DocumentNumberCounter;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalTemplateRepository;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
+import com.silverithm.vehicleplacementsystem.repository.DocumentNumberCounterRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
+import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService.CallerIdentity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,12 +46,17 @@ import java.util.stream.Collectors;
 @Transactional
 public class ApprovalRequestService {
 
+    private static final int MAX_APPROVAL_STEPS = 5;
+
     private final ApprovalRequestRepository requestRepository;
     private final ApprovalTemplateRepository templateRepository;
     private final CompanyRepository companyRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
+    private final ApprovalAccessService accessService;
+    private final DocumentNumberCounterRepository docNumberCounterRepository;
 
     // 결재 요청 목록 조회 (관리자용, 필터 적용)
     @Transactional(readOnly = true)
@@ -115,12 +134,67 @@ public class ApprovalRequestService {
                 .attachmentFileSize(dto.getAttachmentFileSize())
                 .build();
 
-        ApprovalRequest saved = requestRepository.save(request);
-        log.info("[ApprovalRequest] 결재 요청 생성: id={}, title={}, requester={}", saved.getId(), saved.getTitle(), requesterName);
+        boolean hasLine = dto.getApprovalLine() != null && !dto.getApprovalLine().isEmpty();
+        if (hasLine) {
+            buildApprovalLine(request, company, dto.getApprovalLine());
+        }
 
-        notifyAdminsOfSubmission(saved);
+        ApprovalRequest saved = requestRepository.save(request);
+        log.info("[ApprovalRequest] 결재 요청 생성: id={}, title={}, requester={}, 결재선={}단계",
+                saved.getId(), saved.getTitle(), requesterName, saved.getSteps().size());
+
+        if (hasLine) {
+            // 결재선이 있으면 1단계 결재자에게만 알림
+            notifyStepApprover(saved, saved.currentStep());
+        } else {
+            notifyAdminsOfSubmission(saved);
+        }
 
         return toDTO(saved);
+    }
+
+    /** 결재선 검증 및 단계 생성. 리스트 순서=결재 순서, 마지막=최종 결재자. */
+    private void buildApprovalLine(ApprovalRequest request, Company company, List<ApprovalLineEntryDTO> entries) {
+        if (entries.size() > MAX_APPROVAL_STEPS) {
+            throw new IllegalArgumentException("결재선은 최대 " + MAX_APPROVAL_STEPS + "단계까지 설정할 수 있습니다");
+        }
+
+        Set<String> seenApprovers = new HashSet<>();
+        List<ApprovalStep> steps = new ArrayList<>();
+
+        for (int index = 0; index < entries.size(); index++) {
+            ApprovalLineEntryDTO entry = entries.get(index);
+
+            ApprovalStep.ApproverType approverType;
+            try {
+                approverType = ApprovalStep.ApproverType.valueOf(entry.getApproverType().trim().toUpperCase());
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw new IllegalArgumentException("결재자 유형이 올바르지 않습니다: " + entry.getApproverType());
+            }
+
+            ApprovalAccessService.ResolvedApprover approver =
+                    accessService.resolveApprover(approverType, entry.getApproverId(), company.getId());
+
+            if (!seenApprovers.add(approverType + ":" + approver.refId())) {
+                throw new IllegalArgumentException("같은 결재자를 결재선에 중복 지정할 수 없습니다: " + approver.name());
+            }
+
+            boolean isLast = index == entries.size() - 1;
+            steps.add(ApprovalStep.builder()
+                    .approvalRequest(request)
+                    .stepOrder(index + 1)
+                    .approverType(approver.type())
+                    .approverRefId(approver.refId())
+                    .approverIdLegacy(approver.legacyId())
+                    .approverName(approver.name())
+                    .roleLabel(isLast ? ApprovalStep.StepRole.FINAL : ApprovalStep.StepRole.REVIEWER)
+                    .status(ApprovalStep.StepStatus.PENDING)
+                    .build());
+        }
+
+        request.getSteps().addAll(steps);
+        request.setHasApprovalLine(true);
+        request.setCurrentStepOrder(1);
     }
 
     // 진행중 결재의 첨부파일 교체 (기안자 본인만)
@@ -148,8 +222,9 @@ public class ApprovalRequestService {
         return toDTO(saved);
     }
 
-    // 결재 승인 (관리자)
-    public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName) {
+    // 결재 승인 — 인가는 JWT 기반, processedBy 파라미터는 호환 저장용
+    public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName,
+                                             UserDetails userDetails, String signatureBase64) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
 
@@ -157,32 +232,86 @@ public class ApprovalRequestService {
             throw new RuntimeException("이미 처리된 결재 요청입니다.");
         }
 
-        request.setStatus(ApprovalStatus.APPROVED);
-        request.setProcessedBy(processedBy);
-        request.setProcessedByName(processedByName);
-        request.setProcessedAt(LocalDateTime.now());
+        CallerIdentity caller = accessService.resolveCaller(userDetails);
+        LocalDateTime now = LocalDateTime.now();
 
+        if (!request.hasSteps()) {
+            // legacy 단일 승인 — 이제 인가 필요 (기존: 인증만 되면 누구나 가능)
+            accessService.requireAdminOrApprovalManage(caller, request.getCompany().getId());
+
+            request.setStatus(ApprovalStatus.APPROVED);
+            request.setProcessedBy(processedBy);
+            request.setProcessedByName(processedByName);
+            request.setProcessedAt(now);
+            allocateDocNumber(request);
+
+            ApprovalRequest saved = requestRepository.save(request);
+            log.info("[ApprovalRequest] 결재 승인(legacy): id={}, processedBy={}", saved.getId(), processedByName);
+
+            notifyRequesterOfResult(saved, true, null);
+            return toDTO(saved);
+        }
+
+        ApprovalStep step = request.currentStep();
+        accessService.requireIsStepApprover(caller, step);
+
+        step.setStatus(ApprovalStep.StepStatus.APPROVED);
+        step.setSignatureUrl(resolveSignature(caller, signatureBase64));
+        step.setProcessedAt(now);
+
+        if (request.isFinalStep(step)) {
+            request.setStatus(ApprovalStatus.APPROVED);
+            request.setProcessedBy(processedBy);
+            request.setProcessedByName(processedByName);
+            request.setProcessedAt(now);
+            request.setCurrentStepOrder(null);
+            allocateDocNumber(request);
+
+            ApprovalRequest saved = requestRepository.save(request);
+            log.info("[ApprovalRequest] 결재 최종 승인: id={}, docNumber={}, approver={}",
+                    saved.getId(), saved.getDocNumber(), step.getApproverName());
+
+            notifyRequesterOfResult(saved, true, null);
+            return toDTO(saved);
+        }
+
+        request.setCurrentStepOrder(step.getStepOrder() + 1);
         ApprovalRequest saved = requestRepository.save(request);
-        log.info("[ApprovalRequest] 결재 승인: id={}, processedBy={}", saved.getId(), processedByName);
+        log.info("[ApprovalRequest] 결재 단계 승인: id={}, step={}/{}, approver={}",
+                saved.getId(), step.getStepOrder(), saved.getSteps().size(), step.getApproverName());
 
-        notifyRequesterOfResult(saved, true, null);
-
+        notifyStepApprover(saved, saved.currentStep());
         return toDTO(saved);
     }
 
-    // 결재 반려 (관리자)
-    public ApprovalRequestDTO rejectRequest(Long id, String processedBy, String processedByName, String reason) {
+    // 결재 반려 — 어느 단계에서든 반려되면 요청 전체가 반려된다
+    public ApprovalRequestDTO rejectRequest(Long id, String processedBy, String processedByName, String reason,
+                                            UserDetails userDetails) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
 
         if (request.getStatus() != ApprovalStatus.PENDING) {
             throw new RuntimeException("이미 처리된 결재 요청입니다.");
+        }
+
+        CallerIdentity caller = accessService.resolveCaller(userDetails);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (request.hasSteps()) {
+            ApprovalStep step = request.currentStep();
+            accessService.requireIsStepApprover(caller, step);
+            step.setStatus(ApprovalStep.StepStatus.REJECTED);
+            step.setRejectReason(reason);
+            step.setProcessedAt(now);
+            request.setCurrentStepOrder(null);
+        } else {
+            accessService.requireAdminOrApprovalManage(caller, request.getCompany().getId());
         }
 
         request.setStatus(ApprovalStatus.REJECTED);
         request.setProcessedBy(processedBy);
         request.setProcessedByName(processedByName);
-        request.setProcessedAt(LocalDateTime.now());
+        request.setProcessedAt(now);
         request.setRejectReason(reason);
 
         ApprovalRequest saved = requestRepository.save(request);
@@ -193,27 +322,112 @@ public class ApprovalRequestService {
         return toDTO(saved);
     }
 
-    // 일괄 승인
-    public List<ApprovalRequestDTO> bulkApprove(List<Long> ids, String processedBy, String processedByName) {
-        return ids.stream()
-                .map(id -> approveRequest(id, processedBy, processedByName))
-                .collect(Collectors.toList());
+    // 일괄 승인 — 항목별 인가, 부분 성공 (실패 항목은 건너뛰고 로그)
+    public List<ApprovalRequestDTO> bulkApprove(List<Long> ids, String processedBy, String processedByName,
+                                                UserDetails userDetails) {
+        List<ApprovalRequestDTO> results = new ArrayList<>();
+        for (Long id : ids) {
+            try {
+                results.add(approveRequest(id, processedBy, processedByName, userDetails, null));
+            } catch (Exception e) {
+                log.warn("[ApprovalRequest] 일괄 승인 항목 실패: id={}, {}", id, e.getMessage());
+            }
+        }
+        if (results.isEmpty() && !ids.isEmpty()) {
+            throw new RuntimeException("일괄 승인에 실패했습니다. 처리 권한과 결재 차례를 확인해주세요.");
+        }
+        return results;
     }
 
-    // 일괄 반려
-    public List<ApprovalRequestDTO> bulkReject(List<Long> ids, String processedBy, String processedByName, String reason) {
-        return ids.stream()
-                .map(id -> rejectRequest(id, processedBy, processedByName, reason))
-                .collect(Collectors.toList());
+    // 일괄 반려 — 항목별 인가, 부분 성공
+    public List<ApprovalRequestDTO> bulkReject(List<Long> ids, String processedBy, String processedByName,
+                                               String reason, UserDetails userDetails) {
+        List<ApprovalRequestDTO> results = new ArrayList<>();
+        for (Long id : ids) {
+            try {
+                results.add(rejectRequest(id, processedBy, processedByName, reason, userDetails));
+            } catch (Exception e) {
+                log.warn("[ApprovalRequest] 일괄 반려 항목 실패: id={}, {}", id, e.getMessage());
+            }
+        }
+        if (results.isEmpty() && !ids.isEmpty()) {
+            throw new RuntimeException("일괄 반려에 실패했습니다. 처리 권한과 결재 차례를 확인해주세요.");
+        }
+        return results;
     }
 
-    // 결재 요청 삭제 (취소)
-    public void deleteRequest(Long id) {
+    // 결재 요청 삭제 (취소) — 기안자 본인 또는 회사 관리자만
+    public void deleteRequest(Long id, UserDetails userDetails) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
 
+        CallerIdentity caller = accessService.resolveCaller(userDetails);
+        boolean isRequester = caller != null && caller.legacyId().equals(request.getRequesterId());
+        if (!isRequester && !accessService.isCompanyAdmin(caller, request.getCompany().getId())) {
+            throw new SecurityException("본인이 상신한 결재만 취소할 수 있습니다.");
+        }
+
         requestRepository.deleteById(id);
-        log.info("[ApprovalRequest] 결재 요청 삭제: id={}, status={}", id, request.getStatus());
+        log.info("[ApprovalRequest] 결재 요청 삭제: id={}, status={}, by={}",
+                id, request.getStatus(), caller != null ? caller.legacyId() : "unknown");
+    }
+
+    // ─── 서명/문서번호 헬퍼 ───
+
+    /** 승인 서명 결정: 즉석 서명(base64) 우선, 없으면 등록 서명, 그것도 없으면 null (승인은 진행) */
+    private String resolveSignature(CallerIdentity caller, String signatureBase64) {
+        if (signatureBase64 != null && !signatureBase64.isBlank()) {
+            try {
+                return storeSignatureImage(signatureBase64);
+            } catch (Exception e) {
+                log.error("[ApprovalRequest] 즉석 서명 저장 실패, 등록 서명으로 대체: {}", e.getMessage());
+            }
+        }
+
+        return accessService.findRegisteredSignature(caller);
+    }
+
+    /** base64 PNG 디코드 후 S3 signatures/ 저장. data URL 접두사 허용. */
+    private String storeSignatureImage(String base64) throws IOException {
+        String payload = base64.trim();
+        int commaIndex = payload.indexOf(',');
+        if (payload.startsWith("data:") && commaIndex > 0) {
+            payload = payload.substring(commaIndex + 1);
+        }
+
+        byte[] bytes = Base64.getDecoder().decode(payload);
+
+        // PNG magic bytes 검증
+        if (bytes.length < 8 || (bytes[0] & 0xFF) != 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47) {
+            throw new IllegalArgumentException("서명 이미지는 PNG 형식이어야 합니다.");
+        }
+
+        return fileStorageService.storeBytes(bytes, ".png", "signatures");
+    }
+
+    /** 최종 승인 시 문서번호 발급 (회사·연도별 순번, 멱등) */
+    private void allocateDocNumber(ApprovalRequest request) {
+        if (request.getDocNumber() != null) {
+            return;
+        }
+
+        try {
+            Long companyId = request.getCompany().getId();
+            int year = LocalDate.now().getYear();
+
+            docNumberCounterRepository.ensureCounter(companyId, year);
+            DocumentNumberCounter counter = docNumberCounterRepository.findByCompanyIdAndYear(companyId, year)
+                    .orElseThrow(() -> new IllegalStateException("문서번호 카운터를 찾을 수 없습니다"));
+
+            int seq = counter.getSeq() + 1;
+            counter.setSeq(seq);
+
+            request.setDocNumber(year + "-" + seq);
+            request.setDocNumberDisplay("제 " + year + "-" + seq + " 호");
+        } catch (Exception e) {
+            // 문서번호 발급 실패가 승인 자체를 막지 않도록 한다
+            log.error("[ApprovalRequest] 문서번호 발급 실패: requestId={}, {}", request.getId(), e.getMessage());
+        }
     }
 
     // ─── 알림 헬퍼 ───
@@ -291,6 +505,99 @@ public class ApprovalRequestService {
         }
     }
 
+    /** 다음 차례 결재 단계의 결재자에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음. */
+    private void notifyStepApprover(ApprovalRequest request, ApprovalStep step) {
+        if (step == null) {
+            return;
+        }
+
+        try {
+            String token = null;
+            String recipientUserId = null;
+            String recipientUserName = step.getApproverName();
+
+            if (step.getApproverType() == ApprovalStep.ApproverType.ADMIN) {
+                AppUser approver = userRepository.findById(step.getApproverRefId()).orElse(null);
+                if (approver != null) {
+                    token = approver.getFcmToken();
+                    recipientUserId = String.valueOf(approver.getId());
+                }
+            } else {
+                Member approver = memberRepository.findById(step.getApproverRefId()).orElse(null);
+                if (approver != null) {
+                    token = approver.getFcmToken();
+                    recipientUserId = String.valueOf(approver.getId());
+                }
+            }
+
+            if (token == null || token.isEmpty()) {
+                log.debug("[ApprovalRequest] 결재자 FCM 토큰 없음: step={}, approver={}",
+                        step.getStepOrder(), step.getApproverName());
+                return;
+            }
+
+            notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
+                    .recipientToken(token)
+                    .title("결재 요청 도착")
+                    .message(request.getRequesterName() + "님의 '" + request.getTitle() + "' 결재가 결재를 기다리고 있습니다.")
+                    .recipientUserId(recipientUserId)
+                    .recipientUserName(recipientUserName)
+                    .type("approval")
+                    .relatedEntityId(request.getId())
+                    .relatedEntityType("approval_request")
+                    .data(Map.of(
+                            "type", "approval",
+                            "requestId", String.valueOf(request.getId())
+                    ))
+                    .build());
+        } catch (Exception e) {
+            log.error("[ApprovalRequest] 결재 차례 알림 전송 실패: requestId={}, {}", request.getId(), e.getMessage());
+        }
+    }
+
+    /** 결재선에 지정 가능한 결재자 후보: 회사 관리자(AppUser) + ADMIN 역할 또는 APPROVAL_MANAGE 권한 Member */
+    @Transactional(readOnly = true)
+    public List<ApproverCandidateDTO> getApproverCandidates(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
+
+        List<ApproverCandidateDTO> candidates = new ArrayList<>();
+
+        if (company.getUsers() != null) {
+            for (AppUser appUser : company.getUsers()) {
+                if (appUser.getDeletedAt() != null) {
+                    continue;
+                }
+                candidates.add(ApproverCandidateDTO.builder()
+                        .approverType(ApprovalStep.ApproverType.ADMIN.name())
+                        .approverId(appUser.getId())
+                        .name(appUser.getUsername())
+                        .position("관리자")
+                        .build());
+            }
+        }
+
+        for (Member member : memberRepository.findByCompanyOrderByCreatedAtDesc(company)) {
+            if (member.getStatus() != Member.MemberStatus.ACTIVE) {
+                continue;
+            }
+            boolean eligible = member.getRole() == Member.Role.ADMIN
+                    || (member.getPermissions() != null
+                        && member.getPermissions().contains(ApprovalAccessService.APPROVAL_MANAGE));
+            if (!eligible) {
+                continue;
+            }
+            candidates.add(ApproverCandidateDTO.builder()
+                    .approverType(ApprovalStep.ApproverType.MEMBER.name())
+                    .approverId(member.getId())
+                    .name(member.getName())
+                    .position(member.getPosition())
+                    .build());
+        }
+
+        return candidates;
+    }
+
     /** requesterId(Member id 또는 username)로 기안자 조회 */
     private Member findRequester(String requesterId) {
         if (requesterId == null || requesterId.isBlank()) {
@@ -327,6 +634,26 @@ public class ApprovalRequestService {
             log.debug("[ApprovalRequest] attachmentUrl 변환: {} -> {}", attachmentUrl, s3Url);
         }
 
+        // 결재선 서명 이미지 상대경로 → S3 URL 변환
+        if (dto.getApprovalLine() != null) {
+            for (ApprovalStepDTO step : dto.getApprovalLine()) {
+                step.setSignatureUrl(toAbsoluteFileUrl(step.getSignatureUrl()));
+            }
+        }
+
+        // 최종 승인된 결재선 문서에는 기관 직인 노출 (시행 문서)
+        if (request.getStatus() == ApprovalStatus.APPROVED && Boolean.TRUE.equals(dto.getHasApprovalLine())) {
+            String sealUrl = request.getCompany() != null ? request.getCompany().getSealUrl() : null;
+            dto.setCompanySealUrl(toAbsoluteFileUrl(sealUrl));
+        }
+
         return dto;
+    }
+
+    private String toAbsoluteFileUrl(String path) {
+        if (path == null || path.isEmpty() || path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        return fileStorageService.getFileUrl(path);
     }
 }
