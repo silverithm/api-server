@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.security;
 
 import com.silverithm.vehicleplacementsystem.service.CallerCompanyResolver;
+import com.silverithm.vehicleplacementsystem.service.ResourceCompanyLookup;
 import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,8 +36,10 @@ import org.springframework.web.servlet.HandlerMapping;
 public class CompanyScopeInterceptor implements HandlerInterceptor {
 
     private static final String COMPANY_ID = "companyId";
+    private static final String ROOM_ID = "roomId";
 
     private final CallerCompanyResolver callerCompanyResolver;
+    private final ResourceCompanyLookup resourceCompanyLookup;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -46,7 +49,7 @@ public class CompanyScopeInterceptor implements HandlerInterceptor {
             return true;   // CORS preflight
         }
 
-        Long requestedCompanyId = extractCompanyId(request);
+        Long requestedCompanyId = resolveTargetCompanyId(request);
         if (requestedCompanyId == null) {
             return true;
         }
@@ -63,12 +66,35 @@ public class CompanyScopeInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        log.warn("[CompanyScope] 타 기관 접근 차단: user={}, 요청 companyId={}, 소속 companyId={}, uri={}",
+        log.warn("[CompanyScope] 타 기관 접근 차단: user={}, 대상 companyId={}, 소속 companyId={}, uri={}",
                 PrivacyMask.email(username), requestedCompanyId, callerCompanyId.orElse(null),
                 request.getRequestURI());
 
         writeForbidden(response);
         return false;
+    }
+
+    /**
+     * 이 요청이 어느 기관을 대상으로 하는지 판정한다.
+     *
+     * <p>요청에 직접 실린 {@code companyId}를 우선 보고, 없으면 리소스 ID로부터 역추적한다.
+     * 채팅은 모든 엔드포인트가 {@code /rooms/{roomId}} 하위라 방 ID만으로 접근이 가능했다.
+     *
+     * @return 대상 기관 ID. 판정할 근거가 없으면 null(= 이 인터셉터의 검증 대상 아님)
+     */
+    private Long resolveTargetCompanyId(HttpServletRequest request) {
+        Long explicit = extractCompanyId(request);
+        if (explicit != null) {
+            return explicit;
+        }
+
+        Long roomId = parseId(pathVariable(request, ROOM_ID));
+        if (roomId != null) {
+            // 존재하지 않는 방이면 판정 불가 → 컨트롤러가 404로 처리하도록 통과시킨다.
+            return resourceCompanyLookup.chatRoomCompanyId(roomId).orElse(null);
+        }
+
+        return null;
     }
 
     /** 쿼리/폼 파라미터를 먼저 보고, 없으면 경로 변수(@PathVariable)를 본다. */
@@ -78,12 +104,15 @@ public class CompanyScopeInterceptor implements HandlerInterceptor {
             return fromParameter;
         }
 
+        return parseId(pathVariable(request, COMPANY_ID));
+    }
+
+    private String pathVariable(HttpServletRequest request, String name) {
         Object attribute = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
         if (attribute instanceof Map<?, ?> pathVariables) {
-            Object value = pathVariables.get(COMPANY_ID);
-            return value != null ? parseId(value.toString()) : null;
+            Object value = pathVariables.get(name);
+            return value != null ? value.toString() : null;
         }
-
         return null;
     }
 

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.silverithm.vehicleplacementsystem.service.CallerCompanyResolver;
+import com.silverithm.vehicleplacementsystem.service.ResourceCompanyLookup;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -35,6 +36,9 @@ class CompanyScopeInterceptorTest {
 
     @Mock
     private CallerCompanyResolver callerCompanyResolver;
+
+    @Mock
+    private ResourceCompanyLookup resourceCompanyLookup;
 
     @InjectMocks
     private CompanyScopeInterceptor interceptor;
@@ -145,6 +149,49 @@ class CompanyScopeInterceptorTest {
 
         MockHttpServletRequest request = get("/api/v1/members/companies");
         request.setParameter("companyId", String.valueOf(OTHER_COMPANY));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
+        verify(callerCompanyResolver, never()).resolveCompanyId(anyString());
+    }
+
+    @Test
+    @DisplayName("타 기관 채팅방은 roomId만으로도 차단한다")
+    void blocksChatRoomOfOtherCompany() throws Exception {
+        authenticateAs(REQUESTER);
+        when(resourceCompanyLookup.chatRoomCompanyId(42L)).thenReturn(Optional.of(OTHER_COMPANY));
+        when(callerCompanyResolver.resolveCompanyId(REQUESTER)).thenReturn(Optional.of(MY_COMPANY));
+
+        MockHttpServletRequest request = get("/api/v1/chat/rooms/42/messages");
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("roomId", "42"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isFalse();
+        assertThat(response.getStatus()).isEqualTo(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    @DisplayName("본인 기관 채팅방은 통과시킨다")
+    void allowsOwnChatRoom() throws Exception {
+        authenticateAs(REQUESTER);
+        when(resourceCompanyLookup.chatRoomCompanyId(42L)).thenReturn(Optional.of(MY_COMPANY));
+        when(callerCompanyResolver.resolveCompanyId(REQUESTER)).thenReturn(Optional.of(MY_COMPANY));
+
+        MockHttpServletRequest request = get("/api/v1/chat/rooms/42/messages");
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("roomId", "42"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 채팅방은 통과시켜 컨트롤러가 404를 내게 한다")
+    void passesThroughUnknownChatRoom() throws Exception {
+        authenticateAs(REQUESTER);
+        when(resourceCompanyLookup.chatRoomCompanyId(404L)).thenReturn(Optional.empty());
+
+        MockHttpServletRequest request = get("/api/v1/chat/rooms/404/messages");
+        request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("roomId", "404"));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertThat(interceptor.preHandle(request, response, new Object())).isTrue();
