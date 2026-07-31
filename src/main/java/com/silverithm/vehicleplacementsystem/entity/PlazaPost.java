@@ -80,6 +80,10 @@ public class PlazaPost extends BaseEntity {
     @Column(nullable = false)
     private boolean isHidden;
 
+    /** 광장 운영자가 관리자 모드로 작성한 [운영] 공지 */
+    @Column(nullable = false)
+    private boolean isOfficial;
+
     @Column(nullable = false)
     private int viewCount;
 }

@@ -23,6 +23,7 @@ public final class PlazaDTO {
             String displayAuthor,
             boolean isAnonymous,
             boolean isPinned,
+            boolean isOfficial,
             boolean isMine,
             int viewCount,
             long likeCount,
@@ -42,6 +43,7 @@ public final class PlazaDTO {
             String displayAuthor,
             boolean isAnonymous,
             boolean isPinned,
+            boolean isOfficial,
             boolean isMine,
             int viewCount,
             long likeCount,
@@ -81,11 +83,22 @@ public final class PlazaDTO {
     ) {
     }
 
+    /** [운영] 공지의 작성자 표시명 — 개인·기관을 드러내지 않고 운영 주체로만 보인다. */
+    public static final String OFFICIAL_AUTHOR = "케어브이 운영팀";
+
     public static String displayAuthor(boolean anonymous, String companyName, String authorName) {
         if (anonymous) {
             return "익명";
         }
         return (companyName != null && !companyName.isBlank() ? companyName + " · " : "") + authorName;
+    }
+
+    /** 게시글 작성자 표시명. 운영 공지는 작성자 개인 정보를 노출하지 않는다. */
+    public static String postAuthor(PlazaPost post) {
+        if (post.isOfficial()) {
+            return OFFICIAL_AUTHOR;
+        }
+        return displayAuthor(post.isAnonymous(), post.getCompanyName(), post.getAuthorName());
     }
 
     public static PostSummary toSummary(PlazaPost post, String currentUserId,
@@ -100,9 +113,10 @@ public final class PlazaDTO {
                 post.getBoard().getKey(),
                 post.getTitle(),
                 preview,
-                displayAuthor(post.isAnonymous(), post.getCompanyName(), post.getAuthorName()),
+                postAuthor(post),
                 post.isAnonymous(),
                 post.isPinned(),
+                post.isOfficial(),
                 currentUserId != null && currentUserId.equals(post.getAuthorId()),
                 post.getViewCount(),
                 likeCount,

@@ -7,6 +7,7 @@ import com.silverithm.vehicleplacementsystem.entity.PlazaPost;
 import com.silverithm.vehicleplacementsystem.entity.PlazaPostLike;
 import com.silverithm.vehicleplacementsystem.entity.PlazaPostView;
 import com.silverithm.vehicleplacementsystem.entity.PlazaReport;
+import com.silverithm.vehicleplacementsystem.repository.PlazaAdminRepository;
 import com.silverithm.vehicleplacementsystem.repository.PlazaCommentRepository;
 import com.silverithm.vehicleplacementsystem.repository.PlazaLibraryItemRepository;
 import com.silverithm.vehicleplacementsystem.repository.PlazaPostLikeRepository;
@@ -46,6 +47,7 @@ public class PlazaService {
     private final PlazaPostViewRepository viewRepository;
     private final PlazaReportRepository reportRepository;
     private final PlazaLibraryItemRepository libraryRepository;
+    private final PlazaAdminRepository plazaAdminRepository;
     private final FileStorageService fileStorageService;
 
     // ── 게시글 ─────────────────────────────────────────────
@@ -129,9 +131,10 @@ public class PlazaService {
                 post.getBoard().getKey(),
                 post.getTitle(),
                 post.getContent(),
-                PlazaDTO.displayAuthor(post.isAnonymous(), post.getCompanyName(), post.getAuthorName()),
+                PlazaDTO.postAuthor(post),
                 post.isAnonymous(),
                 post.isPinned(),
+                post.isOfficial(),
                 currentUserId != null && currentUserId.equals(post.getAuthorId()),
                 post.getViewCount(),
                 likeRepository.countByPostId(postId),
@@ -146,7 +149,12 @@ public class PlazaService {
 
     @Transactional
     public Long createPost(String board, String title, String content, boolean anonymous,
-                           String authorId, String authorName, String companyName) {
+                           String authorId, String authorName, String companyName,
+                           boolean official, boolean pinned) {
+        // [운영] 공지와 상단 고정은 광장 운영자만 쓸 수 있다. 일반 사용자가 보내면 무시한다.
+        boolean admin = isPlazaAdmin(authorId);
+        boolean asOfficial = admin && official;
+
         PlazaPost post = PlazaPost.builder()
                 .board(PlazaPost.Board.fromKey(board))
                 .title(title)
@@ -154,8 +162,10 @@ public class PlazaService {
                 .authorId(authorId)
                 .authorName(authorName)
                 .companyName(companyName)
-                .isAnonymous(anonymous)
-                .isPinned(false)
+                // 운영 공지는 작성자를 '케어브이 운영팀'으로 표시하므로 익명 처리와 함께 쓰지 않는다
+                .isAnonymous(!asOfficial && anonymous)
+                .isPinned(admin && pinned)
+                .isOfficial(asOfficial)
                 .isHidden(false)
                 .viewCount(0)
                 .build();
@@ -164,17 +174,23 @@ public class PlazaService {
 
     @Transactional
     public void updatePost(Long postId, String board, String title, String content, boolean anonymous, String userId) {
-        PlazaPost post = requireOwnPost(postId, userId);
+        PlazaPost post = requireManageablePost(postId, userId);
         post.setBoard(PlazaPost.Board.fromKey(board));
         post.setTitle(title);
         post.setContent(content);
-        post.setAnonymous(anonymous);
+        post.setAnonymous(!post.isOfficial() && anonymous);
     }
 
     @Transactional
     public void deletePost(Long postId, String userId) {
-        PlazaPost post = requireOwnPost(postId, userId);
+        PlazaPost post = requireManageablePost(postId, userId);
         postRepository.delete(post); // 댓글/좋아요/조회는 FK ON DELETE CASCADE
+    }
+
+    /** 광장 운영자 여부 — 기관 관리자와는 별개 권한이다. */
+    @Transactional(readOnly = true)
+    public boolean isPlazaAdmin(String userId) {
+        return userId != null && plazaAdminRepository.existsByEmail(userId);
     }
 
     @Transactional
@@ -336,10 +352,11 @@ public class PlazaService {
 
     // ── 내부 헬퍼 ─────────────────────────────────────────
 
-    private PlazaPost requireOwnPost(Long postId, String userId) {
+    /** 본인 글이거나, 광장 운영자면 관리 목적으로 다른 사람 글도 다룰 수 있다. */
+    private PlazaPost requireManageablePost(Long postId, String userId) {
         PlazaPost post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다"));
-        if (!post.getAuthorId().equals(userId)) {
+        if (!post.getAuthorId().equals(userId) && !isPlazaAdmin(userId)) {
             throw new IllegalStateException("본인이 작성한 글만 수정/삭제할 수 있습니다");
         }
         return post;

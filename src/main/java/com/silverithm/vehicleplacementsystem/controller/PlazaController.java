@@ -46,6 +46,23 @@ public class PlazaController {
         return userId;
     }
 
+    // ── 내 광장 권한 ────────────────────────────────────────
+
+    /**
+     * 로그인 사용자의 광장 권한.
+     * 비로그인이면 isAdmin=false로 응답한다 (프론트가 분기 없이 호출할 수 있게).
+     */
+    @GetMapping("/me")
+    public ResponseEntity<?> getMyPlazaRole(Authentication authentication) {
+        try {
+            String userId = currentUserId(authentication);
+            return ResponseEntity.ok(Map.of("isAdmin", plazaService.isPlazaAdmin(userId)));
+        } catch (Exception e) {
+            log.error("[Plaza API] 광장 권한 조회 오류:", e);
+            return ResponseEntity.ok(Map.of("isAdmin", false));
+        }
+    }
+
     // ── 게시글 ─────────────────────────────────────────────
 
     @GetMapping("/posts")
@@ -78,8 +95,10 @@ public class PlazaController {
         }
     }
 
+    /** isOfficial/isPinned는 광장 운영자만 반영된다 (서비스에서 검증) */
     public record PostRequest(String board, String title, String content, Boolean isAnonymous,
-                              String authorName, String companyName) {
+                              String authorName, String companyName,
+                              Boolean isOfficial, Boolean isPinned) {
     }
 
     @PostMapping("/posts")
@@ -97,7 +116,9 @@ public class PlazaController {
                     Boolean.TRUE.equals(request.isAnonymous()),
                     userId,
                     request.authorName() != null ? request.authorName() : "사용자",
-                    request.companyName());
+                    request.companyName(),
+                    Boolean.TRUE.equals(request.isOfficial()),
+                    Boolean.TRUE.equals(request.isPinned()));
             return ResponseEntity.ok(Map.of("id", id));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
