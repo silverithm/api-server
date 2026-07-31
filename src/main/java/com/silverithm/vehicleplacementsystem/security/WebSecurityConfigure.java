@@ -120,6 +120,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/app-version").permitAll()
                                 // 블루그린 배포 헬스체크
                                 .requestMatchers("/health").permitAll()
+                                // 프로메테우스 메트릭 (management port 9101 — 호스트/외부 미노출, 컨테이너 네트워크 전용)
+                                .requestMatchers("/metrics").permitAll()
                                 // WebSocket endpoints
                                 .requestMatchers("/ws/**").permitAll()
                                 .requestMatchers("/ws/chat/**").permitAll()
