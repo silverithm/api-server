@@ -35,8 +35,9 @@ public class NewsArticle extends BaseEntity {
     @Column(length = 100)
     private String source;
 
+    // Hibernate 6는 STRING enum을 MySQL ENUM 타입으로 기대하므로 VARCHAR를 명시 (ddl-auto=validate)
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "varchar(20)")
     private NewsCategory category;
 
     @Column(nullable = false, length = 768, unique = true)
