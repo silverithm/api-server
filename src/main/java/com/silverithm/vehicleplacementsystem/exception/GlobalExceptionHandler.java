@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -23,6 +24,29 @@ public class GlobalExceptionHandler {
         errorResponse.put("error", ex.getMessage());
 
         return ResponseEntity.status(ex.getHttpStatus()).body(errorResponse);
+    }
+
+    /**
+     * @Valid 검증 실패.
+     *
+     * 핸들러가 없으면 generic 핸들러로 떨어져 500이 나가고, 프론트가 어떤 항목이
+     * 잘못됐는지 보여줄 수 없다. 첫 번째 위반 메시지를 그대로 내려준다.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationException(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(org.springframework.validation.FieldError::getDefaultMessage)
+                .filter(m -> m != null && !m.isBlank())
+                .findFirst()
+                .orElse("입력값이 올바르지 않습니다.");
+
+        log.warn("검증 실패: {}", message);
+
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", message);
+        errorResponse.put("message", message);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
