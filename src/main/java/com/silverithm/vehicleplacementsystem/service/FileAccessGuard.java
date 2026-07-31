@@ -1,14 +1,9 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
-import com.silverithm.vehicleplacementsystem.entity.AppUser;
-import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.FileOwnershipRepository;
-import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
-import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.util.LinkedHashSet;
-import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
@@ -49,8 +44,7 @@ public class FileAccessGuard {
             "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*/[A-Za-z0-9_.-]+\\.[A-Za-z0-9]{1,8}$");
 
     private final FileOwnershipRepository fileOwnershipRepository;
-    private final MemberRepository memberRepository;
-    private final UserRepository userRepository;
+    private final CallerCompanyResolver callerCompanyResolver;
     private final FileStorageService fileStorageService;
     private final RedisUtils redisUtils;
 
@@ -128,25 +122,14 @@ public class FileAccessGuard {
         }
     }
 
-    /** JWT principal → 소속 기관 (Member 우선, 그 다음 AppUser — 기존 관례) */
+    /** JWT principal → 소속 기관 */
     private Long resolveCompanyId(UserDetails userDetails) {
         if (userDetails == null) {
             throw new CustomException("인증 정보가 없습니다", HttpStatus.UNAUTHORIZED);
         }
 
-        String username = userDetails.getUsername();
-
-        Optional<Member> member = memberRepository.findByUsername(username);
-        if (member.isPresent() && member.get().getCompany() != null) {
-            return member.get().getCompany().getId();
-        }
-
-        Optional<AppUser> appUser = userRepository.findByEmail(username);
-        if (appUser.isPresent() && appUser.get().getCompany() != null) {
-            return appUser.get().getCompany().getId();
-        }
-
-        throw new CustomException("소속 기관을 확인할 수 없습니다", HttpStatus.FORBIDDEN);
+        return callerCompanyResolver.resolveCompanyId(userDetails.getUsername())
+                .orElseThrow(() -> new CustomException("소속 기관을 확인할 수 없습니다", HttpStatus.FORBIDDEN));
     }
 
     private boolean isOwnedByCompany(Long companyId, String path) {

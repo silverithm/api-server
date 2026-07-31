@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/files")
@@ -28,8 +29,8 @@ public class FileController {
     private final FileAccessGuard fileAccessGuard;
 
     /** 업로드 허용 카테고리 — 임의 경로로 저장 위치를 지정하지 못하게 한다. */
-    private static final java.util.Set<String> ALLOWED_CATEGORIES =
-            java.util.Set.of("templates", "attachments", "approvals", "signatures", "seals");
+    private static final Set<String> ALLOWED_CATEGORIES =
+            Set.of("templates", "attachments", "approvals", "signatures", "seals");
 
     /**
      * 파일 업로드
