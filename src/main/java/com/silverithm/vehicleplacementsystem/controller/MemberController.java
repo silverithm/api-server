@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -89,7 +90,7 @@ public class MemberController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            log.info("[Member API] 회원탈퇴 요청: username={}", userDetails.getUsername());
+            log.info("[Member API] 회원탈퇴 요청: username={}", PrivacyMask.email(userDetails.getUsername()));
 
             memberService.withdrawMember(userDetails.getUsername());
 
@@ -132,7 +133,7 @@ public class MemberController {
             @Valid @RequestBody MemberJoinRequestDTO requestDTO) {
 
         try {
-            log.info("[Member API] 회원가입 요청: username={}, role={}", requestDTO.getUsername(), requestDTO.getRole());
+            log.info("[Member API] 회원가입 요청: username={}, role={}", PrivacyMask.name(requestDTO.getUsername()), requestDTO.getRole());
 
             MemberJoinRequestResponseDTO response = memberService.submitJoinRequest(requestDTO);
 
@@ -348,7 +349,7 @@ public class MemberController {
     @PostMapping("/find/password")
     public ResponseEntity<Map<String, FindPasswordResponse>> findPassword(@RequestParam String email) {
         try {
-            log.info("[Member API] 비밀번호 찾기 요청: username={}", email);
+            log.info("[Member API] 비밀번호 찾기 요청: username={}", PrivacyMask.email(email));
             return ResponseEntity.ok().body(Map.of("message", memberService.findPassword(email)));
         } catch (Exception e) {
 
@@ -364,7 +365,7 @@ public class MemberController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody PasswordChangeRequest passwordChangeRequest) {
         try {
-            log.info("[Member API] 비밀번호 변경 요청: username={}", userDetails.getUsername());
+            log.info("[Member API] 비밀번호 변경 요청: username={}", PrivacyMask.email(userDetails.getUsername()));
             memberService.changePassword(userDetails.getUsername(), passwordChangeRequest);
             return ResponseEntity.ok(Map.of("message", "비밀번호가 변경되었습니다"));
         } catch (IllegalArgumentException e) {

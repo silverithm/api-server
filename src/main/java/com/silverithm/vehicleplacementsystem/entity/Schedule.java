@@ -79,6 +79,11 @@ public class Schedule {
     @Builder.Default
     private List<ScheduleParticipant> participants = new ArrayList<>();
 
+    /** 이 일정에서 수행해야 하는 할 일(담당자별 업무) */
+    @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ScheduleTask> tasks = new ArrayList<>();
+
     @Column(nullable = false)
     private String authorId;
 

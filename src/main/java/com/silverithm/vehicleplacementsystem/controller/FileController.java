@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.service.FileAccessGuard;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +8,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,16 +25,28 @@ import java.util.Map;
 public class FileController {
 
     private final FileStorageService fileStorageService;
+    private final FileAccessGuard fileAccessGuard;
+
+    /** 업로드 허용 카테고리 — 임의 경로로 저장 위치를 지정하지 못하게 한다. */
+    private static final java.util.Set<String> ALLOWED_CATEGORIES =
+            java.util.Set.of("templates", "attachments", "approvals", "signatures", "seals");
 
     /**
      * 파일 업로드
      */
     @PostMapping("/upload")
     public ResponseEntity<Map<String, Object>> uploadFile(
+            @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "category", defaultValue = "templates") String category) {
 
         try {
+            if (!ALLOWED_CATEGORIES.contains(category)) {
+                return ResponseEntity.badRequest()
+                        .headers(getCorsHeaders())
+                        .body(Map.of("error", "허용되지 않는 업로드 분류입니다."));
+            }
+
             log.info("[File API] 파일 업로드 요청: fileName={}, size={}, category={}",
                     file.getOriginalFilename(), file.getSize(), category);
 
@@ -55,6 +70,9 @@ public class FileController {
 
             // 파일 저장
             String storedPath = fileStorageService.storeFile(file, category);
+
+            // 아직 어떤 레코드에도 연결되지 않은 상태이므로 업로더 본인에게 한시적 접근을 허용
+            fileAccessGuard.grantUploadGrace(userDetails, storedPath);
 
             log.info("[File API] 파일 업로드 완료: {}", storedPath);
 
@@ -80,8 +98,13 @@ public class FileController {
      * 파일 다운로드
      */
     @GetMapping("/download/**")
-    public ResponseEntity<?> downloadFile(@RequestParam String path, @RequestParam(required = false) String fileName) {
+    public ResponseEntity<?> downloadFile(@AuthenticationPrincipal UserDetails userDetails,
+                                          @RequestParam("path") String rawPath,
+                                          @RequestParam(required = false) String fileName) {
         try {
+            // 경로 형식 + 소속 기관 귀속 검증 (미통과 시 400/403)
+            String path = fileAccessGuard.requireAccessible(userDetails, rawPath);
+
             log.info("[File API] 파일 다운로드 요청: path={}", path);
 
             if (!fileStorageService.fileExists(path)) {
@@ -118,8 +141,12 @@ public class FileController {
      * 파일 삭제
      */
     @DeleteMapping
-    public ResponseEntity<Map<String, Object>> deleteFile(@RequestParam String path) {
+    public ResponseEntity<Map<String, Object>> deleteFile(@AuthenticationPrincipal UserDetails userDetails,
+                                                          @RequestParam("path") String rawPath) {
         try {
+            // 경로 형식 + 소속 기관 귀속 검증 (미통과 시 400/403)
+            String path = fileAccessGuard.requireAccessible(userDetails, rawPath);
+
             log.info("[File API] 파일 삭제 요청: path={}", path);
 
             fileStorageService.deleteFile(path);

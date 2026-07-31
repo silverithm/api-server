@@ -23,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @Slf4j
@@ -85,8 +86,8 @@ public class DispatchHistoryService {
         DispatchHistory history = repository.findById(id)
                 .orElseThrow(() -> new CustomException("기록을 찾을 수 없습니다", HttpStatus.BAD_REQUEST));
 
-        log.info("history.getUsername() : {}", history.getUsername());
-        log.info("userDetails.getUsername() : {}", userDetails.getUsername());
+        log.info("history.getUsername() : {}", PrivacyMask.name(history.getUsername()));
+        log.info("userDetails.getUsername() : {}", PrivacyMask.email(userDetails.getUsername()));
 
         if (!history.getUsername().equals(userDetails.getUsername())) {
             throw new CustomException("이 기록을 삭제할 권한이 없습니다", HttpStatus.FORBIDDEN);

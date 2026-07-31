@@ -2,6 +2,8 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ScheduleDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ScheduleTaskDTO;
+import com.silverithm.vehicleplacementsystem.dto.ScheduleTaskRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
@@ -218,6 +220,178 @@ public class ScheduleController {
         }
     }
 
+    // ==================== 할 일(담당자 업무) ====================
+
+    /**
+     * 할 일 목록 조회
+     */
+    @GetMapping("/{id}/tasks")
+    public ResponseEntity<Map<String, Object>> getTasks(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("tasks", scheduleService.getTasks(id)));
+        } catch (Exception e) {
+            log.error("[Schedule API] 할 일 목록 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "할 일 목록 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 할 일 추가 (기관 구성원 누구나)
+     */
+    @PostMapping("/{id}/tasks")
+    public ResponseEntity<Map<String, Object>> createTask(
+            @PathVariable Long id,
+            @RequestBody ScheduleTaskRequestDTO request,
+            Authentication authentication) {
+        try {
+            String authName = requireAuthName(authentication);
+            ScheduleTaskDTO task = scheduleService.createTask(
+                    id, request, resolveAuthorEmail(authName), resolveAuthorName(authName));
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "task", task, "message", "할 일이 추가되었습니다."));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Schedule API] 할 일 추가 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "할 일 추가 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 할 일 내용·담당자 수정
+     */
+    @PutMapping("/{id}/tasks/{taskId}")
+    public ResponseEntity<Map<String, Object>> updateTask(
+            @PathVariable Long id,
+            @PathVariable Long taskId,
+            @RequestBody ScheduleTaskRequestDTO request,
+            Authentication authentication) {
+        try {
+            String authName = requireAuthName(authentication);
+            ScheduleTaskDTO task = scheduleService.updateTask(
+                    taskId, request, resolveAuthorEmail(authName),
+                    resolveMemberId(authName), resolveIsScheduleManager(authName));
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "task", task, "message", "할 일이 수정되었습니다."));
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Schedule API] 할 일 수정 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "할 일 수정 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 할 일 수행완료 토글 (담당자 본인 또는 관리자)
+     */
+    @PutMapping("/{id}/tasks/{taskId}/completion")
+    public ResponseEntity<Map<String, Object>> updateTaskCompletion(
+            @PathVariable Long id,
+            @PathVariable Long taskId,
+            @RequestBody Map<String, Object> body,
+            Authentication authentication) {
+        try {
+            String authName = requireAuthName(authentication);
+            boolean completed = Boolean.TRUE.equals(body.get("completed"))
+                    || "true".equalsIgnoreCase(String.valueOf(body.get("completed")));
+
+            ScheduleTaskDTO task = scheduleService.updateTaskCompletion(
+                    taskId, completed, resolveAuthorEmail(authName), resolveAuthorName(authName),
+                    resolveMemberId(authName), resolveIsScheduleManager(authName));
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "task", task,
+                            "message", completed ? "수행완료로 변경되었습니다." : "수행완료가 해제되었습니다."));
+
+        } catch (IllegalStateException e) {
+            log.warn("[Schedule API] 할 일 완료 권한 없음: taskId={}, {}", taskId, e.getMessage());
+            return ResponseEntity.status(403).headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Schedule API] 할 일 완료 변경 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "수행완료 처리 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 할 일 삭제
+     */
+    @DeleteMapping("/{id}/tasks/{taskId}")
+    public ResponseEntity<Map<String, Object>> deleteTask(
+            @PathVariable Long id,
+            @PathVariable Long taskId,
+            Authentication authentication) {
+        try {
+            String authName = requireAuthName(authentication);
+            scheduleService.deleteTask(taskId, resolveAuthorEmail(authName),
+                    resolveMemberId(authName), resolveIsScheduleManager(authName));
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "message", "할 일이 삭제되었습니다."));
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Schedule API] 할 일 삭제 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "할 일 삭제 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 내 할 일 목록 (대시보드 위젯 / 내 업무 필터)
+     */
+    @GetMapping("/my-tasks")
+    public ResponseEntity<Map<String, Object>> getMyTasks(
+            @RequestParam Long companyId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            Authentication authentication) {
+        try {
+            String authName = requireAuthName(authentication);
+            Long memberId = resolveMemberId(authName);
+
+            LocalDate start = (startDate != null && !startDate.isEmpty()) ? LocalDate.parse(startDate) : null;
+            LocalDate end = (endDate != null && !endDate.isEmpty()) ? LocalDate.parse(endDate) : null;
+
+            List<ScheduleTaskDTO> tasks = scheduleService.getMyTasks(companyId, memberId, start, end);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("tasks", tasks, "memberId", memberId != null ? memberId : -1));
+
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "날짜 형식이 올바르지 않습니다."));
+        } catch (Exception e) {
+            log.error("[Schedule API] 내 할 일 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "내 할 일 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
     /**
      * 일정 삭제
      */
@@ -363,6 +537,22 @@ public class ScheduleController {
             return true;
         }
         return found.getPermissions() != null && found.getPermissions().contains("SCHEDULE_MANAGE");
+    }
+
+    private String requireAuthName(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new IllegalArgumentException("인증 정보가 필요합니다.");
+        }
+        return authentication.getName();
+    }
+
+    /** 로그인 주체의 member id. 관리자 계정(AppUser)이면 null */
+    private Long resolveMemberId(String authName) {
+        Optional<Member> member = memberRepository.findByUsername(authName);
+        if (member.isEmpty()) {
+            member = memberRepository.findByEmail(authName);
+        }
+        return member.map(Member::getId).orElse(null);
     }
 
     private HttpHeaders getCorsHeaders() {

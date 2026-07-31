@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.security.core.userdetails.UserDetails;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @RequiredArgsConstructor
@@ -87,7 +88,8 @@ public class MemberService {
     @Transactional
     public MemberJoinRequestResponseDTO submitJoinRequest(MemberJoinRequestDTO requestDTO) {
         log.info("[Member Service] 회원가입 요청: username={}, email={}, companyId={}",
-                requestDTO.getUsername(), requestDTO.getEmail(), requestDTO.getCompanyId());
+                PrivacyMask.name(requestDTO.getUsername()), PrivacyMask.email(requestDTO.getEmail()),
+                requestDTO.getCompanyId());
 
         // 회사 검증
         Company company = resolveCompany(requestDTO);
@@ -286,7 +288,7 @@ public class MemberService {
                     joinRequest.getPosition(),
                     joinRequest.getRequestedRole().name().toLowerCase()
             );
-            log.info("[Member Service] 멤버 승인 슬랙 알림 전송 완료: {}", joinRequest.getName());
+            log.info("[Member Service] 멤버 승인 슬랙 알림 전송 완료: {}", PrivacyMask.name(joinRequest.getName()));
         } catch (Exception e) {
             log.error("[Member Service] 슬랙 알림 전송 실패: {}", e.getMessage());
         }
@@ -306,7 +308,7 @@ public class MemberService {
                     joinRequest.getName(),
                     companyName
             );
-            log.info("[Member Service] 가입 승인 이메일 전송 완료: {}", joinRequest.getEmail());
+            log.info("[Member Service] 가입 승인 이메일 전송 완료: {}", PrivacyMask.email(joinRequest.getEmail()));
         } catch (Exception e) {
             log.error("[Member Service] 가입 승인 이메일 전송 실패: {}", e.getMessage());
         }
@@ -347,7 +349,7 @@ public class MemberService {
                     companyName,
                     processDTO.getRejectReason()
             );
-            log.info("[Member Service] 가입 거부 이메일 전송 완료: {}", joinRequest.getEmail());
+            log.info("[Member Service] 가입 거부 이메일 전송 완료: {}", PrivacyMask.email(joinRequest.getEmail()));
         } catch (Exception e) {
             log.error("[Member Service] 가입 거부 이메일 전송 실패: {}", e.getMessage());
         }
@@ -596,7 +598,7 @@ public class MemberService {
 
     @Transactional
     public MemberSigninResponseDTO signin(MemberSigninDTO signinDTO) {
-        log.info("[Member Service] 로그인 요청: username={}", signinDTO.getUsername());
+        log.info("[Member Service] 로그인 요청: username={}", PrivacyMask.name(signinDTO.getUsername()));
 
         Member member = memberRepository.findByUsername(signinDTO.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));

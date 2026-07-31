@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @RequiredArgsConstructor
@@ -643,7 +644,7 @@ public class VacationService {
                     vacation.getId()
             );
         } else {
-            log.warn("[Vacation Service] 직원 FCM 토큰을 찾을 수 없음: {}", member.getName());
+            log.warn("[Vacation Service] 직원 FCM 토큰을 찾을 수 없음: {}", PrivacyMask.name(member.getName()));
         }
     }
 

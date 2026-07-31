@@ -45,6 +45,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @Slf4j
@@ -429,7 +430,7 @@ public class DispatchService {
             throws JsonProcessingException, CustomException {
 
         if (isLimitExceeded(userDetails)) {
-            log.info("Daily request limit exceeded for user: {}", userDetails.getUsername());
+            log.info("Daily request limit exceeded for user: {}", PrivacyMask.email(userDetails.getUsername()));
             throw new CustomException("배차 요청이 일일 제한을 초과했습니다.", HttpStatus.SERVICE_UNAVAILABLE);
         }
 

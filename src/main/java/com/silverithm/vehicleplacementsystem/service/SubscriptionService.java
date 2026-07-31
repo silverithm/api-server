@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @RequiredArgsConstructor
@@ -200,7 +201,7 @@ public class SubscriptionService {
     public void deactivateSubscriptionDueToPaymentFailures(AppUser user, String reason) {
         if (user.getSubscription() != null && user.getSubscription().isActivated()) {
             user.getSubscription().updateStatus(SubscriptionStatus.INACTIVE);
-            log.warn("구독 비활성화: 사용자={}, 원인={}", user.getEmail(), reason);
+            log.warn("구독 비활성화: 사용자={}, 원인={}", PrivacyMask.email(user.getEmail()), reason);
         }
     }
 }

@@ -4,17 +4,21 @@ import com.silverithm.vehicleplacementsystem.dto.ScheduleDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ScheduleTaskDTO;
+import com.silverithm.vehicleplacementsystem.dto.ScheduleTaskRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleCategory;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleLabel;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleParticipant;
+import com.silverithm.vehicleplacementsystem.entity.ScheduleTask;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleLabelRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleParticipantRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
+import com.silverithm.vehicleplacementsystem.repository.ScheduleTaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +39,7 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleLabelRepository scheduleLabelRepository;
     private final ScheduleParticipantRepository scheduleParticipantRepository;
+    private final ScheduleTaskRepository scheduleTaskRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final FCMService fcmService;
@@ -190,6 +196,215 @@ public class ScheduleService {
         Schedule saved = scheduleRepository.save(schedule);
 
         return ScheduleDTO.fromEntity(saved);
+    }
+
+    // ==================== 할 일(ScheduleTask) ====================
+
+    /**
+     * 할 일 추가. 기관 구성원 누구나 추가할 수 있다.
+     */
+    @Transactional
+    public ScheduleTaskDTO createTask(Long scheduleId, ScheduleTaskRequestDTO request,
+                                      String userId, String userName) {
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new IllegalArgumentException("할 일 내용을 입력해주세요.");
+        }
+
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
+
+        String assigneeName = resolveMemberName(request.getAssigneeMemberId());
+        int nextOrder = (int) scheduleTaskRepository.countByScheduleId(scheduleId);
+
+        ScheduleTask task = ScheduleTask.builder()
+                .schedule(schedule)
+                .content(request.getContent().trim())
+                .assigneeMemberId(request.getAssigneeMemberId())
+                .assigneeName(assigneeName)
+                .isCompleted(false)
+                .createdById(userId)
+                .createdByName(userName)
+                .sortOrder(nextOrder)
+                .build();
+
+        ScheduleTask saved = scheduleTaskRepository.save(task);
+        scheduleTaskRepository.flush();
+        log.info("[Schedule Service] 할 일 추가: scheduleId={}, taskId={}", scheduleId, saved.getId());
+
+        // 방금 추가한 항목까지 반영해 일정 완료 상태를 다시 계산한다
+        syncScheduleCompletion(schedule);
+        notifyAssignee(saved, "새로운 업무가 배정되었습니다");
+
+        return ScheduleTaskDTO.fromEntity(saved);
+    }
+
+    /**
+     * 할 일 내용·담당자 수정. 작성자·관리자·담당자 본인이 수정할 수 있다.
+     */
+    @Transactional
+    public ScheduleTaskDTO updateTask(Long taskId, ScheduleTaskRequestDTO request,
+                                      String userId, Long memberId, boolean isAdmin) {
+        ScheduleTask task = scheduleTaskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+
+        if (!canEditTask(task, userId, memberId, isAdmin)) {
+            throw new IllegalStateException("이 할 일을 수정할 권한이 없습니다.");
+        }
+
+        Long previousAssignee = task.getAssigneeMemberId();
+        task.updateContent(
+                request.getContent(),
+                request.getAssigneeMemberId(),
+                resolveMemberName(request.getAssigneeMemberId())
+        );
+
+        ScheduleTask saved = scheduleTaskRepository.save(task);
+
+        boolean assigneeChanged = request.getAssigneeMemberId() != null
+                && !request.getAssigneeMemberId().equals(previousAssignee);
+        if (assigneeChanged) {
+            notifyAssignee(saved, "새로운 업무가 배정되었습니다");
+        }
+
+        return ScheduleTaskDTO.fromEntity(saved);
+    }
+
+    /**
+     * 할 일 삭제. 작성자·관리자·담당자 본인이 삭제할 수 있다.
+     */
+    @Transactional
+    public void deleteTask(Long taskId, String userId, Long memberId, boolean isAdmin) {
+        ScheduleTask task = scheduleTaskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+
+        if (!canEditTask(task, userId, memberId, isAdmin)) {
+            throw new IllegalStateException("이 할 일을 삭제할 권한이 없습니다.");
+        }
+
+        Schedule schedule = task.getSchedule();
+        scheduleTaskRepository.delete(task);
+        scheduleTaskRepository.flush();
+
+        syncScheduleCompletion(schedule);
+        log.info("[Schedule Service] 할 일 삭제: taskId={}", taskId);
+    }
+
+    /**
+     * 할 일 수행완료 토글.
+     * 담당자 본인이 체크하는 것이 원칙이고, 관리자는 대신 처리할 수 있다.
+     * 담당자가 지정되지 않은 할 일은 기관 구성원 누구나 처리할 수 있다.
+     */
+    @Transactional
+    public ScheduleTaskDTO updateTaskCompletion(Long taskId, boolean completed,
+                                                String userId, String userName,
+                                                Long memberId, boolean isAdmin) {
+        ScheduleTask task = scheduleTaskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+
+        boolean isAssignee = task.getAssigneeMemberId() != null
+                && task.getAssigneeMemberId().equals(memberId);
+        boolean unassigned = task.getAssigneeMemberId() == null;
+
+        if (!isAdmin && !isAssignee && !unassigned) {
+            throw new IllegalStateException("담당자 본인만 수행완료 처리할 수 있습니다.");
+        }
+
+        task.updateCompletion(completed, userId, userName);
+        ScheduleTask saved = scheduleTaskRepository.save(task);
+        scheduleTaskRepository.flush();
+
+        // 할 일이 모두 끝나면 일정도 완료로 넘어간다
+        syncScheduleCompletion(task.getSchedule());
+
+        log.info("[Schedule Service] 할 일 완료 변경: taskId={}, completed={}, user={}", taskId, completed, userId);
+        return ScheduleTaskDTO.fromEntity(saved);
+    }
+
+    /**
+     * 일정의 할 일 목록
+     */
+    @Transactional(readOnly = true)
+    public List<ScheduleTaskDTO> getTasks(Long scheduleId) {
+        return scheduleTaskRepository.findByScheduleIdOrderBySortOrderAscIdAsc(scheduleId).stream()
+                .map(ScheduleTaskDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 내 할 일 목록 (대시보드 위젯 / 내 업무 필터용)
+     */
+    @Transactional(readOnly = true)
+    public List<ScheduleTaskDTO> getMyTasks(Long companyId, Long memberId,
+                                            LocalDate startDate, LocalDate endDate) {
+        if (memberId == null) {
+            return List.of();
+        }
+        return scheduleTaskRepository.findByAssignee(companyId, memberId, startDate, endDate).stream()
+                .map(ScheduleTaskDTO::fromEntityWithSchedule)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 할 일 진행 상황에 따라 일정의 완료 플래그를 맞춘다.
+     * 할 일이 하나도 없으면 일정 완료는 수동 처리 영역이므로 건드리지 않는다.
+     */
+    private void syncScheduleCompletion(Schedule schedule) {
+        long total = scheduleTaskRepository.countByScheduleId(schedule.getId());
+        if (total == 0) {
+            return;
+        }
+
+        long done = scheduleTaskRepository.countByScheduleIdAndIsCompletedTrue(schedule.getId());
+        boolean allDone = done == total;
+
+        if (Boolean.TRUE.equals(schedule.getIsCompleted()) == allDone) {
+            return;
+        }
+
+        if (allDone) {
+            schedule.updateCompletion(true, null, "할 일 전체 완료");
+        } else {
+            schedule.updateCompletion(false, null, null);
+        }
+        scheduleRepository.save(schedule);
+        log.info("[Schedule Service] 할 일 진행에 따라 일정 완료 상태 변경: scheduleId={}, completed={}",
+                schedule.getId(), allDone);
+    }
+
+    private boolean canEditTask(ScheduleTask task, String userId, Long memberId, boolean isAdmin) {
+        if (isAdmin) {
+            return true;
+        }
+        if (userId != null && userId.equals(task.getCreatedById())) {
+            return true;
+        }
+        if (userId != null && userId.equals(task.getSchedule().getAuthorId())) {
+            return true;
+        }
+        return task.getAssigneeMemberId() != null && task.getAssigneeMemberId().equals(memberId);
+    }
+
+    private String resolveMemberName(Long memberId) {
+        if (memberId == null) {
+            return null;
+        }
+        return memberRepository.findById(memberId).map(Member::getName).orElse(null);
+    }
+
+    private void notifyAssignee(ScheduleTask task, String title) {
+        if (task.getAssigneeMemberId() == null) {
+            return;
+        }
+        try {
+            Member member = memberRepository.findById(task.getAssigneeMemberId()).orElse(null);
+            if (member == null || member.getFcmToken() == null || member.getFcmToken().isEmpty()) {
+                return;
+            }
+            String body = String.format("%s - %s", task.getSchedule().getTitle(), task.getContent());
+            fcmService.sendNotification(member.getFcmToken(), title, body);
+        } catch (Exception e) {
+            log.error("[Schedule Service] 할 일 알림 전송 실패: taskId={}", task.getId(), e);
+        }
     }
 
     /**
@@ -387,7 +602,7 @@ public class ScheduleService {
                             schedule.getStartDate().toString());
 
                     fcmService.sendNotification(member.getFcmToken(), title, body);
-                    log.info("[Schedule Service] 알림 전송 완료: member={}", member.getName());
+                    log.info("[Schedule Service] 알림 전송 완료: member={}", PrivacyMask.name(member.getName()));
                 } else {
                     log.debug("[Schedule Service] FCM 토큰 없음: memberId={}", participant.getMemberId());
                 }

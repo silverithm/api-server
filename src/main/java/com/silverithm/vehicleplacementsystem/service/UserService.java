@@ -55,6 +55,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 
 @Slf4j
@@ -377,7 +378,7 @@ public class UserService {
                 return TokenValidationResponse.fail("만료된 토큰입니다.");
             }
 
-            log.info("userEmail: {}", userEmail);
+            log.info("userEmail: {}", PrivacyMask.email(userEmail));
 
             // 사용자 정보 조회
             AppUser user = userRepository.findActiveByEmail(userEmail)

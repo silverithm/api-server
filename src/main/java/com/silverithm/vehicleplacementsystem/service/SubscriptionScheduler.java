@@ -15,6 +15,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @Slf4j
@@ -56,7 +57,7 @@ public class SubscriptionScheduler {
         for (AppUser user : users) {
             try {
                 if (user.isEmptyBillingKey()) {
-                    log.warn("⚠️ 빌링키가 없는 사용자 스킵: {}", user.getUsername());
+                    log.warn("⚠️ 빌링키가 없는 사용자 스킵: {}", PrivacyMask.name(user.getUsername()));
                     failureCount++;
                     continue;
                 }
@@ -90,12 +91,12 @@ public class SubscriptionScheduler {
                     subscriptionService.processSubscription(user, requestDto);
                     successCount++;
                 } else {
-                    log.error("❌ 스케줄링 결제 실패: {} - 상태: {}", user.getUsername(), paymentResponse.status());
+                    log.error("❌ 스케줄링 결제 실패: {} - 상태: {}", PrivacyMask.name(user.getUsername()), paymentResponse.status());
                     handlePaymentFailure(user, paymentResponse);
                     failureCount++;
                 }
             } catch (Exception e) {
-                log.error("💥 스케줄링 결제 처리 중 예외 발생: {} - 에러: {}", user.getUsername(), e.getMessage(), e);
+                log.error("💥 스케줄링 결제 처리 중 예외 발생: {} - 에러: {}", PrivacyMask.name(user.getUsername()), e.getMessage(), e);
                 handlePaymentException(user, e);
                 failureCount++;
             }
@@ -139,7 +140,7 @@ public class SubscriptionScheduler {
                     slackData.get("failure_code"), slackData.get("failure_message"));
             
             slackService.sendSlackMessage(message);
-            log.warn("⚠️ 결제 실패 알림 전송: {}", user.getUsername());
+            log.warn("⚠️ 결제 실패 알림 전송: {}", PrivacyMask.name(user.getUsername()));
         } catch (Exception e) {
             log.error("슬랙 알림 전송 실패: {}", e.getMessage());
         }
@@ -162,7 +163,7 @@ public class SubscriptionScheduler {
                     user.getUsername(), user.getEmail(), e.getMessage());
             
             slackService.sendSlackMessage(message);
-            log.error("💥 결제 예외 알림 전송: {}", user.getUsername());
+            log.error("💥 결제 예외 알림 전송: {}", PrivacyMask.name(user.getUsername()));
         } catch (Exception slackException) {
             log.error("슬랙 알림 전송 실패: {}", slackException.getMessage());
         }
@@ -225,7 +226,7 @@ public class SubscriptionScheduler {
                         user.getEmail(), reason.getDescription(), consecutiveFailures);
             }
         } catch (Exception e) {
-            log.error("연속 실패 검사 중 오류 발생 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
+            log.error("연속 실패 검사 중 오류 발생 - 사용자: {}, 오류: {}", PrivacyMask.email(user.getEmail()), e.getMessage(), e);
         }
     }
 }

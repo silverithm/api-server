@@ -15,6 +15,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -67,7 +68,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             if (jwtTokenProvider.validateToken(jwt)) {
                                 var auth = jwtTokenProvider.getAuthentication(jwt);
                                 accessor.setUser(auth);
-                                log.info("[WebSocket] 인증 성공: user={}", auth.getName());
+                                log.info("[WebSocket] 인증 성공: user={}", PrivacyMask.email(auth.getName()));
                             }
                         } catch (Exception e) {
                             log.warn("[WebSocket] 토큰 검증 실패: {}", e.getMessage());

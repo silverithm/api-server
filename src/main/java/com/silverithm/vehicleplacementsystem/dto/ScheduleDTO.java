@@ -37,6 +37,11 @@ public class ScheduleDTO {
     private String completedById;
     private String completedByName;
     private List<ScheduleParticipantDTO> participants;
+    private List<ScheduleTaskDTO> tasks;
+    /** 할 일 총 개수 */
+    private Integer taskTotal;
+    /** 완료된 할 일 개수 */
+    private Integer taskCompleted;
     private String authorId;
     private String authorName;
     private Long companyId;
@@ -69,6 +74,22 @@ public class ScheduleDTO {
 
         if (schedule.getLabel() != null) {
             builder.label(ScheduleLabelDTO.fromEntity(schedule.getLabel()));
+        }
+
+        if (schedule.getTasks() != null) {
+            List<ScheduleTaskDTO> tasks = schedule.getTasks().stream()
+                    .sorted(java.util.Comparator
+                            .comparing(com.silverithm.vehicleplacementsystem.entity.ScheduleTask::getSortOrder,
+                                    java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                            .thenComparing(com.silverithm.vehicleplacementsystem.entity.ScheduleTask::getId))
+                    .map(ScheduleTaskDTO::fromEntity)
+                    .collect(Collectors.toList());
+            builder.tasks(tasks);
+            builder.taskTotal(tasks.size());
+            builder.taskCompleted((int) tasks.stream().filter(t -> Boolean.TRUE.equals(t.getIsCompleted())).count());
+        } else {
+            builder.taskTotal(0);
+            builder.taskCompleted(0);
         }
 
         if (schedule.getParticipants() != null && !schedule.getParticipants().isEmpty()) {

@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +46,7 @@ public class BillingService {
         String encryptedBillingKey = billingKeyEncryptionService.encryptBillingKey(billingResponse.billingKey());
         user.updateBillingKey(encryptedBillingKey);
 
-        log.info("빌링키 발급 및 암호화 완료 - 사용자: {}", user.getUsername());
+        log.info("빌링키 발급 및 암호화 완료 - 사용자: {}", PrivacyMask.name(user.getUsername()));
     }
 
 

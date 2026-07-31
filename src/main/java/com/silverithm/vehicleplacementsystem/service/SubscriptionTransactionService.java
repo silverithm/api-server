@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
 @RequiredArgsConstructor
@@ -23,10 +24,10 @@ public class SubscriptionTransactionService {
     @Transactional
     public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
         if (user.getSubscription() != null) {
-            log.info("Subscription exists for user: {}", user.getUsername());
+            log.info("Subscription exists for user: {}", PrivacyMask.name(user.getUsername()));
             return updateSubscription(user.getSubscription(), requestDto);
         }
-        log.info("Subscription does not exist for user: {}", user.getUsername());
+        log.info("Subscription does not exist for user: {}", PrivacyMask.name(user.getUsername()));
         return createSubscription(requestDto, user);
     }
 
