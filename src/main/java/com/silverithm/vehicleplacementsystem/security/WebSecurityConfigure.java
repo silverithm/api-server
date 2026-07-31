@@ -106,16 +106,11 @@ public class WebSecurityConfigure {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(
                         authorize -> authorize
-                                .requestMatchers("/*").permitAll()
-                                .requestMatchers("/h2-console/*").permitAll()
-                                .requestMatchers("api/v1/signin").permitAll()
-                                .requestMatchers("api/v1/find/password").permitAll()
-                                .requestMatchers("/api/v1/employee/downloadEmployeeExcel").permitAll()
-                                .requestMatchers("/api/v1/employee/downloadElderlyExcel").permitAll()
-                                .requestMatchers("/api/v1/employee/uploadElderlyExcel").permitAll()
-                                .requestMatchers("/api/v1/employee/uploadEmployeeExcel").permitAll()
-                                .requestMatchers("api/v1/signup").permitAll()
-                                .requestMatchers("api/v1/refresh-token").permitAll()
+                                .requestMatchers("/error").permitAll()
+                                .requestMatchers("/api/v1/signin").permitAll()
+                                .requestMatchers("/api/v1/find/password").permitAll()
+                                .requestMatchers("/api/v1/signup").permitAll()
+                                .requestMatchers("/api/v1/refresh-token").permitAll()
                                 .requestMatchers("/api/v1/members/companies").permitAll()
                                 .requestMatchers("/api/v1/members/signin").permitAll()
                                 .requestMatchers("/api/v1/members/join-request").permitAll()
@@ -123,6 +118,8 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/api/v1/members/find/password").permitAll()
                                 .requestMatchers("/api/v1/validate-token").permitAll()
                                 .requestMatchers("/api/v1/app-version").permitAll()
+                                // 블루그린 배포 헬스체크
+                                .requestMatchers("/health").permitAll()
                                 // WebSocket endpoints
                                 .requestMatchers("/ws/**").permitAll()
                                 .requestMatchers("/ws/chat/**").permitAll()

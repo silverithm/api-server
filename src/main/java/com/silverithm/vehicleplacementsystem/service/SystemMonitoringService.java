@@ -37,6 +37,10 @@ public class SystemMonitoringService implements HealthIndicator {
     
     @Value("${monitoring.enabled:true}")
     private boolean monitoringEnabled;
+
+    // 블루그린 배포 색 (docker-compose에서 DEPLOY_COLOR 환경변수로 주입)
+    @Value("${DEPLOY_COLOR:unknown}")
+    private String deployColor;
     
     private boolean lastMemoryAlertSent = false;
     private boolean lastErrorRateAlertSent = false;
@@ -168,8 +172,8 @@ public class SystemMonitoringService implements HealthIndicator {
             return;
         }
         
-        slackService.sendSystemAlert("서버 시작", 
-                "Silverithm 서버가 정상적으로 시작되었습니다.", 
+        slackService.sendSystemAlert("서버 시작",
+                "Silverithm 서버(" + deployColor + ")가 정상적으로 시작되었습니다.",
                 "INFO");
     }
     
