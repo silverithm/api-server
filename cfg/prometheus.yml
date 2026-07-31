@@ -9,4 +9,5 @@ scrape_configs:
     scrape_interval: 2s
     metrics_path: /metrics
     static_configs:
-      - targets: ['silverithm-backend:9101']
+      # 블루그린: 활성 색만 살아있으므로 유휴 색 타깃은 down 상태가 정상
+      - targets: ['silverithm-backend-blue:9101', 'silverithm-backend-green:9101']
