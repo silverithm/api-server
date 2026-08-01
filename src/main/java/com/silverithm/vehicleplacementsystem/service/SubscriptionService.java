@@ -63,6 +63,52 @@ public class SubscriptionService {
         return subscriptionTransactionService.processSubscription(user, requestDto);
     }
 
+    /**
+     * 수동 재결제 — 결제 실패(카드 한도/정지 등) 후 사용자가 문제를 해결하고
+     * 다음날 새벽 배치를 기다리지 않고 즉시 다시 결제할 수 있는 경로.
+     * 금액은 서버 가격표로만 결정하며, 성공 시 구독이 연장되고 ACTIVE로 복구된다.
+     */
+    public SubscriptionResponseDTO retryPayment(UserDetails userDetails) {
+        AppUser user = findUserByEmail(userDetails.getUsername());
+        Subscription subscription = user.getSubscription();
+        if (subscription == null) {
+            throw new CustomException("구독 정보가 없습니다", HttpStatus.NOT_FOUND);
+        }
+        if (subscription.getBillingType() == SubscriptionBillingType.FREE) {
+            throw new CustomException("무료 플랜은 재결제 대상이 아닙니다.", HttpStatus.BAD_REQUEST);
+        }
+        if (user.isEmptyBillingKey()) {
+            throw new CustomException("등록된 결제 수단이 없습니다. 결제 페이지에서 카드를 등록해주세요.", HttpStatus.BAD_REQUEST);
+        }
+        if (subscription.isActivated() && subscription.getEndDate() != null
+                && subscription.getEndDate().isAfter(LocalDateTime.now())) {
+            throw new CustomException("이미 이용 중인 구독입니다. 만료일 이후 자동으로 결제됩니다.", HttpStatus.BAD_REQUEST);
+        }
+
+        // 레거시(ECB) 암호문이면 GCM(v2)으로 재암호화해 저장 (lazy migration)
+        String upgradedKey = billingKeyEncryptionService.upgradeIfLegacy(user.getBillingKey());
+        if (!upgradedKey.equals(user.getBillingKey())) {
+            user.updateBillingKey(upgradedKey);
+            userRepository.save(user);
+        }
+
+        int serverAmount = SubscriptionPricing.requiredAmount(
+                subscription.getPlanName(), subscription.getBillingType());
+        SubscriptionRequestDTO requestDto = SubscriptionRequestDTO.of(
+                subscription.getPlanName(),
+                subscription.getBillingType(),
+                serverAmount,
+                user.getCustomerKey(),
+                null,
+                subscription.getPlanName().name() + "_" + subscription.getBillingType().name(),
+                user.getEmail(),
+                user.getUsername(),
+                0
+        );
+        billingService.processPayment(requestDto, user.getBillingKey());
+        return subscriptionTransactionService.processSubscription(user, requestDto);
+    }
+
     @Transactional
     public SubscriptionResponseDTO processSubscription(AppUser user, SubscriptionRequestDTO requestDto) {
         return subscriptionTransactionService.processSubscription(user, requestDto);

@@ -82,6 +82,13 @@ public class SubscriptionScheduler {
                     continue;
                 }
 
+                // 레거시(ECB) 암호문이면 이 기회에 GCM(v2)으로 재암호화해 저장 (lazy migration)
+                String upgradedKey = billingKeyEncryptionService.upgradeIfLegacy(user.getBillingKey());
+                if (!upgradedKey.equals(user.getBillingKey())) {
+                    user.updateBillingKey(upgradedKey);
+                    userRepository.save(user);
+                }
+
                 String decryptedBillingKey = billingKeyEncryptionService.decryptBillingKey(user.getBillingKey());
 
                 // 청구 금액은 DB에 저장된 값이 아니라 서버 가격표로 재계산한다.

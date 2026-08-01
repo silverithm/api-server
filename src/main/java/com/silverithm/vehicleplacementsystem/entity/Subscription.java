@@ -77,7 +77,8 @@ public class Subscription extends BaseEntity{
         this.planName = planName;
         this.billingType = billingType;
         this.amount = amount;
-        this.startDate = LocalDateTime.now();
+        // startDate(최초 가입일)는 갱신 시 보존한다 — 결제일 앵커(가입일의 '일')와 이력의 기준점.
+        // 매 갱신마다 now로 리셋하면 앵커가 사라져 결제일이 조금씩 흘러내린다.
         updateEndDate(endDate);
         updateStatus(status);
     }

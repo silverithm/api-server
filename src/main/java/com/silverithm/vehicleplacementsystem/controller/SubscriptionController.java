@@ -42,6 +42,13 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.createOrUpdateSubscription(userDetails, requestDto));
     }
 
+    /** 결제 실패 후 즉시 재결제 (다음날 배치를 기다리지 않는 수동 경로) */
+    @PostMapping("/retry-payment")
+    public ResponseEntity<SubscriptionResponseDTO> retryPayment(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(subscriptionService.retryPayment(userDetails));
+    }
+
     @PostMapping("/free")
     public ResponseEntity<SubscriptionResponseDTO> createFreeSubscription(
             @AuthenticationPrincipal UserDetails userDetails) {

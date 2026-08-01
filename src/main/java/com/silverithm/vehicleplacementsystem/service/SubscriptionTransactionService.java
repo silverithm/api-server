@@ -32,8 +32,19 @@ public class SubscriptionTransactionService {
     }
 
     private SubscriptionResponseDTO updateSubscription(Subscription subscription, SubscriptionRequestDTO requestDto) {
-        LocalDateTime extendedEndDate = SubscriptionBillingType.extendEndDate(requestDto.getBillingType(), 
-                subscription.getStartDate());
+        // 연장 기준: 아직 만료 전이면 남은 기간을 보존해 endDate에서, 만료 후 재결제면 지금부터.
+        // (과거엔 startDate 기준으로 계산해 정기결제가 성공해도 endDate가 늘지 않고
+        //  다음날 또 결제 대상이 되는 이중 청구 버그가 있었다)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime base = subscription.getEndDate() != null && subscription.getEndDate().isAfter(now)
+                ? subscription.getEndDate()
+                : now;
+        // 앵커 데이(최초 가입일의 '일')를 보존해 결제일 드리프트를 막는다
+        int anchorDay = subscription.getStartDate() != null
+                ? subscription.getStartDate().getDayOfMonth()
+                : base.getDayOfMonth();
+        LocalDateTime extendedEndDate = SubscriptionBillingType.extendEndDate(
+                requestDto.getBillingType(), base, anchorDay);
         log.info("Extending subscription for user: {}, current endDate: {}, new endDate: {}", 
                 subscription.getUser().getUsername(), subscription.getEndDate(), extendedEndDate);
         subscription.update(requestDto.getPlanName(), requestDto.getBillingType(), requestDto.getAmount(), extendedEndDate,

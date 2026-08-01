@@ -30,6 +30,20 @@ public class BillingKeyEncryptionService {
         }
     }
 
+    /**
+     * 레거시(ECB) 형식이면 복호화 성공 시 GCM(v2:)으로 재암호화해 돌려준다.
+     * 반환값이 기존 값과 다르면 호출자가 사용자 엔티티에 저장해야 한다 (lazy migration).
+     */
+    public String upgradeIfLegacy(String storedBillingKey) {
+        if (!encryptionConfig.isLegacyFormat(storedBillingKey)) {
+            return storedBillingKey;
+        }
+        String plain = decryptBillingKey(storedBillingKey);
+        String upgraded = encryptBillingKey(plain);
+        log.info("레거시 빌링키를 GCM(v2)으로 재암호화");
+        return upgraded;
+    }
+
     public String decryptBillingKey(String encryptedBillingKey) {
         if (encryptedBillingKey == null || encryptedBillingKey.trim().isEmpty()) {
             return null;
