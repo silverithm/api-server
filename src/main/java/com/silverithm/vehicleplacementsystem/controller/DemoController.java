@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.SigninResponseDTO;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.service.DemoProvisioningService;
+import com.silverithm.vehicleplacementsystem.util.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,7 @@ public class DemoController {
 
     @PostMapping("/api/v1/demo/start")
     public SigninResponseDTO startDemo(HttpServletRequest request) {
-        String clientIp = resolveClientIp(request);
+        String clientIp = ClientIp.from(request);
 
         if (redisUtils.isExceededDemoStartIpLimit(clientIp)) {
             log.warn("[Demo] IP 요청 한도 초과: {}", clientIp);
@@ -37,14 +38,5 @@ public class DemoController {
         }
 
         return demoProvisioningService.provisionDemoTenant();
-    }
-
-    // 프록시(Nginx) 뒤에서 동작하므로 X-Forwarded-For의 첫 IP를 우선 사용
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

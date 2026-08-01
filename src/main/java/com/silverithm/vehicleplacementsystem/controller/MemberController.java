@@ -1,7 +1,10 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.service.MemberService;
+import com.silverithm.vehicleplacementsystem.util.ClientIp;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,15 +27,24 @@ import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 public class MemberController {
 
     private final MemberService memberService;
+    private final RedisUtils redisUtils;
 
     /**
-     * 멤버 로그인
+     * 멤버 로그인 (IP당 15분 창 10회 실패 시 일시 차단 — 브루트포스 방어)
      */
     @PostMapping("/signin")
-    public ResponseEntity<?> signin(@RequestBody MemberSigninDTO signinDTO) {
+    public ResponseEntity<?> signin(@RequestBody MemberSigninDTO signinDTO, HttpServletRequest request) {
+        String clientIp = ClientIp.from(request);
+        if (redisUtils.isLoginTemporarilyBlocked(clientIp)) {
+            return ResponseEntity.status(429)
+                    .body(Map.of("error", "로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요."));
+        }
         try {
-            return ResponseEntity.ok(memberService.signin(signinDTO));
+            Object response = memberService.signin(signinDTO);
+            redisUtils.clearLoginFailures(clientIp);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
+            redisUtils.recordLoginFailure(clientIp);
             log.error("[Member API] 로그인 실패: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));

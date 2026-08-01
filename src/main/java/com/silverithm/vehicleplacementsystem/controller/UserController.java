@@ -17,7 +17,10 @@ import com.silverithm.vehicleplacementsystem.dto.UserInfoResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO;
 import com.silverithm.vehicleplacementsystem.dto.UserResponseDTO.TokenInfo;
 import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.service.UserService;
+import com.silverithm.vehicleplacementsystem.util.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
@@ -43,6 +46,7 @@ import jakarta.validation.Valid;
 public class UserController {
 
     private final UserService userService;
+    private final RedisUtils redisUtils;
 
 
     @GetMapping("api/v1/signin")
@@ -51,8 +55,20 @@ public class UserController {
     }
 
     @PostMapping("api/v1/signin")
-    public SigninResponseDTO login(@RequestBody UserSigninDTO userSigninDTO) {
-        return userService.signin(userSigninDTO);
+    public SigninResponseDTO login(@RequestBody UserSigninDTO userSigninDTO, HttpServletRequest request) {
+        String clientIp = ClientIp.from(request);
+        if (redisUtils.isLoginTemporarilyBlocked(clientIp)) {
+            throw new CustomException("로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.",
+                    org.springframework.http.HttpStatus.TOO_MANY_REQUESTS);
+        }
+        try {
+            SigninResponseDTO response = userService.signin(userSigninDTO);
+            redisUtils.clearLoginFailures(clientIp);
+            return response;
+        } catch (CustomException e) {
+            redisUtils.recordLoginFailure(clientIp);
+            throw e;
+        }
     }
 
     @PostMapping("api/v1/signup")

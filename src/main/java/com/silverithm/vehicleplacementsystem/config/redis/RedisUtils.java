@@ -128,6 +128,31 @@ public class RedisUtils {
         return isLimitExceeded(count, MAX_DEMO_START_PER_DAY_GLOBAL);
     }
 
+    // 로그인 브루트포스 방어: 같은 IP에서 15분 창 안에 10회 실패하면 창이 끝날 때까지 차단.
+    // 성공 시 카운터를 지우므로 정상 사용자는 영향을 받지 않는다.
+    private static final int MAX_LOGIN_FAILURES_PER_WINDOW = 10;
+    private static final int LOGIN_FAILURE_WINDOW_MINUTES = 15;
+
+    public boolean isLoginTemporarilyBlocked(String clientIp) {
+        Integer count = integerRedisTemplate.opsForValue().get("login:fail:" + clientIp);
+        return count != null && count >= MAX_LOGIN_FAILURES_PER_WINDOW;
+    }
+
+    public void recordLoginFailure(String clientIp) {
+        String key = "login:fail:" + clientIp;
+        Long count = incrementRequestCount(key);
+        if (isFirstRequest(count)) {
+            integerRedisTemplate.expire(key, LOGIN_FAILURE_WINDOW_MINUTES, TimeUnit.MINUTES);
+        }
+        if (count != null && count >= MAX_LOGIN_FAILURES_PER_WINDOW) {
+            log.warn("[Login] 로그인 실패 한도 도달 — IP 일시 차단: {} ({}회)", clientIp, count);
+        }
+    }
+
+    public void clearLoginFailures(String clientIp) {
+        integerRedisTemplate.delete("login:fail:" + clientIp);
+    }
+
     public int getDailyDispatchLimit(String username) {
         Object count = redisTemplate.opsForValue().get(username);
         return count == null ? MAX_DISPATCH_LIMIT
