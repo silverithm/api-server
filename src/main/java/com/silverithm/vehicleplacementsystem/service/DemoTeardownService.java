@@ -91,6 +91,8 @@ public class DemoTeardownService {
         deleteByCompany("Position", companyId);
         em.createQuery("DELETE FROM DocumentNumberCounter d WHERE d.companyId = :companyId")
                 .setParameter("companyId", companyId).executeUpdate();
+        em.createQuery("DELETE FROM AuditLog a WHERE a.companyId = :companyId")
+                .setParameter("companyId", companyId).executeUpdate();
 
         em.createQuery("DELETE FROM Subscription s WHERE s.user.id IN "
                         + "(SELECT u.id FROM AppUser u WHERE u.company.id = :companyId)")
