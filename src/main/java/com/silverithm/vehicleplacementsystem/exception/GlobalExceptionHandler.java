@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.multipart.MultipartException;
 
 import java.util.HashMap;
@@ -67,6 +68,18 @@ public class GlobalExceptionHandler {
         errorResponse.put("error", "파일 업로드 처리 중 오류가 발생했습니다: " + ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * 존재하지 않는 경로/정적 리소스 요청 (대부분 취약점 스캐너 봇: *.php, .env, wp-* 등).
+     * 서버 장애가 아니므로 로그를 남기지 않고 404만 반환한다 — 과거 이 요청들이
+     * ERROR+스택으로 기록되어 전체 에러 로그의 대부분을 차지했다.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNoResourceFound(NoResourceFoundException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Not Found");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)

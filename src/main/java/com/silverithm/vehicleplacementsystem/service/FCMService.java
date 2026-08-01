@@ -59,13 +59,24 @@ public class FCMService {
 
         } catch (FirebaseMessagingException e) {
             MessagingErrorCode errorCode = e.getMessagingErrorCode();
-            log.error("[FCM Service] Firebase 알림 전송 실패: token={}, errorCode={}, message={}",
-                    maskToken(token), errorCode, e.getMessage());
 
-            // 앱 삭제/토큰 만료 등으로 무효화된 토큰은 DB에서 제거해 재발송 낭비를 막는다
-            if (errorCode == MessagingErrorCode.UNREGISTERED
-                    || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+            // 앱 삭제/토큰 만료 등으로 무효화된 토큰은 DB에서 제거해 재발송 낭비를 막는다.
+            // 손상됐거나 다른 프로젝트에서 발급된 토큰은 errorCode 없이 HTTP 401로만 떨어진다 —
+            // 정상 토큰의 전송 성공과 공존하므로 자격증명 문제가 아니라 해당 토큰의 문제다.
+            boolean deadToken = errorCode == MessagingErrorCode.UNREGISTERED
+                    || errorCode == MessagingErrorCode.INVALID_ARGUMENT
+                    || errorCode == MessagingErrorCode.SENDER_ID_MISMATCH
+                    || (errorCode == null && e.getMessage() != null
+                        && e.getMessage().contains("Unexpected HTTP response with status: 401"));
+
+            if (deadToken) {
+                // 예상 가능한 정리 대상 — 에러가 아니라 경고로 남긴다 (에러율 오염 방지)
+                log.warn("[FCM Service] 무효 토큰으로 전송 실패(제거함): token={}, errorCode={}, message={}",
+                        maskToken(token), errorCode, e.getMessage());
                 removeDeadToken(token);
+            } else {
+                log.error("[FCM Service] Firebase 알림 전송 실패: token={}, errorCode={}, message={}",
+                        maskToken(token), errorCode, e.getMessage());
             }
             throw new RuntimeException("FCM 전송 실패(" + errorCode + "): " + e.getMessage(), e);
         }
