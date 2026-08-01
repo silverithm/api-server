@@ -111,6 +111,8 @@ public class DemoProvisioningService {
         Company company = new Company("행복요양 주간보호센터 (체험)", "서울특별시 중구 세종대로 110", null);
         company.updateCompanyCode(companyCodeService.generateUniqueCode());
         company.markAsDemo(expiresAt);
+        // 가입용 공개 기관 목록(웹·앱)에 데모 기관이 노출되지 않게 숨긴다
+        company.updateExpose(false);
         companyRepository.save(company);
 
         TokenInfo tokenInfo = jwtTokenProvider.generateToken(email, Collections.singleton(UserRole.ROLE_ADMIN));
