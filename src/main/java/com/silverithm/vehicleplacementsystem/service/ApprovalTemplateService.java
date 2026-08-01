@@ -111,17 +111,18 @@ public class ApprovalTemplateService {
         return ApprovalTemplateDTO.from(saved);
     }
 
-    // 양식 삭제 (관련 결재 요청도 함께 삭제)
+    // 양식 삭제 — 작성된 결재 문서가 있으면 삭제하지 않는다 (결재 기록 보존).
+    // 과거에 문서를 연쇄 삭제하던 구현이 실제 결재 기록 226건을 지운 사고가 있었다. 절대 되돌리지 말 것.
     public void deleteTemplate(Long id) {
-        if (!templateRepository.existsById(id)) {
-            throw new RuntimeException("양식을 찾을 수 없습니다: " + id);
-        }
+        ApprovalTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
 
-        // 해당 양식을 사용하는 결재 요청이 있으면 먼저 삭제
-        if (approvalRequestRepository.existsByTemplateId(id)) {
-            Long count = approvalRequestRepository.countByTemplateId(id);
-            approvalRequestRepository.deleteByTemplateId(id);
-            log.info("[ApprovalTemplate] 관련 결재 요청 {}건 삭제: templateId={}", count, id);
+        Long count = approvalRequestRepository.countByTemplateId(id);
+        if (count > 0) {
+            throw new IllegalStateException(
+                    "이 양식으로 작성된 결재 문서가 " + count + "건 있어 삭제할 수 없습니다. "
+                            + "기록을 보존한 채 사용을 중단하려면 양식을 비활성화해 주세요.");
         }
 
         templateRepository.deleteById(id);
