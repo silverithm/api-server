@@ -1,9 +1,12 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.PaymentFailureReason;
+import com.silverithm.vehicleplacementsystem.entity.SubscriptionPricing;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.PaymentFailureLogRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -28,11 +31,12 @@ public class SubscriptionScheduler {
     private final PaymentFailureService paymentFailureService;
     private final PaymentFailureLogRepository paymentFailureLogRepository;
     private final BillingKeyEncryptionService billingKeyEncryptionService;
+    private final RedisUtils redisUtils;
 
     public SubscriptionScheduler(SubscriptionService subscriptionService, BillingService billingService,
-                                 UserRepository userRepository, SlackService slackService, 
+                                 UserRepository userRepository, SlackService slackService,
                                  PaymentFailureService paymentFailureService, PaymentFailureLogRepository paymentFailureLogRepository,
-                                 BillingKeyEncryptionService billingKeyEncryptionService) {
+                                 BillingKeyEncryptionService billingKeyEncryptionService, RedisUtils redisUtils) {
         this.subscriptionService = subscriptionService;
         this.billingService = billingService;
         this.userRepository = userRepository;
@@ -40,14 +44,22 @@ public class SubscriptionScheduler {
         this.paymentFailureService = paymentFailureService;
         this.paymentFailureLogRepository = paymentFailureLogRepository;
         this.billingKeyEncryptionService = billingKeyEncryptionService;
+        this.redisUtils = redisUtils;
     }
 
 
     @Scheduled(cron = "0 0 6 * * *")
     public void processScheduledPayments() {
+        // 분산 락: 블루그린 배포로 두 인스턴스가 동시에 떠 있어도 하루에 정확히 한 인스턴스만
+        // 결제 배치를 실행한다 (동시 실행 시 같은 고객 이중 청구 방지).
+        if (!redisUtils.tryAcquireDailySchedulerLock("subscription-billing", 120)) {
+            log.info("⏭️ 오늘 결제 배치는 다른 인스턴스가 이미 실행함 — 스킵");
+            return;
+        }
+
         LocalDateTime currentDate = LocalDateTime.now();
         log.info("🔄 스케줄러 실행됨 - 현재 시간: {}", currentDate);
-        
+
         List<AppUser> users = userRepository.findUsersRequiringSubscriptionBilling(currentDate);
         log.info("🔍 결제 대상 유저 수: {}", users.size());
 
@@ -71,11 +83,26 @@ public class SubscriptionScheduler {
                 }
 
                 String decryptedBillingKey = billingKeyEncryptionService.decryptBillingKey(user.getBillingKey());
-                
+
+                // 청구 금액은 DB에 저장된 값이 아니라 서버 가격표로 재계산한다.
+                // (과거 클라이언트 입력이 그대로 저장되던 시기의 오염 값이 반복 청구되는 것을 차단)
+                int serverAmount;
+                try {
+                    serverAmount = SubscriptionPricing.requiredAmount(
+                            user.getSubscription().getPlanName(), user.getSubscription().getBillingType());
+                } catch (CustomException e) {
+                    log.error("⚠️ 가격표에 없는 플랜 조합이라 결제 스킵: {} ({}/{})",
+                            PrivacyMask.name(user.getUsername()),
+                            user.getSubscription().getPlanName(), user.getSubscription().getBillingType());
+                    handlePaymentException(user, e);
+                    failureCount++;
+                    continue;
+                }
+
                 SubscriptionRequestDTO requestDto = SubscriptionRequestDTO.of(
                         user.getSubscription().getPlanName(),
                         user.getSubscription().getBillingType(),
-                        user.getSubscription().getAmount(),
+                        serverAmount,
                         user.getCustomerKey(),
                         decryptedBillingKey,
                         user.getSubscription().getPlanName().name() + "_" + user.getSubscription().getBillingType().name(),

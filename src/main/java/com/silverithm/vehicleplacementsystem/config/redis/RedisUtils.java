@@ -153,6 +153,18 @@ public class RedisUtils {
         integerRedisTemplate.delete("login:fail:" + clientIp);
     }
 
+    /**
+     * 스케줄 배치용 분산 락 (블루그린 배포로 두 인스턴스가 동시에 떠 있어도 한쪽만 실행).
+     * Redis SET NX가 원자적이므로 동시에 호출해도 정확히 한 인스턴스만 true를 받는다.
+     * 날짜가 키에 포함되므로 같은 날 재획득이 불가능하고, TTL로 키가 자동 정리된다.
+     */
+    public boolean tryAcquireDailySchedulerLock(String jobName, int ttlMinutes) {
+        String key = "scheduler:lock:" + jobName + ":" + java.time.LocalDate.now();
+        Boolean acquired = redisTemplate.opsForValue()
+                .setIfAbsent(key, "locked", ttlMinutes, TimeUnit.MINUTES);
+        return Boolean.TRUE.equals(acquired);
+    }
+
     public int getDailyDispatchLimit(String username) {
         Object count = redisTemplate.opsForValue().get(username);
         return count == null ? MAX_DISPATCH_LIMIT

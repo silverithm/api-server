@@ -86,6 +86,20 @@ public class Subscription extends BaseEntity{
         return this.status.equals(SubscriptionStatus.ACTIVE);
     }
 
+    /**
+     * endDate 기준 실제 만료 여부 (1일 유예).
+     * 유료 정기결제는 endDate 당일 새벽 6시 배치에서 갱신되므로, 자정~결제 사이의
+     * 정상 사용자가 만료로 오판되지 않도록 하루의 여유를 둔다.
+     */
+    public boolean isExpiredByDate(LocalDateTime now) {
+        return this.endDate != null && now.isAfter(this.endDate.plusDays(1));
+    }
+
+    /** 만료 상태로 전이 — 읽기 시점 lazy expiration에서 사용 */
+    public void expire() {
+        this.status = SubscriptionStatus.EXPIRED;
+    }
+
     public boolean isFreeUser() {
         return this.planName.equals(SubscriptionType.FREE);
     }

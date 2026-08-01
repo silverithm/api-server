@@ -64,11 +64,16 @@ public class BillingService {
         int attempts = 0;
         Exception lastException = null;
 
+        // 멱등키(orderId)는 "하나의 논리적 결제"당 한 번만 생성해 재시도 전체에서 재사용한다.
+        // 루프 안에서 매번 새로 만들면 토스 입장에선 매번 새 결제라, 응답 유실 후 재시도 시
+        // 이중 청구를 막지 못한다 (Idempotency-Key의 존재 이유가 사라짐).
+        String orderId = UUID.randomUUID().toString();
+
         while (attempts < maxRetries) {
             attempts++;
             try {
-                log.info("💳 결제 시도 ({}/{}) - 사용자: {}, 금액: {}원", attempts, maxRetries, requestDto.getCustomerName(), requestDto.getAmount());
-                
+                log.info("💳 결제 시도 ({}/{}) - 사용자: {}, 금액: {}원, orderId: {}", attempts, maxRetries, requestDto.getCustomerName(), requestDto.getAmount(), orderId);
+
                 // 빌링키 유효성 검증
                 if (billingKey == null || billingKey.trim().isEmpty()) {
                     throw new CustomException("유효하지 않은 빌링키입니다.", HttpStatus.BAD_REQUEST);
@@ -76,7 +81,6 @@ public class BillingService {
 
                 // Base64 인코딩
                 String encodedAuth = Base64.getEncoder().encodeToString((secretKey + ":").getBytes());
-                String orderId = UUID.randomUUID().toString();
 
                 // HTTP 요청 헤더 설정
                 HttpHeaders headers = new HttpHeaders();

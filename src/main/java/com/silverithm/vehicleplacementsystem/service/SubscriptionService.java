@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.FreeSubscriptionHistory;
 import com.silverithm.vehicleplacementsystem.entity.Subscription;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionBillingType;
+import com.silverithm.vehicleplacementsystem.entity.SubscriptionPricing;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionType;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
@@ -54,6 +55,9 @@ public class SubscriptionService {
     public SubscriptionResponseDTO createOrUpdateSubscription(UserDetails userDetails,
                                                               SubscriptionRequestDTO requestDto) {
         AppUser user = findUserByEmail(userDetails.getUsername());
+        // 결제 금액은 클라이언트 입력을 신뢰하지 않고 서버 가격표로 강제한다 (가격 조작 차단)
+        requestDto.overrideAmount(
+                SubscriptionPricing.requiredAmount(requestDto.getPlanName(), requestDto.getBillingType()));
         billingService.ensureBillingKey(user, requestDto);
         billingService.processPayment(requestDto, user.getBillingKey());
         return subscriptionTransactionService.processSubscription(user, requestDto);
@@ -136,6 +140,7 @@ public class SubscriptionService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public SubscriptionResponseDTO getMySubscription(UserDetails userDetails) {
         AppUser user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new CustomException("해당 이메일의 사용자를 찾을 수 없습니다: " + userDetails.getUsername(),
@@ -145,7 +150,14 @@ public class SubscriptionService {
 
         // 현재 구독이 있는 경우
         if (user.getSubscription() != null) {
-            return new SubscriptionResponseDTO(user.getSubscription(), hasUsedFreeSubscription);
+            Subscription subscription = user.getSubscription();
+            // 읽기 시점 만료 전이(lazy expiration): 스케줄러 공백에도 만료가 상태에 반영되게 하는 이중 방어.
+            // 유료 구독은 새벽 6시 배치가 갱신하므로 1일 유예(isExpiredByDate)가 오탐을 막는다.
+            if (subscription.isActivated() && subscription.isExpiredByDate(LocalDateTime.now())) {
+                subscription.expire();
+                log.info("[Subscription] 만료 전이(EXPIRED): userId={}, endDate={}", user.getId(), subscription.getEndDate());
+            }
+            return new SubscriptionResponseDTO(subscription, hasUsedFreeSubscription);
         }
 
         // 현재 구독이 없지만 free subscription history가 있는 경우

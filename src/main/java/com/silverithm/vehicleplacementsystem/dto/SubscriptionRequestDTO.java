@@ -33,4 +33,9 @@ public class SubscriptionRequestDTO {
         dto.taxFreeAmount = taxFreeAmount;
         return dto;
     }
+
+    /** 서버 가격표(SubscriptionPricing)로 확정한 금액으로 클라이언트 입력을 덮어쓴다. */
+    public void overrideAmount(int serverAmount) {
+        this.amount = serverAmount;
+    }
 }
