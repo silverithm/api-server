@@ -46,7 +46,7 @@ public class DemoPlazaWriteGuardInterceptor implements HandlerInterceptor {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.getWriter().write("{\"error\":\"체험 모드에서는 광장에 참여할 수 없습니다. 정식 가입 후 이용해주세요.\"}");
+            response.getWriter().write("{\"error\":\"체험 모드에서는 커뮤니티에 참여할 수 없습니다. 정식 가입 후 이용해주세요.\"}");
             return false;
         }
 

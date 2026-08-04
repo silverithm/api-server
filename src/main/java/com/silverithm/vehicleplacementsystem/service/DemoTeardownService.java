@@ -81,6 +81,7 @@ public class DemoTeardownService {
         deleteByCompany("VacationRequest", companyId);
         deleteByCompany("VacationLimit", companyId);
         deleteByCompany("MemberJoinRequest", companyId);
+        deleteByCompany("VoiceMessage", companyId);
         // member_permissions는 @ElementCollection이라 엔티티가 없어 네이티브로 지운다
         em.createNativeQuery("DELETE FROM member_permissions WHERE member_id IN "
                         + "(SELECT id FROM members WHERE company_id = :companyId)")
