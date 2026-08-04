@@ -227,15 +227,16 @@ public class ApprovalRequestController {
             @PathVariable Long id,
             @RequestParam String processedBy,
             @RequestParam String processedByName,
+            @RequestParam(required = false, defaultValue = "false") boolean force,
             @RequestBody(required = false) ApproveRequestDTO body,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            log.info("[Approval API] 결재 승인: id={}, processedBy={}", id, processedByName);
+            log.info("[Approval API] 결재 승인: id={}, processedBy={}, force={}", id, processedByName, force);
 
             String signatureBase64 = body != null ? body.getSignatureBase64() : null;
             ApprovalRequestDTO approval = approvalService.approveRequest(
-                    id, processedBy, processedByName, userDetails, signatureBase64);
+                    id, processedBy, processedByName, userDetails, signatureBase64, force);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -266,15 +267,16 @@ public class ApprovalRequestController {
             @PathVariable Long id,
             @RequestParam String processedBy,
             @RequestParam String processedByName,
+            @RequestParam(required = false, defaultValue = "false") boolean force,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             String reason = body.get("reason");
-            log.info("[Approval API] 결재 반려: id={}, processedBy={}", id, processedByName);
+            log.info("[Approval API] 결재 반려: id={}, processedBy={}, force={}", id, processedByName, force);
 
             ApprovalRequestDTO approval = approvalService.rejectRequest(id, processedBy, processedByName, reason,
-                    userDetails);
+                    userDetails, force);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())

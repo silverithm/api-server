@@ -229,6 +229,12 @@ public class ApprovalRequestService {
     // 결재 승인 — 인가는 JWT 기반, processedBy 파라미터는 호환 저장용
     public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName,
                                              UserDetails userDetails, String signatureBase64) {
+        return approveRequest(id, processedBy, processedByName, userDetails, signatureBase64, false);
+    }
+
+    // force=true: 관리자 직권 승인(전결) — 남은 검토 단계를 건너뛰고 즉시 최종 승인
+    public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName,
+                                             UserDetails userDetails, String signatureBase64, boolean force) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(request.getCompany());
@@ -255,6 +261,10 @@ public class ApprovalRequestService {
 
             notifyRequesterOfResult(saved, true, null);
             return toDTO(saved);
+        }
+
+        if (force) {
+            return forceApprove(request, processedBy, processedByName, caller, signatureBase64, now);
         }
 
         ApprovalStep step = request.currentStep();
@@ -289,9 +299,52 @@ public class ApprovalRequestService {
         return toDTO(saved);
     }
 
+    // 관리자 직권 승인(전결): 관리자 본인 단계는 서명 날인으로 승인, 나머지 대기 단계는 SKIPPED 처리
+    private ApprovalRequestDTO forceApprove(ApprovalRequest request, String processedBy, String processedByName,
+                                            CallerIdentity caller, String signatureBase64, LocalDateTime now) {
+        if (!accessService.isCompanyAdmin(caller, request.getCompany().getId())) {
+            throw new SecurityException("직권 승인은 기관 관리자만 할 수 있습니다.");
+        }
+
+        for (ApprovalStep step : request.getSteps()) {
+            if (step.getStatus() != ApprovalStep.StepStatus.PENDING) {
+                continue;
+            }
+            boolean isCallerStep = caller.type() == step.getApproverType()
+                    && caller.refId().equals(step.getApproverRefId());
+            if (isCallerStep) {
+                step.setStatus(ApprovalStep.StepStatus.APPROVED);
+                step.setSignatureUrl(resolveSignature(caller, signatureBase64));
+            } else {
+                step.setStatus(ApprovalStep.StepStatus.SKIPPED);
+            }
+            step.setProcessedAt(now);
+        }
+
+        request.setStatus(ApprovalStatus.APPROVED);
+        request.setProcessedBy(processedBy);
+        request.setProcessedByName(processedByName);
+        request.setProcessedAt(now);
+        request.setCurrentStepOrder(null);
+        allocateDocNumber(request);
+
+        ApprovalRequest saved = requestRepository.save(request);
+        log.info("[ApprovalRequest] 결재 직권 승인(전결): id={}, docNumber={}, admin={}",
+                saved.getId(), saved.getDocNumber(), caller.name());
+
+        notifyRequesterOfResult(saved, true, null);
+        return toDTO(saved);
+    }
+
     // 결재 반려 — 어느 단계에서든 반려되면 요청 전체가 반려된다
     public ApprovalRequestDTO rejectRequest(Long id, String processedBy, String processedByName, String reason,
                                             UserDetails userDetails) {
+        return rejectRequest(id, processedBy, processedByName, reason, userDetails, false);
+    }
+
+    // force=true: 관리자 직권 반려 — 현재 결재 차례와 무관하게 반려
+    public ApprovalRequestDTO rejectRequest(Long id, String processedBy, String processedByName, String reason,
+                                            UserDetails userDetails, boolean force) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(request.getCompany());
@@ -305,7 +358,13 @@ public class ApprovalRequestService {
 
         if (request.hasSteps()) {
             ApprovalStep step = request.currentStep();
-            accessService.requireIsStepApprover(caller, step);
+            if (force) {
+                if (!accessService.isCompanyAdmin(caller, request.getCompany().getId())) {
+                    throw new SecurityException("직권 반려는 기관 관리자만 할 수 있습니다.");
+                }
+            } else {
+                accessService.requireIsStepApprover(caller, step);
+            }
             step.setStatus(ApprovalStep.StepStatus.REJECTED);
             step.setRejectReason(reason);
             step.setProcessedAt(now);
