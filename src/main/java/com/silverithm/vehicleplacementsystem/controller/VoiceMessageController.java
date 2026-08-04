@@ -57,6 +57,8 @@ public class VoiceMessageController {
             return ResponseEntity.ok(Map.of("messages", messages));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "유형은 GRIEVANCE 또는 SUGGESTION이어야 합니다."));
         } catch (Exception e) {
             log.error("[VoiceBox API] 목록 오류:", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "목록 조회 중 오류가 발생했습니다."));

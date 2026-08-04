@@ -358,6 +358,9 @@ public class ApprovalRequestService {
 
         if (request.hasSteps()) {
             ApprovalStep step = request.currentStep();
+            if (step == null) {
+                throw new IllegalStateException("처리할 결재 단계가 없습니다");
+            }
             if (force) {
                 if (!accessService.isCompanyAdmin(caller, request.getCompany().getId())) {
                     throw new SecurityException("직권 반려는 기관 관리자만 할 수 있습니다.");
