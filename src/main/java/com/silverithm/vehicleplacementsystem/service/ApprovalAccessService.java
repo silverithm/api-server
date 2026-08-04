@@ -141,10 +141,9 @@ public class ApprovalAccessService {
             throw new IllegalArgumentException("다른 회사의 결재자는 지정할 수 없습니다: " + member.getName());
         }
 
-        boolean eligible = member.getRole() == Member.Role.ADMIN
-                || (member.getPermissions() != null && member.getPermissions().contains(APPROVAL_MANAGE));
-        if (!eligible) {
-            throw new IllegalArgumentException("결재 권한이 없는 직원은 결재선에 지정할 수 없습니다: " + member.getName());
+        // 결재자 후보 API(getApproverCandidates)가 활성 전 직원을 노출하므로 검증도 동일 기준을 따른다
+        if (member.getStatus() != Member.MemberStatus.ACTIVE) {
+            throw new IllegalArgumentException("재직 중이 아닌 직원은 결재선에 지정할 수 없습니다: " + member.getName());
         }
 
         return new ResolvedApprover(type, member.getId(), member.getName(), String.valueOf(member.getId()));
