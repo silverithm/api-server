@@ -21,6 +21,7 @@ public class ApprovalTemplateDTO {
     private String description;
     private String templateType;
     private String formSchema;
+    private String defaultApprovalLine;
     private String fileUrl;
     private String fileName;
     private Long fileSize;
@@ -35,6 +36,7 @@ public class ApprovalTemplateDTO {
                 .description(template.getDescription())
                 .templateType(template.getTemplateType())
                 .formSchema(template.getFormSchema())
+                .defaultApprovalLine(template.getDefaultApprovalLine())
                 .fileUrl(template.getFileUrl())
                 .fileName(template.getFileName())
                 .fileSize(template.getFileSize())

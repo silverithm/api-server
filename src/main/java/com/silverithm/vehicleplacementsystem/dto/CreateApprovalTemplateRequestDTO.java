@@ -20,6 +20,7 @@ public class CreateApprovalTemplateRequestDTO {
     private String templateType;
 
     private String formSchema;
+    private String defaultApprovalLine;
 
     private String fileUrl;
 

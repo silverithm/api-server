@@ -39,6 +39,10 @@ public class ApprovalTemplate {
     @Column(name = "form_schema", columnDefinition = "JSON")
     private String formSchema;
 
+    /** 기본 결재선 — 이 양식으로 기안하면 자동으로 채워진다 (기안자가 수정 가능) */
+    @Column(name = "default_approval_line", columnDefinition = "JSON")
+    private String defaultApprovalLine;
+
     @Column(nullable = true)
     private String fileUrl;
 
