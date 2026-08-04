@@ -93,6 +93,13 @@ public class FileAccessGuard {
 
         String path = rawPath.trim();
 
+        // 앱은 API 응답에 실린 절대 S3 URL(attachmentUrl)을 그대로 path로 보낸다.
+        // 우리 버킷 URL에 한해 상대 경로로 정규화해 받아준다 (다른 호스트는 아래 검사에서 거부).
+        String selfPrefix = selfBucketPrefix();
+        if (selfPrefix != null && path.startsWith(selfPrefix)) {
+            path = path.substring(selfPrefix.length());
+        }
+
         boolean unsafe = path.startsWith("/")
                 || path.contains("..")
                 || path.contains("\\")
@@ -107,6 +114,16 @@ public class FileAccessGuard {
         }
 
         return path;
+    }
+
+    /** 우리 S3 버킷의 공개 URL 접두사 (예: https://bucket.s3.region.amazonaws.com/carev/) */
+    private String selfBucketPrefix() {
+        try {
+            String prefix = fileStorageService.getFileUrl("");
+            return (prefix == null || prefix.isBlank()) ? null : prefix;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private boolean isWithinUploadGrace(UserDetails userDetails, String path) {
