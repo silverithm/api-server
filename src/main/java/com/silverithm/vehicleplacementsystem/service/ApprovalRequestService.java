@@ -584,14 +584,10 @@ public class ApprovalRequestService {
             }
         }
 
+        // 결재선에는 검토자 단계도 있으므로 활성 상태의 전 직원을 후보로 제공한다
+        // (기존에는 ADMIN 역할·결재관리 권한 보유자만 노출되어 3명뿐이라는 문의가 있었다)
         for (Member member : memberRepository.findByCompanyOrderByCreatedAtDesc(company)) {
             if (member.getStatus() != Member.MemberStatus.ACTIVE) {
-                continue;
-            }
-            boolean eligible = member.getRole() == Member.Role.ADMIN
-                    || (member.getPermissions() != null
-                        && member.getPermissions().contains(ApprovalAccessService.APPROVAL_MANAGE));
-            if (!eligible) {
                 continue;
             }
             candidates.add(ApproverCandidateDTO.builder()
