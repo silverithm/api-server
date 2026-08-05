@@ -43,6 +43,7 @@ public class ApprovalRequestDTO {
     private String docNumber;
     private String docNumberDisplay;
     private String companySealUrl;   // 최종 승인된 결재선 문서에만 세팅
+    private DocumentFooterDTO documentFooter;  // 공문 하단 발신부 (기관 주소·연락처)
 
     public static ApprovalRequestDTO from(ApprovalRequest request) {
         return ApprovalRequestDTO.builder()

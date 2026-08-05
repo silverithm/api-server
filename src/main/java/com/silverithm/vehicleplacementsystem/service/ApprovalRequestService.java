@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalStepDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApproverCandidateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.DocumentFooterDTO;
 import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest.ApprovalStatus;
@@ -711,6 +712,9 @@ public class ApprovalRequestService {
             String sealUrl = request.getCompany() != null ? request.getCompany().getSealUrl() : null;
             dto.setCompanySealUrl(toAbsoluteFileUrl(sealUrl));
         }
+
+        // 공문 하단 발신부. 결재 전 문서도 주소·연락처는 그대로 찍히므로 상태와 무관하게 담는다.
+        dto.setDocumentFooter(DocumentFooterDTO.from(request.getCompany()));
 
         return dto;
     }

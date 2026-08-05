@@ -51,6 +51,27 @@ public class Company extends BaseEntity {
     @Column(name = "homepage_url", length = 500)
     private String homepageUrl;
 
+    // ── 공문 발신부(문서 하단 주소·연락처 줄)에 찍히는 값 ──
+    // 주소는 addressName, 홈페이지는 homepageUrl을 그대로 쓴다.
+
+    @Column(name = "postal_code", length = 10)
+    private String postalCode;
+
+    @Column(name = "phone_number", length = 30)
+    private String phoneNumber;
+
+    /** 팩스 — 공문에서는 "전송"으로 표기한다 */
+    @Column(name = "fax_number", length = 30)
+    private String faxNumber;
+
+    /** 공문 담당자 E-MAIL */
+    @Column(name = "contact_email")
+    private String contactEmail;
+
+    /** 공개 구분 (공개/부분공개/비공개). 미설정이면 화면에서 "공개"로 본다. */
+    @Column(name = "disclosure_type", length = 20)
+    private String disclosureType;
+
     @Column(name = "is_demo", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean isDemo = false;
 
