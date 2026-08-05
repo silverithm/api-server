@@ -10,6 +10,8 @@ import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationLimitRepository;
+import com.silverithm.vehicleplacementsystem.repository.VacationDeadlineSettingRepository;
+import com.silverithm.vehicleplacementsystem.entity.VacationDeadlineSetting;
 import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepository;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class VacationService {
 
     private final VacationRequestRepository vacationRequestRepository;
     private final VacationLimitRepository vacationLimitRepository;
+    private final VacationDeadlineSettingRepository vacationDeadlineSettingRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
     private final NotificationService notificationService;
@@ -1003,4 +1006,36 @@ public class VacationService {
 
         log.info("[Vacation Service] 개인 휴무 삭제 완료: vacationId={}, 사용자={}({})", vacationId, userName, userId);
     }
-} 
+
+    /** 휴무 입력 마감일 설정 조회 (없으면 기본값: 비활성, 20일) */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getDeadlineSetting(Long companyId) {
+        return vacationDeadlineSettingRepository.findByCompanyId(companyId)
+                .map(s2 -> java.util.Map.<String, Object>of(
+                        "deadlineDay", s2.getDeadlineDay(),
+                        "enabled", s2.getEnabled()))
+                .orElse(java.util.Map.of("deadlineDay", 20, "enabled", false));
+    }
+
+    /** 휴무 입력 마감일 설정 저장 (회사당 한 벌, upsert) */
+    @Transactional
+    public java.util.Map<String, Object> saveDeadlineSetting(Long companyId, Integer deadlineDay, boolean enabled) {
+        if (enabled && (deadlineDay == null || deadlineDay < 1 || deadlineDay > 31)) {
+            throw new IllegalArgumentException("마감일은 1~31 사이여야 합니다");
+        }
+        VacationDeadlineSetting setting = vacationDeadlineSettingRepository.findByCompanyId(companyId)
+                .orElseGet(() -> VacationDeadlineSetting.builder()
+                        .companyId(companyId)
+                        .deadlineDay(20)
+                        .enabled(false)
+                        .build());
+        if (deadlineDay != null) {
+            setting.setDeadlineDay(deadlineDay);
+        }
+        setting.setEnabled(enabled);
+        VacationDeadlineSetting saved = vacationDeadlineSettingRepository.save(setting);
+        log.info("[Vacation] 휴무 마감일 설정 저장: companyId={}, day={}, enabled={}",
+                companyId, saved.getDeadlineDay(), saved.getEnabled());
+        return java.util.Map.of("deadlineDay", saved.getDeadlineDay(), "enabled", saved.getEnabled());
+    }
+}

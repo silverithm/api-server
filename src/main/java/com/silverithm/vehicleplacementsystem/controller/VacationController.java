@@ -393,6 +393,39 @@ public class VacationController {
         }
     }
     
+    // 휴무 입력 마감일 설정 조회
+    @GetMapping("/deadline-setting")
+    public ResponseEntity<Map<String, Object>> getDeadlineSetting(@RequestParam Long companyId) {
+        try {
+            Map<String, Object> setting = vacationService.getDeadlineSetting(companyId);
+            return ResponseEntity.ok().headers(getCorsHeaders()).body(setting);
+        } catch (Exception e) {
+            log.error("[Vacation API] 휴무 마감일 설정 조회 오류:", e);
+            return ResponseEntity.internalServerError().headers(getCorsHeaders()).build();
+        }
+    }
+
+    // 휴무 입력 마감일 설정 저장
+    @PostMapping("/deadline-setting")
+    public ResponseEntity<Map<String, Object>> saveDeadlineSetting(
+            @RequestParam Long companyId,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Integer deadlineDay = body.get("deadlineDay") == null ? null
+                    : Integer.valueOf(body.get("deadlineDay").toString());
+            boolean enabled = Boolean.parseBoolean(String.valueOf(body.getOrDefault("enabled", false)));
+            Map<String, Object> saved = vacationService.saveDeadlineSetting(companyId, deadlineDay, enabled);
+            return ResponseEntity.ok().headers(getCorsHeaders())
+                    .body(saved);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Vacation API] 휴무 마감일 설정 저장 오류:", e);
+            return ResponseEntity.internalServerError().headers(getCorsHeaders()).build();
+        }
+    }
+
     @RequestMapping(method = RequestMethod.OPTIONS)
     public ResponseEntity<Void> handleOptions() {
         return ResponseEntity.ok()
