@@ -53,16 +53,18 @@ public class PlazaService {
     // ── 게시글 ─────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getPosts(String boardKey, String sort, String search,
+    public Map<String, Object> getPosts(String boardKey, String categoryKey, String sort, String search,
                                         int page, int size, String currentUserId) {
         PlazaPost.Board board = boardKey == null || boardKey.isBlank() || "all".equalsIgnoreCase(boardKey)
                 ? null : PlazaPost.Board.fromKey(boardKey);
+        PlazaPost.Category category = categoryKey == null || categoryKey.isBlank() || "all".equalsIgnoreCase(categoryKey)
+                ? null : PlazaPost.Category.fromKey(categoryKey);
         String query = search == null || search.isBlank() ? null : search.trim();
 
         // 정렬: 고정글 우선 + (최신 | 조회수). 좋아요/댓글순은 집계 후 재정렬이 필요해 최신순으로 대체하지 않고
         // viewCount는 컬럼이라 DB 정렬 가능. likes/comments는 아래에서 페이지 내 재정렬.
         Sort dbSort = Sort.by(Sort.Direction.DESC, "isPinned").and(Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<PlazaPost> posts = postRepository.findVisible(board, query, PageRequest.of(page, size, dbSort));
+        Page<PlazaPost> posts = postRepository.findVisible(board, category, query, PageRequest.of(page, size, dbSort));
 
         List<Long> ids = posts.getContent().stream().map(PlazaPost::getId).toList();
         Map<Long, Long> likeCounts = toCountMap(ids.isEmpty() ? List.of() : likeRepository.countByPostIds(ids));
@@ -129,6 +131,7 @@ public class PlazaService {
         return new PlazaDTO.PostDetail(
                 post.getId(),
                 post.getBoard().getKey(),
+                post.getCategory() != null ? post.getCategory().getKey() : null,
                 post.getTitle(),
                 post.getContent(),
                 PlazaDTO.postAuthor(post),
@@ -148,15 +151,18 @@ public class PlazaService {
     }
 
     @Transactional
-    public Long createPost(String board, String title, String content, boolean anonymous,
+    public Long createPost(String board, String category, String title, String content, boolean anonymous,
                            String authorId, String authorName, String companyName,
                            boolean official, boolean pinned) {
         // [운영] 공지와 상단 고정은 광장 운영자만 쓸 수 있다. 일반 사용자가 보내면 무시한다.
         boolean admin = isPlazaAdmin(authorId);
         boolean asOfficial = admin && official;
 
+        PlazaPost.Board boardValue = PlazaPost.Board.fromKey(board);
         PlazaPost post = PlazaPost.builder()
-                .board(PlazaPost.Board.fromKey(board))
+                .board(boardValue)
+                // 시설 유형은 평가후기·실무팁에만 의미가 있다
+                .category(boardValue == PlazaPost.Board.FREE ? null : PlazaPost.Category.fromKey(category))
                 .title(title)
                 .content(content)
                 .authorId(authorId)
@@ -173,9 +179,12 @@ public class PlazaService {
     }
 
     @Transactional
-    public void updatePost(Long postId, String board, String title, String content, boolean anonymous, String userId) {
+    public void updatePost(Long postId, String board, String category, String title, String content,
+                           boolean anonymous, String userId) {
         PlazaPost post = requireManageablePost(postId, userId);
-        post.setBoard(PlazaPost.Board.fromKey(board));
+        PlazaPost.Board boardValue = PlazaPost.Board.fromKey(board);
+        post.setBoard(boardValue);
+        post.setCategory(boardValue == PlazaPost.Board.FREE ? null : PlazaPost.Category.fromKey(category));
         post.setTitle(title);
         post.setContent(content);
         post.setAnonymous(!post.isOfficial() && anonymous);

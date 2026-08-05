@@ -26,7 +26,7 @@ import lombok.experimental.SuperBuilder;
 public class PlazaPost extends BaseEntity {
 
     public enum Board {
-        QNA("qna"), REVIEW("review"), FREE("free");
+        FREE("free"), REVIEW("review"), TIP("tip");
 
         private final String key;
 
@@ -39,12 +39,43 @@ public class PlazaPost extends BaseEntity {
         }
 
         public static Board fromKey(String key) {
+            // 구버전 프론트 호환 — 실무 Q&A는 실무팁으로 흡수됐다
+            if ("qna".equalsIgnoreCase(key)) {
+                return TIP;
+            }
             for (Board b : values()) {
                 if (b.key.equalsIgnoreCase(key)) {
                     return b;
                 }
             }
             throw new IllegalArgumentException("Unknown board: " + key);
+        }
+    }
+
+    /** 시설 유형 — 평가후기·실무팁 글에만 붙는다 (자유게시판은 null) */
+    public enum Category {
+        DAYCARE("daycare"), HOMECARE("homecare"), NURSING("nursing");
+
+        private final String key;
+
+        Category(String key) {
+            this.key = key;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public static Category fromKey(String key) {
+            if (key == null || key.isBlank()) {
+                return null;
+            }
+            for (Category c : values()) {
+                if (c.key.equalsIgnoreCase(key)) {
+                    return c;
+                }
+            }
+            throw new IllegalArgumentException("Unknown category: " + key);
         }
     }
 
@@ -55,6 +86,10 @@ public class PlazaPost extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "varchar(20)")
     private Board board;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "varchar(20)")
+    private Category category;
 
     @Column(nullable = false, length = 200)
     private String title;

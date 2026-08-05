@@ -82,6 +82,7 @@ public class PlazaController {
     @GetMapping("/posts")
     public ResponseEntity<?> getPosts(
             @RequestParam(required = false) String board,
+            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "latest") String sort,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
@@ -89,7 +90,7 @@ public class PlazaController {
             Authentication authentication) {
         try {
             int safeSize = Math.min(Math.max(size, 1), 50);
-            return ResponseEntity.ok(plazaService.getPosts(board, sort, search, Math.max(page, 0), safeSize,
+            return ResponseEntity.ok(plazaService.getPosts(board, category, sort, search, Math.max(page, 0), safeSize,
                     currentUserId(authentication)));
         } catch (Exception e) {
             log.error("[Plaza API] 게시글 목록 조회 오류:", e);
@@ -110,7 +111,7 @@ public class PlazaController {
     }
 
     /** isOfficial/isPinned는 광장 운영자만 반영된다 (서비스에서 검증) */
-    public record PostRequest(String board, String title, String content, Boolean isAnonymous,
+    public record PostRequest(String board, String category, String title, String content, Boolean isAnonymous,
                               String authorName, String companyName,
                               Boolean isOfficial, Boolean isPinned) {
     }
@@ -125,6 +126,7 @@ public class PlazaController {
             }
             Long id = plazaService.createPost(
                     request.board() != null ? request.board() : "free",
+                    request.category(),
                     request.title().trim(),
                     request.content().trim(),
                     Boolean.TRUE.equals(request.isAnonymous()),
@@ -148,6 +150,7 @@ public class PlazaController {
         try {
             plazaService.updatePost(postId,
                     request.board() != null ? request.board() : "free",
+                    request.category(),
                     request.title().trim(),
                     request.content().trim(),
                     Boolean.TRUE.equals(request.isAnonymous()),

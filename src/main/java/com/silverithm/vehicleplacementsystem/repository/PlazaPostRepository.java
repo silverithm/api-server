@@ -13,10 +13,12 @@ public interface PlazaPostRepository extends JpaRepository<PlazaPost, Long> {
             SELECT p FROM PlazaPost p
             WHERE p.isHidden = false
               AND (:board IS NULL OR p.board = :board)
+              AND (:category IS NULL OR p.category = :category)
               AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR LOWER(p.content) LIKE LOWER(CONCAT('%', :search, '%')))
             """)
     Page<PlazaPost> findVisible(@Param("board") PlazaPost.Board board,
+                                @Param("category") PlazaPost.Category category,
                                 @Param("search") String search,
                                 Pageable pageable);
 

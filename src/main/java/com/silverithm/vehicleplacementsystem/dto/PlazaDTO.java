@@ -18,6 +18,7 @@ public final class PlazaDTO {
     public record PostSummary(
             Long id,
             String board,
+            String category,
             String title,
             String preview,
             String displayAuthor,
@@ -38,6 +39,7 @@ public final class PlazaDTO {
     public record PostDetail(
             Long id,
             String board,
+            String category,
             String title,
             String content,
             String displayAuthor,
@@ -111,6 +113,7 @@ public final class PlazaDTO {
         return new PostSummary(
                 post.getId(),
                 post.getBoard().getKey(),
+                post.getCategory() != null ? post.getCategory().getKey() : null,
                 post.getTitle(),
                 preview,
                 postAuthor(post),
