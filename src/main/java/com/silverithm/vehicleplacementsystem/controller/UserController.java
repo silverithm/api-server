@@ -29,6 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import com.silverithm.vehicleplacementsystem.entity.Company;
+import com.silverithm.vehicleplacementsystem.service.CallerCompanyResolver;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,6 +49,7 @@ public class UserController {
 
     private final UserService userService;
     private final RedisUtils redisUtils;
+    private final CallerCompanyResolver callerCompanyResolver;
 
 
     @GetMapping("api/v1/signin")
@@ -148,6 +151,42 @@ public class UserController {
             return ResponseEntity.ok().body(Map.of("success", true, "message", "기관 직인이 삭제되었습니다."));
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * 내 기관의 홈페이지 주소 조회.
+     * 사이드바 바로가기를 그리는 데 쓰므로 직원도 볼 수 있어야 한다
+     * (관리자는 AppUser, 직원은 Member라 CallerCompanyResolver로 양쪽을 함께 해석한다).
+     */
+    @GetMapping("api/v1/users/company-homepage")
+    public ResponseEntity<Map<String, Object>> getCompanyHomepage(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String homepageUrl = callerCompanyResolver.resolveCallerCompany(userDetails.getUsername())
+                .map(Company::getHomepageUrl)
+                .orElse(null);
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("homepageUrl", homepageUrl); // 미등록이면 null이라 Map.of를 쓸 수 없다
+        return ResponseEntity.ok().body(result);
+    }
+
+    /** 기관 홈페이지 주소 등록/변경 (빈 값이면 해제) */
+    @PutMapping("api/v1/users/company-homepage")
+    public ResponseEntity<Map<String, Object>> updateCompanyHomepage(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, String> body) {
+        try {
+            String homepageUrl = userService.updateCompanyHomepageUrl(body.get("homepageUrl"),
+                    userDetails.getUsername());
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", true);
+            result.put("homepageUrl", homepageUrl); // 해제 시 null이라 Map.of를 쓸 수 없다
+            result.put("message", homepageUrl == null ? "기관 홈페이지가 해제되었습니다." : "기관 홈페이지가 등록되었습니다.");
+            return ResponseEntity.ok().body(result);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

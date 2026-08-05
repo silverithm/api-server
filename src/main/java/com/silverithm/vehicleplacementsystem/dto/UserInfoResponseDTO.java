@@ -5,5 +5,6 @@ public record UserInfoResponseDTO(Long userId, String userName, String userEmail
                                 String companyAddressName,
                                 String companyCode,
                                 SubscriptionResponseDTO subscription, String customerKey,
-                                String companySealUrl) {
+                                String companySealUrl,
+                                String companyHomepageUrl) {
 }

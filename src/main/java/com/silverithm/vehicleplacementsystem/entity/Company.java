@@ -47,6 +47,10 @@ public class Company extends BaseEntity {
     @Column(name = "seal_url", length = 1000)
     private String sealUrl;
 
+    /** 기관 홈페이지·블로그 주소 (선택). 등록하면 사이드바에 바로가기가 뜬다. */
+    @Column(name = "homepage_url", length = 500)
+    private String homepageUrl;
+
     @Column(name = "is_demo", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean isDemo = false;
 
@@ -84,6 +88,11 @@ public class Company extends BaseEntity {
 
     public void updateCompanyCode(String companyCode) {
         this.companyCode = companyCode;
+    }
+
+    /** null 또는 빈 값이면 등록 해제로 본다. */
+    public void updateHomepageUrl(String homepageUrl) {
+        this.homepageUrl = (homepageUrl == null || homepageUrl.isBlank()) ? null : homepageUrl.trim();
     }
 
     public void updateExpose(boolean expose) {

@@ -1,8 +1,10 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.entity.Member;
+import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleTask;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleTaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ import java.util.List;
 public class ScheduleTaskReminderScheduler {
 
     private final ScheduleTaskRepository scheduleTaskRepository;
+    private final ScheduleRepository scheduleRepository;
     private final MemberRepository memberRepository;
     private final FCMService fcmService;
 
@@ -56,5 +59,45 @@ public class ScheduleTaskReminderScheduler {
         }
 
         log.info("[Task Reminder] 알림 전송 완료: {}/{}", sent, overdue.size());
+    }
+
+    /**
+     * 오늘 담당 일정을 아직 수행완료로 바꾸지 않은 담당자에게 한 시간 간격으로 알린다.
+     *
+     * 업무 시간(09~18시) 정각에만 보낸다. 하루 종일 울리면 알림을 꺼버리게 되고,
+     * 그러면 정작 필요한 알림도 안 보게 된다.
+     */
+    @Scheduled(cron = "0 0 9-18 * * *")
+    @Transactional(readOnly = true)
+    public void notifyIncompleteTodaySchedules() {
+        LocalDate today = LocalDate.now();
+        List<Schedule> incomplete = scheduleRepository.findTodayIncompleteWithManager(today);
+
+        if (incomplete.isEmpty()) {
+            log.info("[Schedule Reminder] {} 미수행 일정 없음", today);
+            return;
+        }
+
+        log.info("[Schedule Reminder] {} 미수행 일정 {}건 알림 시작", today, incomplete.size());
+
+        int sent = 0;
+        for (Schedule schedule : incomplete) {
+            try {
+                Member manager = memberRepository.findById(schedule.getManagerMemberId()).orElse(null);
+                if (manager == null || manager.getFcmToken() == null || manager.getFcmToken().isEmpty()) {
+                    continue;
+                }
+
+                fcmService.sendNotification(
+                        manager.getFcmToken(),
+                        "오늘 일정이 아직 완료되지 않았습니다",
+                        schedule.getTitle());
+                sent++;
+            } catch (Exception e) {
+                log.error("[Schedule Reminder] 알림 전송 실패: scheduleId={}", schedule.getId(), e);
+            }
+        }
+
+        log.info("[Schedule Reminder] 알림 전송 완료: {}/{}", sent, incomplete.size());
     }
 }

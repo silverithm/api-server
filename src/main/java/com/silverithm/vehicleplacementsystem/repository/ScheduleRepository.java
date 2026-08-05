@@ -16,6 +16,15 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     // 회사별 전체 일정 조회 (시작일 기준 오름차순)
     List<Schedule> findByCompanyIdOrderByStartDateAscStartTimeAsc(Long companyId);
 
+    /**
+     * 오늘 진행 중인데 담당자가 아직 수행완료로 바꾸지 않은 일정 (미수행 알림용).
+     * 여러 날에 걸친 일정도 오늘이 기간 안이면 대상이 된다.
+     */
+    @Query("SELECT s FROM Schedule s WHERE s.isCompleted = false "
+            + "AND s.managerMemberId IS NOT NULL "
+            + "AND s.startDate <= :today AND s.endDate >= :today")
+    List<Schedule> findTodayIncompleteWithManager(@Param("today") LocalDate today);
+
     // 회사별 기간 내 일정 조회 (시작일 또는 종료일이 기간에 포함되는 일정)
     @Query("SELECT s FROM Schedule s WHERE s.company.id = :companyId " +
            "AND ((s.startDate >= :startDate AND s.startDate <= :endDate) " +

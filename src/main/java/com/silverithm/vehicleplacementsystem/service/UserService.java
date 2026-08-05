@@ -447,20 +447,73 @@ public class UserService {
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
 
         String companySealUrl = resolveCompanySealUrl(findUser.getCompany());
+        String companyHomepageUrl = findUser.getCompany() != null ? findUser.getCompany().getHomepageUrl() : null;
 
         if (findUser.getSubscription() == null) {
             return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                     findUser.getCompany().getId(), findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     findUser.getCompany().getCompanyCode(),
-                    new SubscriptionResponseDTO(), findUser.getCustomerKey(), companySealUrl);
+                    new SubscriptionResponseDTO(), findUser.getCustomerKey(), companySealUrl, companyHomepageUrl);
         }
 
         return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                 findUser.getCompany().getId(), findUser.getCompany().getName(),
                 findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                 findUser.getCompany().getCompanyCode(),
-                new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(), companySealUrl);
+                new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(), companySealUrl,
+                companyHomepageUrl);
+    }
+
+    /**
+     * 기관 홈페이지 주소 등록/해제 (ROLE_ADMIN 전용).
+     *
+     * 사이드바에서 새 탭으로 열리는 링크라 스킴을 http/https로 못박는다.
+     * javascript: 같은 스킴이 들어오면 클릭 한 번으로 스크립트가 실행되기 때문이다.
+     * 스킴 없이 넣는 경우가 흔해서 그때는 https://를 붙여준다.
+     */
+    @Transactional
+    public String updateCompanyHomepageUrl(String homepageUrl, String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (findUser.getUserRole() != UserRole.ROLE_ADMIN) {
+            throw new SecurityException("기관 홈페이지는 관리자만 등록할 수 있습니다");
+        }
+
+        String normalized = normalizeHomepageUrl(homepageUrl);
+        findUser.getCompany().updateHomepageUrl(normalized);
+
+        log.info("[User Service] 기관 홈페이지 {}: companyId={}",
+                normalized == null ? "해제" : "등록", findUser.getCompany().getId());
+        return normalized;
+    }
+
+    private String normalizeHomepageUrl(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String url = raw.trim();
+        String lower = url.toLowerCase();
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            // 스킴이 아예 없을 때만 붙인다. 다른 스킴(javascript: 등)은 아래에서 걸러진다.
+            if (lower.contains("://")) {
+                throw new IllegalArgumentException("홈페이지 주소는 http 또는 https로 시작해야 합니다");
+            }
+            url = "https://" + url;
+        }
+        if (url.length() > 500) {
+            throw new IllegalArgumentException("홈페이지 주소가 너무 깁니다 (최대 500자)");
+        }
+        try {
+            java.net.URI parsed = java.net.URI.create(url);
+            if (parsed.getHost() == null || parsed.getHost().isBlank()) {
+                throw new IllegalArgumentException("홈페이지 주소를 확인해주세요");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("홈페이지 주소를 확인해주세요");
+        }
+        return url;
     }
 
     private String resolveCompanySealUrl(Company company) {

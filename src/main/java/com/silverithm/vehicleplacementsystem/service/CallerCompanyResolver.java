@@ -39,6 +39,12 @@ public class CallerCompanyResolver {
         return resolveCompany(username).map(Company::isDemoCompany).orElse(false);
     }
 
+    /** 요청자의 소속 기관. 관리자·직원 어느 쪽으로 로그인했든 같은 결과를 준다. */
+    @Transactional(readOnly = true)
+    public Optional<Company> resolveCallerCompany(String username) {
+        return resolveCompany(username);
+    }
+
     private Optional<Company> resolveCompany(String username) {
         if (username == null || username.isBlank()) {
             return Optional.empty();
