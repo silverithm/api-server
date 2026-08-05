@@ -111,6 +111,8 @@ public class DemoProvisioningService {
         Company company = new Company("행복요양 주간보호센터 (체험)", "서울특별시 중구 세종대로 110", null);
         company.updateCompanyCode(companyCodeService.generateUniqueCode());
         company.markAsDemo(expiresAt);
+        // 공문 발신부가 빈 채로 보이지 않게 예시 연락처를 넣는다 (실제 기관 정보를 쓰면 안 된다)
+        company.updateDocumentFooter("04524", "02-1234-5678", "02-1234-5679", "demo@carev.kr", "공개");
         // 가입용 공개 기관 목록(웹·앱)에 데모 기관이 노출되지 않게 숨긴다
         company.updateExpose(false);
         companyRepository.save(company);

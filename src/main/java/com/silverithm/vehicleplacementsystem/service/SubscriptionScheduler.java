@@ -48,7 +48,7 @@ public class SubscriptionScheduler {
     }
 
 
-    @Scheduled(cron = "0 0 6 * * *")
+    @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Seoul")
     public void processScheduledPayments() {
         // 분산 락: 블루그린 배포로 두 인스턴스가 동시에 떠 있어도 하루에 정확히 한 인스턴스만
         // 결제 배치를 실행한다 (동시 실행 시 같은 고객 이중 청구 방지).

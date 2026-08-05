@@ -120,6 +120,20 @@ public class Company extends BaseEntity {
         this.expose = expose;
     }
 
+    /** 공문 발신부에 찍히는 기관 정보 (우편번호·전화·팩스·담당자 메일·공개구분) */
+    public void updateDocumentFooter(String postalCode, String phoneNumber, String faxNumber,
+                                     String contactEmail, String disclosureType) {
+        this.postalCode = blankToNull(postalCode);
+        this.phoneNumber = blankToNull(phoneNumber);
+        this.faxNumber = blankToNull(faxNumber);
+        this.contactEmail = blankToNull(contactEmail);
+        this.disclosureType = blankToNull(disclosureType);
+    }
+
+    private static String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
+    }
+
     public void updateSeal(String sealUrl) {
         this.sealUrl = sealUrl;
     }

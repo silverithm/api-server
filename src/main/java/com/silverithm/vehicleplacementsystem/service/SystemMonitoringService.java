@@ -180,7 +180,7 @@ public class SystemMonitoringService implements HealthIndicator {
     /**
      * 주간 시스템 상태 리포트 (매주 월요일 오전 9시)
      */
-    @Scheduled(cron = "0 0 9 * * MON")
+    @Scheduled(cron = "0 0 9 * * MON", zone = "Asia/Seoul")
     public void sendWeeklyReport() {
         if (!monitoringEnabled) {
             return;

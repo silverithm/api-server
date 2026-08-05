@@ -29,7 +29,7 @@ public class ScheduleTaskReminderScheduler {
     private final MemberRepository memberRepository;
     private final FCMService fcmService;
 
-    @Scheduled(cron = "0 0 9 * * *")
+    @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
     @Transactional(readOnly = true)
     public void notifyOverdueTasks() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -67,7 +67,7 @@ public class ScheduleTaskReminderScheduler {
      * 업무 시간(09~18시) 정각에만 보낸다. 하루 종일 울리면 알림을 꺼버리게 되고,
      * 그러면 정작 필요한 알림도 안 보게 된다.
      */
-    @Scheduled(cron = "0 0 9-18 * * *")
+    @Scheduled(cron = "0 0 9-18 * * *", zone = "Asia/Seoul")
     @Transactional(readOnly = true)
     public void notifyIncompleteTodaySchedules() {
         LocalDate today = LocalDate.now();
