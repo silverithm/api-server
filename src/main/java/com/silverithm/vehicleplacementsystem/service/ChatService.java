@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -783,12 +784,12 @@ public class ChatService {
                 }
 
                 try {
-                    Long memberIdLong = Long.parseLong(participant.getUserId());
-                    Member member = memberRepository.findById(memberIdLong).orElse(null);
+                    Long participantIdLong = Long.parseLong(participant.getUserId());
+                    String fcmToken = resolveParticipantFcmToken(participantIdLong, participant.getUserName());
 
-                    if (member != null && member.getFcmToken() != null) {
+                    if (fcmToken != null) {
                         FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
-                                .recipientToken(member.getFcmToken())
+                                .recipientToken(fcmToken)
                                 .title(room.getName())
                                 .message(message.getSenderName() + ": " + message.getDisplayContent())
                                 .recipientUserId(participant.getUserId())
@@ -813,5 +814,33 @@ public class ChatService {
         } catch (Exception e) {
             log.error("[Chat Service] 메시지 알림 전송 중 오류: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 참가자의 FCM 토큰 결정. 참가자 userId는 Member id와 AppUser(관리자) id가
+     * 접두사 없이 섞여 저장돼 충돌할 수 있으므로, 참가 시점 스냅샷 이름과 일치하는
+     * 계정을 우선 선택한다. 이름으로 판별이 안 되면 기존 동작(Member 우선)을 유지하고,
+     * Member가 없을 때만 AppUser로 폴백해 관리자도 채팅 알림을 받게 한다.
+     */
+    private String resolveParticipantFcmToken(Long participantId, String snapshotName) {
+        Member member = memberRepository.findById(participantId).orElse(null);
+        AppUser appUser = userRepository.findById(participantId).orElse(null);
+
+        boolean memberMatches = member != null && Objects.equals(member.getName(), snapshotName);
+        boolean appUserMatches = appUser != null && Objects.equals(appUser.getUsername(), snapshotName);
+
+        if (memberMatches) {
+            return member.getFcmToken();
+        }
+        if (appUserMatches) {
+            return appUser.getFcmToken();
+        }
+        if (member != null) {
+            return member.getFcmToken();
+        }
+        if (appUser != null) {
+            return appUser.getFcmToken();
+        }
+        return null;
     }
 }
