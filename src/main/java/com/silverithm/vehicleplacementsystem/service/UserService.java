@@ -309,7 +309,16 @@ public class UserService {
 
         log.info("refresh Token !!! : " + new Date());
 
-        if (!jwtTokenProvider.validateToken(tokenRefreshRequest.refreshToken())) {
+        // validateToken은 만료 토큰에 ExpiredJwtException을 던진다.
+        // 잡지 않으면 generic 핸들러로 떨어져 500이 나가고, 클라이언트가
+        // "재로그인 필요"와 "서버 장애"를 구분할 수 없다. (운영 500 로그의 주 원인)
+        boolean valid;
+        try {
+            valid = jwtTokenProvider.validateToken(tokenRefreshRequest.refreshToken());
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            throw new CustomException("리프레시 토큰이 만료되었습니다. 다시 로그인해주세요.", HttpStatus.UNAUTHORIZED);
+        }
+        if (!valid) {
             throw new CustomException("유효하지 않은 리프레시 토큰입니다", HttpStatus.UNAUTHORIZED);
         }
 

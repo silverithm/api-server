@@ -401,6 +401,10 @@ public class MemberController {
             log.info("[Member API] 멤버 권한 조회: id={}", id);
             List<String> permissions = memberService.getMemberPermissions(id);
             return ResponseEntity.ok(Map.of("permissions", permissions));
+        } catch (com.silverithm.vehicleplacementsystem.exception.CustomException e) {
+            // ResourceScopeGuard가 던지는 401/403이 아래 catch(Exception)에 삼켜져
+            // 500으로 나가던 문제 — GlobalExceptionHandler가 실제 상태코드로 응답하게 재던진다
+            throw e;
         } catch (IllegalArgumentException e) {
             log.error("[Member API] 멤버 권한 조회 오류: {}", e.getMessage());
             return ResponseEntity.notFound().build();
@@ -428,6 +432,9 @@ public class MemberController {
             }
             List<String> updated = memberService.updateMemberPermissions(id, permissions);
             return ResponseEntity.ok(Map.of("permissions", updated));
+        } catch (com.silverithm.vehicleplacementsystem.exception.CustomException e) {
+            // ResourceScopeGuard의 401/403이 catch(Exception)에 삼켜지지 않게 재던진다
+            throw e;
         } catch (SecurityException e) {
             log.warn("[Member API] 멤버 권한 수정 거부: id={}, reason={}", id, e.getMessage());
             return ResponseEntity.status(403)

@@ -82,6 +82,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 
+    /**
+     * 만료된 JWT가 서비스 레이어(refresh-token 등)까지 전파된 경우.
+     * generic 핸들러로 떨어지면 500이 나가지만, 실제로는 인증 만료이므로 401이 맞다.
+     * (JwtAuthenticationFilter 밖에서 validateToken을 호출하는 모든 경로의 안전망)
+     */
+    @ExceptionHandler(io.jsonwebtoken.ExpiredJwtException.class)
+    public ResponseEntity<Map<String, String>> handleExpiredJwt(io.jsonwebtoken.ExpiredJwtException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "토큰이 만료되었습니다. 다시 로그인해주세요.");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    /**
+     * 지원하지 않는 HTTP 메서드 (대부분 스캐너 봇이 POST 엔드포인트를 GET으로 두드리는 경우).
+     * generic 핸들러에 삼켜지면 500 + ERROR 스택 로그가 남으므로 405로 조용히 반환한다.
+     */
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> handleMethodNotSupported(
+            org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Method Not Allowed");
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(errorResponse);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         log.error("Unexpected error occurred: {}", ex.getMessage(), ex);
