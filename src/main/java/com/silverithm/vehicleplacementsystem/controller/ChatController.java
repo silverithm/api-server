@@ -579,6 +579,31 @@ public class ChatController {
     }
 
     /**
+     * 방 안 메시지 검색
+     */
+    @GetMapping("/rooms/{roomId}/messages/search")
+    public ResponseEntity<Map<String, Object>> searchMessages(
+            @PathVariable Long roomId,
+            @RequestParam String keyword) {
+
+        try {
+            log.info("[Chat API] 메시지 검색: roomId={}", roomId);
+
+            List<ChatMessageDTO> messages = chatService.searchMessages(roomId, keyword);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("messages", messages));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 메시지 검색 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "메시지 검색 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 공유된 파일 조회 (/files 엔드포인트 - 프론트엔드 호환)
      */
     @GetMapping("/rooms/{roomId}/files")

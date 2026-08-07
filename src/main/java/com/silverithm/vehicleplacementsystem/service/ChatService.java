@@ -657,6 +657,24 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 방 안 메시지 검색 — 지워진 메시지는 제외하고 최신순으로 돌려준다.
+     */
+    @Transactional(readOnly = true)
+    public List<ChatMessageDTO> searchMessages(Long roomId, String keyword) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
+
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+
+        return chatMessageRepository.searchMessages(roomId, keyword.trim()).stream()
+                .map(ChatMessageDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
     // ==================== 회원 삭제 시 처리 ====================
 
     /**
