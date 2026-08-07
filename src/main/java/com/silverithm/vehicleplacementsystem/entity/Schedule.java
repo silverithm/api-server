@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -75,12 +76,17 @@ public class Schedule {
 
     private String completedByName;
 
+    // 목록 조회는 일정마다 참석자·할 일을 DTO로 옮기므로 지연 로딩이면 건수만큼 쿼리가 나간다
+    // (연간일정처럼 수백 건을 한 번에 부를 때 그대로 수백 배가 된다).
+    // BatchSize로 묶어 IN 절 몇 번으로 끝낸다.
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 200)
     @Builder.Default
     private List<ScheduleParticipant> participants = new ArrayList<>();
 
     /** 이 일정에서 수행해야 하는 할 일(담당자별 업무) */
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 200)
     @Builder.Default
     private List<ScheduleTask> tasks = new ArrayList<>();
 

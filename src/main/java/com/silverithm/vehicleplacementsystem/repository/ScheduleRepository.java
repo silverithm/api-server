@@ -26,7 +26,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     List<Schedule> findTodayIncompleteWithManager(@Param("today") LocalDate today);
 
     // 회사별 기간 내 일정 조회 (시작일 또는 종료일이 기간에 포함되는 일정)
-    @Query("SELECT s FROM Schedule s WHERE s.company.id = :companyId " +
+    // 라벨은 DTO 변환에서 반드시 읽으므로 같이 가져온다 — 지연 로딩이면 일정 수만큼 쿼리가 더 나간다.
+    @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.label WHERE s.company.id = :companyId " +
            "AND ((s.startDate >= :startDate AND s.startDate <= :endDate) " +
            "OR (s.endDate >= :startDate AND s.endDate <= :endDate) " +
            "OR (s.startDate <= :startDate AND s.endDate >= :endDate)) " +
@@ -65,8 +66,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
             @Param("companyId") Long companyId,
             @Param("query") String query);
 
-    // 복합 필터링 쿼리
-    @Query("SELECT s FROM Schedule s WHERE s.company.id = :companyId " +
+    // 복합 필터링 쿼리 (라벨은 DTO 변환에서 쓰므로 함께 가져온다)
+    @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.label WHERE s.company.id = :companyId " +
            "AND (:category IS NULL OR s.category = :category) " +
            "AND (:labelId IS NULL OR s.label.id = :labelId) " +
            "AND (:query IS NULL OR s.title LIKE %:query% OR s.content LIKE %:query%) " +
