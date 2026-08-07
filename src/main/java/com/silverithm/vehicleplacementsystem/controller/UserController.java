@@ -23,6 +23,7 @@ import com.silverithm.vehicleplacementsystem.service.UserService;
 import com.silverithm.vehicleplacementsystem.util.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -162,12 +163,52 @@ public class UserController {
     @GetMapping("api/v1/users/company-homepage")
     public ResponseEntity<Map<String, Object>> getCompanyHomepage(
             @AuthenticationPrincipal UserDetails userDetails) {
-        String homepageUrl = callerCompanyResolver.resolveCallerCompany(userDetails.getUsername())
-                .map(Company::getHomepageUrl)
-                .orElse(null);
+        Company company = callerCompanyResolver.resolveCallerCompany(userDetails.getUsername()).orElse(null);
+        String homepageUrl = company == null ? null : company.getHomepageUrl();
+
+        // 여러 주소를 등록하기 전에 만들어진 기관은 목록이 비어 있다 —
+        // 그때는 대표 주소 하나를 목록처럼 보여줘야 화면이 빈칸으로 보이지 않는다.
+        List<Map<String, String>> links = new java.util.ArrayList<>();
+        String rawLinks = company == null ? null : company.getHomepageLinks();
+        if (rawLinks != null && !rawLinks.isBlank()) {
+            try {
+                links = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .readValue(rawLinks, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, String>>>() {});
+            } catch (Exception e) {
+                log.warn("[User API] 홈페이지 목록 파싱 실패: {}", e.getMessage());
+            }
+        }
+        if (links.isEmpty() && homepageUrl != null) {
+            links = List.of(Map.of("name", "홈페이지", "url", homepageUrl));
+        }
+
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("homepageUrl", homepageUrl); // 미등록이면 null이라 Map.of를 쓸 수 없다
+        result.put("links", links);
         return ResponseEntity.ok().body(result);
+    }
+
+    /** 기관 홈페이지 목록 저장 (블로그·밴드 등 여러 개) */
+    @PutMapping("api/v1/users/company-homepage-links")
+    public ResponseEntity<Map<String, Object>> updateCompanyHomepageLinks(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, Object> body) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> links = (List<Map<String, String>>) body.get("links");
+            List<Map<String, String>> saved = userService.updateCompanyHomepageLinks(links, userDetails.getUsername());
+
+            Map<String, Object> result = new java.util.HashMap<>();
+            result.put("success", true);
+            result.put("links", saved);
+            result.put("homepageUrl", saved.isEmpty() ? null : saved.get(0).get("url"));
+            result.put("message", saved.isEmpty() ? "기관 홈페이지가 해제되었습니다." : "기관 홈페이지가 저장되었습니다.");
+            return ResponseEntity.ok().body(result);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /** 푸시 알림 수신 설정 조회 (관리자 가입 계정) */

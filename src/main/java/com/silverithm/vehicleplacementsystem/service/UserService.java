@@ -38,6 +38,7 @@ import java.security.Key;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -512,6 +513,51 @@ public class UserService {
 
         log.info("[User Service] 기관 홈페이지 {}: companyId={}",
                 normalized == null ? "해제" : "등록", findUser.getCompany().getId());
+        return normalized;
+    }
+
+    /**
+     * 기관이 함께 운영하는 주소들을 통째로 교체한다 (블로그·밴드 등).
+     *
+     * 첫 항목이 대표가 되어 homepage_url에도 반영된다 — 공문 발신부가 그 값을 쓰기 때문이다.
+     * 주소 검증은 단일 등록과 같은 규칙(http/https만, 최대 500자)을 그대로 쓴다.
+     */
+    @Transactional
+    public List<Map<String, String>> updateCompanyHomepageLinks(List<Map<String, String>> links, String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (findUser.getUserRole() != UserRole.ROLE_ADMIN) {
+            throw new SecurityException("기관 홈페이지는 관리자만 등록할 수 있습니다");
+        }
+        if (links != null && links.size() > 10) {
+            throw new IllegalArgumentException("홈페이지는 최대 10개까지 등록할 수 있습니다");
+        }
+
+        List<Map<String, String>> normalized = new java.util.ArrayList<>();
+        if (links != null) {
+            for (Map<String, String> link : links) {
+                String url = normalizeHomepageUrl(link.get("url"));
+                if (url == null) continue;   // 주소가 비면 그 줄은 등록하지 않는다
+                String rawName = link.get("name") == null ? "" : link.get("name").trim();
+                if (rawName.length() > 30) {
+                    throw new IllegalArgumentException("홈페이지 이름은 30자까지 입력할 수 있습니다");
+                }
+                normalized.add(Map.of("name", rawName.isBlank() ? "홈페이지" : rawName, "url", url));
+            }
+        }
+
+        Company company = findUser.getCompany();
+        try {
+            company.updateHomepageLinks(
+                    normalized.isEmpty() ? null : new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(normalized));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("홈페이지 목록을 저장하지 못했습니다");
+        }
+        // 대표 주소(공문 발신부에 찍히는 값)는 항상 첫 항목과 맞춘다
+        company.updateHomepageUrl(normalized.isEmpty() ? null : normalized.get(0).get("url"));
+
+        log.info("[User Service] 기관 홈페이지 목록 저장: companyId={}, count={}", company.getId(), normalized.size());
         return normalized;
     }
 

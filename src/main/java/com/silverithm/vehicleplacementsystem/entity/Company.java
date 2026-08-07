@@ -47,9 +47,16 @@ public class Company extends BaseEntity {
     @Column(name = "seal_url", length = 1000)
     private String sealUrl;
 
-    /** 기관 홈페이지·블로그 주소 (선택). 등록하면 사이드바에 바로가기가 뜬다. */
+    /** 기관 대표 홈페이지 주소 (선택). 공문 발신부에 찍히는 값이기도 하다. */
     @Column(name = "homepage_url", length = 500)
     private String homepageUrl;
+
+    /**
+     * 기관이 함께 운영하는 주소들 (블로그·밴드 등) — [{"name":"블로그","url":"..."}] 형태의 JSON.
+     * 사이드바 바로가기는 이 목록을 쓰고, 첫 항목이 대표(homepageUrl)가 된다.
+     */
+    @Column(name = "homepage_links", columnDefinition = "JSON")
+    private String homepageLinks;
 
     // ── 공문 발신부(문서 하단 주소·연락처 줄)에 찍히는 값 ──
     // 주소는 addressName, 홈페이지는 homepageUrl을 그대로 쓴다.
@@ -109,6 +116,11 @@ public class Company extends BaseEntity {
 
     public void updateCompanyCode(String companyCode) {
         this.companyCode = companyCode;
+    }
+
+    /** 여러 주소 목록(JSON). 빈 값이면 해제. */
+    public void updateHomepageLinks(String homepageLinks) {
+        this.homepageLinks = (homepageLinks == null || homepageLinks.isBlank()) ? null : homepageLinks;
     }
 
     /** null 또는 빈 값이면 등록 해제로 본다. */
