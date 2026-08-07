@@ -66,8 +66,15 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Long countByCompanyAndStatus(Company company, Member.MemberStatus status);
 
-    // FCM 토큰 관련 메서드
-    List<Member> findByRoleInAndFcmTokenIsNotNull(List<Member.Role> roles);
+    /**
+     * 특정 기관에서 해당 역할이면서 알림을 받을 수 있는(토큰 보유·재직 중) 직원.
+     *
+     * 회사 조건이 없는 조회는 다른 기관 직원에게까지 알림이 나가므로 두지 않는다.
+     */
+    @Query("SELECT m FROM Member m WHERE m.company.id = :companyId AND m.role IN :roles "
+            + "AND m.fcmToken IS NOT NULL AND m.fcmToken <> '' AND m.status = 'ACTIVE'")
+    List<Member> findNotifiableByCompanyAndRoles(@Param("companyId") Long companyId,
+                                                 @Param("roles") List<Member.Role> roles);
 
     // 회사별 FCM 토큰이 있는 멤버 조회
     @Query("SELECT m FROM Member m WHERE m.company.id = :companyId AND m.fcmToken IS NOT NULL AND m.status = 'ACTIVE'")

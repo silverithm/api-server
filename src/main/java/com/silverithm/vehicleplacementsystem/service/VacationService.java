@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
@@ -544,19 +545,28 @@ public class VacationService {
         log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
 
         try {
-            // ADMIN, MANAGER 권한을 가진 Member들의 FCM 토큰 조회
-            List<Member> adminMembers = memberRepository.findByRoleInAndFcmTokenIsNotNull(
-                    List.of(Member.Role.ADMIN)
-            );
+            // 기관 관리자는 두 갈래다 — 가입 계정(AppUser)과 ADMIN 역할을 받은 직원(Member).
+            // 예전에는 Member를 조회해놓고 쓰지 않아, 직원 계정으로 쓰는 관리자에게는
+            // 휴무 신청 알림이 아예 가지 않았다.
+            List<String> appUserTokens = company.getUsers() == null ? List.<String>of()
+                    : company.getUsers().stream()
+                            .map(AppUser::getFcmToken)
+                            .filter(token -> token != null && !token.isEmpty())
+                            .toList();
 
-            List<AppUser> adminUsers = company.getUsers();
+            List<String> adminMemberTokens = memberRepository
+                    .findNotifiableByCompanyAndRoles(company.getId(), List.of(Member.Role.ADMIN))
+                    .stream()
+                    .map(Member::getFcmToken)
+                    .toList();
 
-            List<String> adminTokens = adminUsers.stream()
-                    .map(AppUser::getFcmToken)
-                    .filter(token -> token != null && !token.isEmpty())
+            // 한 사람이 양쪽에 다 있으면 같은 기기로 두 번 간다 — 토큰 기준으로 합친다
+            List<String> adminTokens = Stream.concat(appUserTokens.stream(), adminMemberTokens.stream())
+                    .distinct()
                     .collect(Collectors.toList());
 
-            log.debug("[Vacation Service] 관리자 FCM 토큰 조회 완료: {} 개", adminTokens.size());
+            log.debug("[Vacation Service] 관리자 FCM 토큰 조회 완료: 가입계정 {}개 + 관리자직원 {}개 → {}개",
+                    appUserTokens.size(), adminMemberTokens.size(), adminTokens.size());
             return adminTokens;
         } catch (Exception e) {
             log.error("[Vacation Service] 관리자 FCM 토큰 조회 중 오류 발생", e);
