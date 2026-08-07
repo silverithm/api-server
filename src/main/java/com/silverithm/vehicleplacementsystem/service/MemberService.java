@@ -47,6 +47,7 @@ public class MemberService {
     private final MemberJoinRequestRepository memberJoinRequestRepository;
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
+    private final AdminNotificationTargets adminNotificationTargets;
     private final PasswordEncoder passwordEncoder;
     private final ResourceScopeGuard resourceScopeGuard;
     private final SlackService slackService;
@@ -598,14 +599,9 @@ public class MemberService {
 
     /** 회사 관리자(AppUser)들의 FCM 토큰 목록 조회 */
     private List<String> getAdminFcmTokens(Company company) {
-        log.debug("[Member Service] 관리자 FCM 토큰 목록 조회");
-        if (company == null || company.getUsers() == null) {
-            return List.of();
-        }
-        return company.getUsers().stream()
-                .map(AppUser::getFcmToken)
-                .filter(token -> token != null && !token.isEmpty())
-                .collect(Collectors.toList());
+        // 수집 규칙은 AdminNotificationTargets 한 곳에만 둔다 (가입 계정 + ADMIN 역할 직원).
+        // 예전에는 여기서 AppUser만 봐서 직원 계정 관리자에게는 가입 요청 알림이 가지 않았다.
+        return adminNotificationTargets.fcmTokensOf(company);
     }
 
     @Transactional
@@ -656,6 +652,27 @@ public class MemberService {
         memberRepository.save(member);
 
         log.info("[Member Service] FCM 토큰 업데이트 완료: memberId={}", memberId);
+    }
+
+    /** 푸시 알림 수신 여부 조회 (값이 없던 기존 회원은 받는 것으로 본다) */
+    @Transactional(readOnly = true)
+    public boolean isPushEnabled(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
+        return !Boolean.FALSE.equals(member.getPushEnabled());
+    }
+
+    /** 푸시 알림 수신 on/off */
+    @Transactional
+    public void updatePushEnabled(Long memberId, boolean enabled) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        resourceScopeGuard.requireSameCompany(member.getCompany());
+
+        member.setPushEnabled(enabled);
+        memberRepository.save(member);
+        log.info("[Member Service] 알림 수신 설정 변경: memberId={}, enabled={}", memberId, enabled);
     }
 
     /** 로그아웃 시 기기 토큰 폐기 — 로그아웃한 기기로 알림이 가지 않도록 한다 */

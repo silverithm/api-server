@@ -49,7 +49,15 @@ public class Member {
     
     @Column
     private String fcmToken;
-    
+
+    /**
+     * 푸시 알림 수신 여부. 기본 true — 앱 설정에서 끄면 false.
+     * @Builder.Default가 없으면 빌더로 만든 신규 회원이 null이 되어 NOT NULL 제약에 걸린다.
+     */
+    @Builder.Default
+    @Column(name = "push_enabled", nullable = false)
+    private Boolean pushEnabled = true;
+
     @Column
     private String department;
     

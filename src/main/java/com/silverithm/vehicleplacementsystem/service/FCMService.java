@@ -36,6 +36,13 @@ public class FCMService {
             throw new RuntimeException("FCM 토큰이 비어 있습니다");
         }
 
+        // 수신 거부는 여기 한 곳에서 막는다. 발송 지점이 여러 서비스에 흩어져 있어
+        // 각자 확인하게 두면 새 알림을 붙일 때마다 빠뜨린다.
+        if (!isPushEnabledFor(token)) {
+            log.info("[FCM Service] 수신 거부 사용자 — 전송 건너뜀: token={}", maskToken(token));
+            return "push-disabled";
+        }
+
         // Firebase 미초기화(키 미설정) 시 실제 전송 없이 개발 모드로 동작
         if (FirebaseApp.getApps().isEmpty()) {
             log.warn("[FCM Service] Firebase 미설정 - 개발 모드로 동작");
@@ -79,6 +86,31 @@ public class FCMService {
                         maskToken(token), errorCode, e.getMessage());
             }
             throw new RuntimeException("FCM 전송 실패(" + errorCode + "): " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 이 토큰을 가진 사용자가 알림을 받기로 해두었는지.
+     *
+     * 토큰 주인을 못 찾으면 보낸다 — 알림을 조용히 삼키는 것보다 낫고,
+     * 주인 없는 토큰은 어차피 FCM이 거절해 정리된다.
+     */
+    private boolean isPushEnabledFor(String token) {
+        try {
+            for (Member member : memberRepository.findByFcmToken(token)) {
+                if (Boolean.FALSE.equals(member.getPushEnabled())) {
+                    return false;
+                }
+            }
+            for (AppUser user : userRepository.findByFcmToken(token)) {
+                if (Boolean.FALSE.equals(user.getPushEnabled())) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("[FCM Service] 수신 설정 확인 실패 — 전송은 진행: {}", e.getMessage());
+            return true;
         }
     }
 

@@ -170,6 +170,23 @@ public class UserController {
         return ResponseEntity.ok().body(result);
     }
 
+    /** 푸시 알림 수신 설정 조회 (관리자 가입 계정) */
+    @GetMapping("api/v1/users/push-enabled")
+    public ResponseEntity<Map<String, Object>> getPushEnabled(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(Map.of("pushEnabled", userService.isPushEnabled(userDetails.getUsername())));
+    }
+
+    /** 푸시 알림 수신 on/off (관리자 가입 계정) */
+    @PutMapping("api/v1/users/push-enabled")
+    public ResponseEntity<Map<String, Object>> updatePushEnabled(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, Object> body) {
+        boolean enabled = Boolean.parseBoolean(String.valueOf(body.getOrDefault("pushEnabled", true)));
+        userService.updatePushEnabled(userDetails.getUsername(), enabled);
+        return ResponseEntity.ok(Map.of("pushEnabled", enabled));
+    }
+
     /** 기관 홈페이지 주소 등록/변경 (빈 값이면 해제) */
     @PutMapping("api/v1/users/company-homepage")
     public ResponseEntity<Map<String, Object>> updateCompanyHomepage(

@@ -474,6 +474,23 @@ public class UserService {
                 companyHomepageUrl);
     }
 
+    /** 푸시 알림 수신 여부 조회 (값이 없던 기존 계정은 받는 것으로 본다) */
+    @Transactional(readOnly = true)
+    public boolean isPushEnabled(String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+        return !Boolean.FALSE.equals(findUser.getPushEnabled());
+    }
+
+    /** 푸시 알림 수신 on/off */
+    @Transactional
+    public void updatePushEnabled(String userEmail, boolean enabled) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+        findUser.updatePushEnabled(enabled);
+        log.info("[User Service] 알림 수신 설정 변경: userId={}, enabled={}", findUser.getId(), enabled);
+    }
+
     /**
      * 기관 홈페이지 주소 등록/해제 (ROLE_ADMIN 전용).
      *

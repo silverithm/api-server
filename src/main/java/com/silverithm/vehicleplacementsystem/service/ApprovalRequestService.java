@@ -54,6 +54,7 @@ public class ApprovalRequestService {
     private final CompanyRepository companyRepository;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final AdminNotificationTargets adminNotificationTargets;
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
     private final ApprovalAccessService accessService;
@@ -502,25 +503,21 @@ public class ApprovalRequestService {
 
     // ─── 알림 헬퍼 ───
 
-    /** 결재 상신 시 회사 관리자(AppUser)들에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음. */
+    /**
+     * 결재 상신 시 기관 관리자들에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음.
+     * 예전에는 가입 계정(AppUser)만 봐서 직원 계정 관리자는 상신 알림을 받지 못했다.
+     */
     private void notifyAdminsOfSubmission(ApprovalRequest request) {
         try {
             Company company = request.getCompany();
-            if (company == null || company.getUsers() == null) {
-                return;
-            }
-            for (AppUser admin : company.getUsers()) {
-                String token = admin.getFcmToken();
-                if (token == null || token.isEmpty()) {
-                    continue;
-                }
+            for (String token : adminNotificationTargets.fcmTokensOf(company)) {
                 try {
                     notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
                             .recipientToken(token)
                             .title("새 전자결재 요청")
                             .message(request.getRequesterName() + "님이 '" + request.getTitle() + "' 결재를 상신했습니다.")
-                            .recipientUserId(String.valueOf(admin.getId()))
-                            .recipientUserName(admin.getUsername())
+                            .recipientUserId("admin")
+                            .recipientUserName("관리자")
                             .type("approval")
                             .relatedEntityId(request.getId())
                             .relatedEntityType("approval_request")
@@ -530,7 +527,7 @@ public class ApprovalRequestService {
                             ))
                             .build());
                 } catch (Exception e) {
-                    log.error("[ApprovalRequest] 관리자 결재 알림 전송 실패: adminId={}, {}", admin.getId(), e.getMessage());
+                    log.error("[ApprovalRequest] 관리자 결재 알림 전송 실패: {}", e.getMessage());
                 }
             }
         } catch (Exception e) {

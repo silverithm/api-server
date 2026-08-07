@@ -74,6 +74,34 @@ public class MemberController {
         }
     }
 
+    /** 푸시 알림 수신 설정 조회 (앱 설정 화면) */
+    @GetMapping("/{id}/push-enabled")
+    public ResponseEntity<Map<String, Object>> getPushEnabled(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(Map.of("pushEnabled", memberService.isPushEnabled(id)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /** 푸시 알림 수신 on/off */
+    @PutMapping("/{id}/push-enabled")
+    public ResponseEntity<Map<String, Object>> updatePushEnabled(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            boolean enabled = Boolean.parseBoolean(String.valueOf(body.getOrDefault("pushEnabled", true)));
+            memberService.updatePushEnabled(id, enabled);
+            return ResponseEntity.ok(Map.of("pushEnabled", enabled));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[Member API] 알림 수신 설정 변경 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "알림 설정 변경 중 오류가 발생했습니다"));
+        }
+    }
+
     @PutMapping("/{id}/fcm-token")
     public ResponseEntity<Map<String, String>> updateFcmToken(
             @PathVariable Long id,

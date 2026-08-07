@@ -52,6 +52,14 @@ public class AppUser extends BaseEntity {
     @Column(name = "fcm_token")
     private String fcmToken;
 
+    /** 푸시 알림 수신 여부. 기본 true — 앱 설정에서 끄면 false. */
+    @Column(name = "push_enabled", nullable = false)
+    private Boolean pushEnabled = true;
+
+    public void updatePushEnabled(boolean enabled) {
+        this.pushEnabled = enabled;
+    }
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id")
