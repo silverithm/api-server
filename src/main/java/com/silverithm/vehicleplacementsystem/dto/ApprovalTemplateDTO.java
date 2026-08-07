@@ -19,6 +19,7 @@ public class ApprovalTemplateDTO {
     private Long id;
     private String name;
     private String description;
+    private String category;
     private String templateType;
     private String formSchema;
     private String defaultApprovalLine;
@@ -34,6 +35,7 @@ public class ApprovalTemplateDTO {
                 .id(template.getId())
                 .name(template.getName())
                 .description(template.getDescription())
+                .category(template.getCategory())
                 .templateType(template.getTemplateType())
                 .formSchema(template.getFormSchema())
                 .defaultApprovalLine(template.getDefaultApprovalLine())

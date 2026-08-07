@@ -17,6 +17,9 @@ public class CreateApprovalTemplateRequestDTO {
 
     private String description;
 
+    /** 기안 대분류 (공문/교육/인사 등) */
+    private String category;
+
     private String templateType;
 
     private String formSchema;

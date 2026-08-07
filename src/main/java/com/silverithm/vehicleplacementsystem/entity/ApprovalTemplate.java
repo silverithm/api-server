@@ -32,6 +32,10 @@ public class ApprovalTemplate {
     @Column(length = 500)
     private String description;
 
+    /** 기안 대분류 (공문/교육/인사 등) — 기관이 자유롭게 지정 */
+    @Column(length = 50)
+    private String category;
+
     @Builder.Default
     @Column(name = "template_type", nullable = false, length = 10)
     private String templateType = "file";

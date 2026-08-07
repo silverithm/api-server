@@ -62,6 +62,7 @@ public class ApprovalTemplateService {
                 .company(company)
                 .name(request.getName())
                 .description(request.getDescription())
+                .category(request.getCategory())
                 .templateType(request.getTemplateType() != null ? request.getTemplateType() : "file")
                 .formSchema(request.getFormSchema())
                 .defaultApprovalLine(request.getDefaultApprovalLine())
@@ -85,6 +86,7 @@ public class ApprovalTemplateService {
 
         template.setName(request.getName());
         template.setDescription(request.getDescription());
+        template.setCategory(request.getCategory());
         if (request.getTemplateType() != null) {
             template.setTemplateType(request.getTemplateType());
         }
