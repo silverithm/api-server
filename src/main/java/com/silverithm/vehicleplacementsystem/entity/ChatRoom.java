@@ -50,6 +50,24 @@ public class ChatRoom {
     @Column
     private LocalDateTime lastMessageAt;
 
+    /**
+     * 방 상단에 고정하는 공지.
+     *
+     * 내용을 스냅샷으로 들고 있어 원본 메시지가 지워지거나 오래된 메시지로 밀려도 공지는 그대로 보인다.
+     * notice_message_id는 원본으로 이동하기 위한 참조일 뿐이라 FK를 걸지 않는다.
+     */
+    @Column(name = "notice_message_id")
+    private Long noticeMessageId;
+
+    @Column(name = "notice_content", length = 1000)
+    private String noticeContent;
+
+    @Column(name = "notice_by_name", length = 100)
+    private String noticeByName;
+
+    @Column(name = "notice_at")
+    private LocalDateTime noticeAt;
+
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ChatParticipant> participants = new ArrayList<>();

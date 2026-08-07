@@ -112,6 +112,39 @@ public class ChatController {
     }
 
     /**
+     * 방 공지 설정 / 해제 — messageId를 주면 그 메시지를 상단에 고정하고, 없으면 공지를 내린다.
+     */
+    @PutMapping("/rooms/{roomId}/notice")
+    public ResponseEntity<Map<String, Object>> updateChatRoomNotice(
+            @PathVariable Long roomId,
+            @RequestBody Map<String, Object> body) {
+
+        try {
+            Object rawId = body.get("messageId");
+            Long messageId = rawId == null ? null : Long.valueOf(String.valueOf(rawId));
+            String setByName = body.get("setByName") == null ? null : String.valueOf(body.get("setByName"));
+
+            log.info("[Chat API] 방 공지 변경: roomId={}, messageId={}", roomId, messageId);
+
+            ChatRoomDTO room = chatService.updateChatRoomNotice(roomId, messageId, setByName);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "room", room,
+                            "message", messageId == null ? "공지를 내렸습니다." : "공지로 등록했습니다."
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 방 공지 변경 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "공지 변경 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 채팅방 수정
      */
     @PutMapping("/rooms/{roomId}")

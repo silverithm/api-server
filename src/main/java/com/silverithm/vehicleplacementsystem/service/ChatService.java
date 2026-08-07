@@ -153,6 +153,50 @@ public class ChatService {
     }
 
     /**
+     * 방 공지 설정 / 해제.
+     *
+     * messageId가 null이면 공지를 내린다. 설정할 때는 내용을 스냅샷으로 복사해두어
+     * 원본 메시지가 삭제되어도 공지 문구는 남게 한다.
+     */
+    @Transactional
+    public ChatRoomDTO updateChatRoomNotice(Long roomId, Long messageId, String setByName) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+        resourceScopeGuard.requireSameCompany(room.getCompany());
+
+        if (messageId == null) {
+            room.setNoticeMessageId(null);
+            room.setNoticeContent(null);
+            room.setNoticeByName(null);
+            room.setNoticeAt(null);
+            log.info("[Chat Service] 방 공지 해제: roomId={}", roomId);
+        } else {
+            ChatMessage message = chatMessageRepository.findById(messageId)
+                    .orElseThrow(() -> new RuntimeException("메시지를 찾을 수 없습니다: " + messageId));
+            if (message.getChatRoom() == null || !message.getChatRoom().getId().equals(roomId)) {
+                throw new IllegalArgumentException("이 방의 메시지가 아닙니다.");
+            }
+
+            // 파일·사진 메시지는 본문이 비어 있을 수 있어 파일명으로 대신 보여준다
+            String snapshot = message.getContent();
+            if (snapshot == null || snapshot.isBlank()) {
+                snapshot = message.getFileName() != null ? message.getFileName() : "";
+            }
+            if (snapshot.length() > 1000) {
+                snapshot = snapshot.substring(0, 1000);
+            }
+
+            room.setNoticeMessageId(message.getId());
+            room.setNoticeContent(snapshot);
+            room.setNoticeByName(setByName);
+            room.setNoticeAt(LocalDateTime.now());
+            log.info("[Chat Service] 방 공지 설정: roomId={}, messageId={}", roomId, messageId);
+        }
+
+        return ChatRoomDTO.fromEntity(chatRoomRepository.save(room));
+    }
+
+    /**
      * 채팅방 나가기
      */
     @Transactional

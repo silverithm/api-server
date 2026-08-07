@@ -29,6 +29,12 @@ public class ChatRoomDTO {
     private int unreadCount;
     private List<ChatParticipantDTO> participants;
 
+    /** 방 상단 고정 공지 (없으면 전부 null) */
+    private Long noticeMessageId;
+    private String noticeContent;
+    private String noticeByName;
+    private LocalDateTime noticeAt;
+
     public static ChatRoomDTO fromEntity(ChatRoom room) {
         return ChatRoomDTO.builder()
                 .id(room.getId())
@@ -43,6 +49,10 @@ public class ChatRoomDTO {
                 .lastMessageAt(room.getLastMessageAt())
                 .participantCount(room.getParticipants() != null ?
                         (int) room.getParticipants().stream().filter(p -> p.getIsActive()).count() : 0)
+                .noticeMessageId(room.getNoticeMessageId())
+                .noticeContent(room.getNoticeContent())
+                .noticeByName(room.getNoticeByName())
+                .noticeAt(room.getNoticeAt())
                 .build();
     }
 
