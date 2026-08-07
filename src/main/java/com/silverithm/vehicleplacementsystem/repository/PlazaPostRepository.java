@@ -22,6 +22,9 @@ public interface PlazaPostRepository extends JpaRepository<PlazaPost, Long> {
                                 @Param("search") String search,
                                 Pageable pageable);
 
+    /** 자료실 이용 자격 확인용 — 이 사용자가 해당 게시판에 쓴 노출 글이 있는지 */
+    boolean existsByAuthorIdAndBoardAndIsHiddenFalse(String authorId, PlazaPost.Board board);
+
     /** [운영] 시스템 공지만 최신순으로 — 관리자 대시보드 공지 위젯에서 쓴다. */
     @Query("""
             SELECT p FROM PlazaPost p
