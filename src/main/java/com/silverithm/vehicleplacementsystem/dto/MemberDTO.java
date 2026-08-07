@@ -26,6 +26,7 @@ public class MemberDTO {
     private String department;
     private String position;
     private Long positionId;
+    private String profileImageUrl;
     private CompanyListDTO company;
     private List<String> permissions;
     private LocalDateTime createdAt;
@@ -44,6 +45,7 @@ public class MemberDTO {
                 .department(entity.getDepartment())
                 .position(entity.getPosition())
                 .positionId(entity.getPositionEntity() != null ? entity.getPositionEntity().getId() : null)
+                .profileImageUrl(entity.getProfileImageUrl())
                 .company(entity.getCompany() != null ? CompanyListDTO.fromEntity(entity.getCompany()) : null)
                 .permissions(perms != null ? List.copyOf(perms) : List.of())
                 .createdAt(entity.getCreatedAt())

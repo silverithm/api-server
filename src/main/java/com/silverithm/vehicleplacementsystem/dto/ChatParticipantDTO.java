@@ -19,6 +19,7 @@ public class ChatParticipantDTO {
     private String position;
     private String role;
     private String memberRole;
+    private String profileImageUrl;
     private LocalDateTime joinedAt;
     private LocalDateTime lastReadAt;
     private Long lastReadMessageId;
@@ -27,14 +28,19 @@ public class ChatParticipantDTO {
     private String leaveReason;
 
     public static ChatParticipantDTO fromEntity(ChatParticipant participant) {
-        return fromEntity(participant, null, null);
+        return fromEntity(participant, null, null, null);
     }
 
     public static ChatParticipantDTO fromEntity(ChatParticipant participant, String position) {
-        return fromEntity(participant, position, null);
+        return fromEntity(participant, position, null, null);
     }
 
     public static ChatParticipantDTO fromEntity(ChatParticipant participant, String position, String memberRole) {
+        return fromEntity(participant, position, memberRole, null);
+    }
+
+    public static ChatParticipantDTO fromEntity(ChatParticipant participant, String position, String memberRole,
+                                                  String profileImageUrl) {
         return ChatParticipantDTO.builder()
                 .id(participant.getId())
                 .chatRoomId(participant.getChatRoom() != null ? participant.getChatRoom().getId() : null)
@@ -43,6 +49,7 @@ public class ChatParticipantDTO {
                 .position(position)
                 .role(participant.getRole().name())
                 .memberRole(memberRole)
+                .profileImageUrl(profileImageUrl)
                 .joinedAt(participant.getJoinedAt())
                 .lastReadAt(participant.getLastReadAt())
                 .lastReadMessageId(participant.getLastReadMessageId())

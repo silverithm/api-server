@@ -219,7 +219,8 @@ public class ChatService {
                 .map(participant -> ChatParticipantDTO.fromEntity(
                         participant,
                         getParticipantPosition(participant.getUserId()),
-                        getParticipantMemberRole(participant.getUserId())
+                        getParticipantMemberRole(participant.getUserId()),
+                        getParticipantProfileImageUrl(participant.getUserId())
                 ))
                 .collect(Collectors.toList());
     }
@@ -254,7 +255,8 @@ public class ChatService {
                     addedParticipants.add(ChatParticipantDTO.fromEntity(
                             participant,
                             getParticipantPosition(participant.getUserId()),
-                            getParticipantMemberRole(participant.getUserId())
+                            getParticipantMemberRole(participant.getUserId()),
+                            getParticipantProfileImageUrl(participant.getUserId())
                     ));
 
                     if (joinMessage.length() > 0) joinMessage.append(", ");
@@ -275,7 +277,8 @@ public class ChatService {
                 addedParticipants.add(ChatParticipantDTO.fromEntity(
                         saved,
                         getParticipantPosition(saved.getUserId()),
-                        getParticipantMemberRole(saved.getUserId())
+                        getParticipantMemberRole(saved.getUserId()),
+                        getParticipantProfileImageUrl(saved.getUserId())
                 ));
 
                 if (joinMessage.length() > 0) joinMessage.append(", ");
@@ -692,6 +695,12 @@ public class ChatService {
     private String getParticipantPosition(String userId) {
         return findMemberByUserId(userId)
                 .map(Member::getPosition)
+                .orElse(null);
+    }
+
+    private String getParticipantProfileImageUrl(String userId) {
+        return findMemberByUserId(userId)
+                .map(Member::getProfileImageUrl)
                 .orElse(null);
     }
 

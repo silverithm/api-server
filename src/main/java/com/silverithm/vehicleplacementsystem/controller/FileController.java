@@ -30,7 +30,7 @@ public class FileController {
 
     /** 업로드 허용 카테고리 — 임의 경로로 저장 위치를 지정하지 못하게 한다. */
     private static final Set<String> ALLOWED_CATEGORIES =
-            Set.of("templates", "attachments", "approvals", "signatures", "seals");
+            Set.of("templates", "attachments", "approvals", "signatures", "seals", "profiles");
 
     /**
      * 파일 업로드

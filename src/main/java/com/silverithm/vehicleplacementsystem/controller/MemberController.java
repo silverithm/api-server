@@ -12,8 +12,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -467,5 +469,64 @@ public class MemberController {
         }
     }
 
+    /**
+     * 회원 프로필 사진 업로드. 본인이거나 같은 회사 관리자만 가능.
+     */
+    @PostMapping(value = "/{id}/profile-image", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, Object>> uploadProfileImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            log.info("[Member API] 프로필 사진 업로드 요청: memberId={}", id);
+            String profileImageUrl = memberService.uploadProfileImage(id, file, userDetails);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "profileImageUrl", profileImageUrl != null ? profileImageUrl : "",
+                    "message", "프로필 사진이 업로드되었습니다"
+            ));
+        } catch (SecurityException e) {
+            log.warn("[Member API] 프로필 사진 업로드 거부: memberId={}, reason={}", id, e.getMessage());
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 프로필 사진 업로드 오류: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IOException e) {
+            log.error("[Member API] 프로필 사진 업로드 IO 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "프로필 사진 업로드 중 오류가 발생했습니다: " + e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Member API] 프로필 사진 업로드 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "프로필 사진 업로드 중 오류가 발생했습니다"));
+        }
+    }
+
+    /**
+     * 회원 프로필 사진 삭제. 본인이거나 같은 회사 관리자만 가능.
+     */
+    @DeleteMapping("/{id}/profile-image")
+    public ResponseEntity<Map<String, Object>> deleteProfileImage(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            log.info("[Member API] 프로필 사진 삭제 요청: memberId={}", id);
+            memberService.deleteProfileImage(id, userDetails);
+            return ResponseEntity.ok(Map.of("success", true, "message", "프로필 사진이 삭제되었습니다"));
+        } catch (SecurityException e) {
+            log.warn("[Member API] 프로필 사진 삭제 거부: memberId={}, reason={}", id, e.getMessage());
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            log.error("[Member API] 프로필 사진 삭제 오류: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[Member API] 프로필 사진 삭제 서버 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "프로필 사진 삭제 중 오류가 발생했습니다"));
+        }
+    }
 
 } 

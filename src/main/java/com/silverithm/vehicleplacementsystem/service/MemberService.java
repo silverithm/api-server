@@ -14,6 +14,7 @@ import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestReposit
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.PositionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
+import java.io.IOException;
 import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -38,6 +40,9 @@ import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 @Slf4j
 public class MemberService {
 
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+
     private final MemberRepository memberRepository;
     private final MemberJoinRequestRepository memberJoinRequestRepository;
     private final CompanyRepository companyRepository;
@@ -50,6 +55,7 @@ public class MemberService {
     private final CompanyCodeService companyCodeService;
     private final PositionRepository positionRepository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     /**
      * JWT 인증된 사용자로부터 adminId를 결정한다.
@@ -899,5 +905,127 @@ public class MemberService {
 
         String newEncodedPassword = passwordEncoder.encode(passwordChangeRequest.newPassword());
         member.updatePassword(newEncodedPassword);
+    }
+
+    // ==================== 프로필 사진 ====================
+
+    /**
+     * 회원 프로필 사진 업로드. 기존 사진은 best-effort 삭제 후 교체한다.
+     * 저장은 FileStorageService.storeFile(..., "profiles") 사용, 응답/DTO 노출은 절대 S3 URL로 한다.
+     */
+    @Transactional
+    public String uploadProfileImage(Long memberId, MultipartFile file, UserDetails userDetails) throws IOException {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        verifyProfileImageAccess(userDetails, member);
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("파일이 비어 있습니다.");
+        }
+        if (file.getSize() > MAX_PROFILE_IMAGE_SIZE) {
+            throw new IllegalArgumentException("파일 크기는 5MB를 초과할 수 없습니다.");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = (originalFilename != null && originalFilename.contains("."))
+                ? originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase()
+                : "";
+        if (!ALLOWED_PROFILE_IMAGE_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. (허용: jpg, jpeg, png, webp)");
+        }
+
+        String oldRelativePath = toRelativeFileKey(member.getProfileImageUrl());
+        String newRelativePath = fileStorageService.storeFile(file, "profiles");
+
+        if (oldRelativePath != null) {
+            try {
+                fileStorageService.deleteFile(oldRelativePath);
+            } catch (Exception e) {
+                log.warn("[Member Service] 기존 프로필 사진 삭제 실패(무시): {}", e.getMessage());
+            }
+        }
+
+        String absoluteUrl = toAbsoluteFileUrl(newRelativePath);
+        member.updateProfileImageUrl(absoluteUrl);
+        memberRepository.save(member);
+
+        log.info("[Member Service] 프로필 사진 업로드 완료: memberId={}", memberId);
+        return absoluteUrl;
+    }
+
+    /** 회원 프로필 사진 삭제 */
+    @Transactional
+    public void deleteProfileImage(Long memberId, UserDetails userDetails) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
+        verifyProfileImageAccess(userDetails, member);
+
+        String relativePath = toRelativeFileKey(member.getProfileImageUrl());
+        if (relativePath != null) {
+            try {
+                fileStorageService.deleteFile(relativePath);
+            } catch (Exception e) {
+                log.warn("[Member Service] 프로필 사진 삭제 실패(무시): {}", e.getMessage());
+            }
+        }
+
+        member.updateProfileImageUrl(null);
+        memberRepository.save(member);
+        log.info("[Member Service] 프로필 사진 삭제 완료: memberId={}", memberId);
+    }
+
+    /**
+     * 프로필 사진 업로드/삭제 권한: 본인이거나, 같은 회사 소속 관리자(ROLE_ADMIN).
+     * verifyPermissionManageAccess의 회사 귀속 검증 방식을 따른다.
+     */
+    private void verifyProfileImageAccess(UserDetails userDetails, Member target) {
+        if (userDetails == null) {
+            throw new SecurityException("인증 정보가 없습니다");
+        }
+
+        String username = userDetails.getUsername();
+        if (username != null && username.equals(target.getUsername())) {
+            return;
+        }
+
+        boolean hasAdminAuthority = userDetails.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (hasAdminAuthority) {
+            Long targetCompanyId = target.getCompany() != null ? target.getCompany().getId() : null;
+            Long adminCompanyId = userRepository.findByEmail(username)
+                    .map(u -> u.getCompany() != null ? u.getCompany().getId() : null)
+                    .orElseGet(() -> memberRepository.findByUsername(username)
+                            .map(m -> m.getCompany() != null ? m.getCompany().getId() : null)
+                            .orElse(null));
+            if (adminCompanyId != null && adminCompanyId.equals(targetCompanyId)) {
+                return;
+            }
+        }
+
+        throw new SecurityException("프로필 사진을 수정할 권한이 없습니다");
+    }
+
+    /** 저장된 값(상대경로 또는 절대 S3 URL)을 FileStorageService가 요구하는 상대 경로로 변환한다. */
+    private String toRelativeFileKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String prefix = fileStorageService.getFileUrl("");
+        if (prefix != null && !prefix.isBlank() && value.startsWith(prefix)) {
+            return value.substring(prefix.length());
+        }
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            // 알 수 없는 호스트의 절대 URL — 삭제 대상 경로를 특정할 수 없으므로 스킵
+            return null;
+        }
+        return value;
+    }
+
+    /** 상대 경로를 절대 S3 URL로 변환한다 (signatureUrl 패턴과 동일). */
+    private String toAbsoluteFileUrl(String path) {
+        if (path == null || path.isEmpty() || path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        return fileStorageService.getFileUrl(path);
     }
 }

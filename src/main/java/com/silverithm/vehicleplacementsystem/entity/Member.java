@@ -82,6 +82,9 @@ public class Member {
     @Column(name = "signature_url", length = 1000)
     private String signatureUrl;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -103,6 +106,10 @@ public class Member {
 
     public void updateSignature(String signatureUrl) {
         this.signatureUrl = signatureUrl;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 
     public enum Role {
