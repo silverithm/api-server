@@ -414,7 +414,12 @@ public class VacationController {
             Integer deadlineDay = body.get("deadlineDay") == null ? null
                     : Integer.valueOf(body.get("deadlineDay").toString());
             boolean enabled = Boolean.parseBoolean(String.valueOf(body.getOrDefault("enabled", false)));
-            Map<String, Object> saved = vacationService.saveDeadlineSetting(companyId, deadlineDay, enabled);
+            // 키가 없으면 null로 넘겨 기존 값을 유지한다 (이 스위치를 모르는 구버전 클라이언트 대비)
+            Boolean nextMonthOnly = body.containsKey("nextMonthOnly")
+                    ? Boolean.parseBoolean(String.valueOf(body.get("nextMonthOnly")))
+                    : null;
+            Map<String, Object> saved = vacationService.saveDeadlineSetting(companyId, deadlineDay, enabled,
+                    nextMonthOnly);
             return ResponseEntity.ok().headers(getCorsHeaders())
                     .body(saved);
         } catch (IllegalArgumentException e) {

@@ -40,4 +40,11 @@ public class VacationDeadlineSetting extends BaseEntity {
 
     @Column(name = "enabled", nullable = false)
     private Boolean enabled;
+
+    /**
+     * 켜면 직원은 "바로 다음 달"에 속한 날짜만 휴무를 신청할 수 있다.
+     * 마감일과는 별개 스위치다 — 마감일은 "언제까지 받는가", 이건 "어느 달을 받는가".
+     */
+    @Column(name = "next_month_only", nullable = false)
+    private Boolean nextMonthOnly;
 }

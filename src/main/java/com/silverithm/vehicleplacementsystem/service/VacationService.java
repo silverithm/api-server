@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -202,6 +203,9 @@ public class VacationService {
 
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+
+        // 화면에서 막더라도 서버가 다시 확인한다 (구버전 앱·직접 호출 대비)
+        validateNextMonthOnly(companyId, requestDTO.getDate());
 
         // 클라이언트가 보낸 legacy role(caregiver/office)보다 회원에게 배정된 역할을 우선한다
         String role = resolveRoleForNewRequest(company, requestDTO.getUserId(), requestDTO.getUserName(),
@@ -1013,13 +1017,15 @@ public class VacationService {
         return vacationDeadlineSettingRepository.findByCompanyId(companyId)
                 .map(s2 -> java.util.Map.<String, Object>of(
                         "deadlineDay", s2.getDeadlineDay(),
-                        "enabled", s2.getEnabled()))
-                .orElse(java.util.Map.of("deadlineDay", 20, "enabled", false));
+                        "enabled", s2.getEnabled(),
+                        "nextMonthOnly", Boolean.TRUE.equals(s2.getNextMonthOnly())))
+                .orElse(java.util.Map.of("deadlineDay", 20, "enabled", false, "nextMonthOnly", false));
     }
 
     /** 휴무 입력 마감일 설정 저장 (회사당 한 벌, upsert) */
     @Transactional
-    public java.util.Map<String, Object> saveDeadlineSetting(Long companyId, Integer deadlineDay, boolean enabled) {
+    public java.util.Map<String, Object> saveDeadlineSetting(Long companyId, Integer deadlineDay, boolean enabled,
+                                                             Boolean nextMonthOnly) {
         if (enabled && (deadlineDay == null || deadlineDay < 1 || deadlineDay > 31)) {
             throw new IllegalArgumentException("마감일은 1~31 사이여야 합니다");
         }
@@ -1028,14 +1034,46 @@ public class VacationService {
                         .companyId(companyId)
                         .deadlineDay(20)
                         .enabled(false)
+                        .nextMonthOnly(false)
                         .build());
         if (deadlineDay != null) {
             setting.setDeadlineDay(deadlineDay);
         }
         setting.setEnabled(enabled);
+        // 이 스위치를 안 보내는 호출자(구버전 앱 등)는 기존 값을 유지한다
+        if (nextMonthOnly != null) {
+            setting.setNextMonthOnly(nextMonthOnly);
+        } else if (setting.getNextMonthOnly() == null) {
+            setting.setNextMonthOnly(false);
+        }
         VacationDeadlineSetting saved = vacationDeadlineSettingRepository.save(setting);
-        log.info("[Vacation] 휴무 마감일 설정 저장: companyId={}, day={}, enabled={}",
-                companyId, saved.getDeadlineDay(), saved.getEnabled());
-        return java.util.Map.of("deadlineDay", saved.getDeadlineDay(), "enabled", saved.getEnabled());
+        log.info("[Vacation] 휴무 마감일 설정 저장: companyId={}, day={}, enabled={}, nextMonthOnly={}",
+                companyId, saved.getDeadlineDay(), saved.getEnabled(), saved.getNextMonthOnly());
+        return java.util.Map.of("deadlineDay", saved.getDeadlineDay(), "enabled", saved.getEnabled(),
+                "nextMonthOnly", Boolean.TRUE.equals(saved.getNextMonthOnly()));
+    }
+
+    /**
+     * "바로 다음 달만" 제한이 켜져 있으면 신청 날짜가 다음 달에 속하는지 확인한다.
+     *
+     * 직원이 직접 넣는 경로에만 적용한다. 관리자가 대신 등록하는 경로(전화로 받은 휴무 등)는
+     * 예외 상황을 처리하는 자리라 막지 않는다.
+     */
+    private void validateNextMonthOnly(Long companyId, LocalDate date) {
+        if (date == null) {
+            return;
+        }
+        boolean restricted = vacationDeadlineSettingRepository.findByCompanyId(companyId)
+                .map(s -> Boolean.TRUE.equals(s.getNextMonthOnly()))
+                .orElse(false);
+        if (!restricted) {
+            return;
+        }
+
+        YearMonth nextMonth = YearMonth.from(LocalDate.now()).plusMonths(1);
+        if (!YearMonth.from(date).equals(nextMonth)) {
+            throw new IllegalArgumentException(
+                    String.format("지금은 %d년 %d월 휴무만 신청할 수 있습니다.", nextMonth.getYear(), nextMonth.getMonthValue()));
+        }
     }
 }
