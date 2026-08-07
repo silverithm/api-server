@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,7 +27,7 @@ import lombok.experimental.SuperBuilder;
 public class PlazaPost extends BaseEntity {
 
     public enum Board {
-        FREE("free"), REVIEW("review"), TIP("tip");
+        FREE("free"), REVIEW("review"), TIP("tip"), JOB_OFFER("job_offer"), JOB_SEEK("job_seek");
 
         private final String key;
 
@@ -97,6 +98,15 @@ public class PlazaPost extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    /** 구인구직 글의 연락처. 다른 게시판에서는 null. */
+    @Column(name = "contact_info", length = 200)
+    private String contactInfo;
+
+    /** 연락처 전체 공개 여부 — false면 로그인 회원에게만 보여준다 */
+    @Column(name = "contact_public", nullable = false)
+    @Builder.Default
+    private boolean contactPublic = false;
+
     @Column(nullable = false)
     private String authorId;
 
@@ -121,4 +131,9 @@ public class PlazaPost extends BaseEntity {
 
     @Column(nullable = false)
     private int viewCount;
+
+    /** 구인·구직 게시판인지 (연락처·시설유형 처리 분기용) */
+    public boolean isJobBoard() {
+        return board == Board.JOB_OFFER || board == Board.JOB_SEEK;
+    }
 }

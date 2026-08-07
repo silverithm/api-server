@@ -144,6 +144,9 @@ public class PlazaService {
                 currentUserId != null && likeRepository.findByPostIdAndUserId(postId, currentUserId).isPresent(),
                 currentUserId != null && reportRepository.existsByTargetTypeAndTargetIdAndReporterId(
                         PlazaReport.TargetType.POST, postId, currentUserId),
+                // 비공개 연락처는 로그인 회원에게만 (비로그인·크롤러에는 감춘다)
+                post.isContactPublic() || currentUserId != null ? post.getContactInfo() : null,
+                post.isContactPublic(),
                 post.getCreatedAt(),
                 post.getModifiedAt(),
                 comments
@@ -153,7 +156,7 @@ public class PlazaService {
     @Transactional
     public Long createPost(String board, String category, String title, String content, boolean anonymous,
                            String authorId, String authorName, String companyName,
-                           boolean official, boolean pinned) {
+                           boolean official, boolean pinned, String contactInfo, boolean contactPublic) {
         // [운영] 공지와 상단 고정은 광장 운영자만 쓸 수 있다. 일반 사용자가 보내면 무시한다.
         boolean admin = isPlazaAdmin(authorId);
         boolean asOfficial = admin && official;
@@ -161,8 +164,10 @@ public class PlazaService {
         PlazaPost.Board boardValue = PlazaPost.Board.fromKey(board);
         PlazaPost post = PlazaPost.builder()
                 .board(boardValue)
-                // 시설 유형은 평가후기·실무팁에만 의미가 있다
-                .category(boardValue == PlazaPost.Board.FREE ? null : PlazaPost.Category.fromKey(category))
+                // 시설 유형은 자유게시판에만 없다. 구인구직은 선택 사항이라 비어 있으면 null.
+                .category(resolveCategory(boardValue, category))
+                .contactInfo(normalizeContact(boardValue, contactInfo))
+                .contactPublic(isJobBoard(boardValue) && contactPublic)
                 .title(title)
                 .content(content)
                 .authorId(authorId)
@@ -180,11 +185,13 @@ public class PlazaService {
 
     @Transactional
     public void updatePost(Long postId, String board, String category, String title, String content,
-                           boolean anonymous, String userId) {
+                           boolean anonymous, String userId, String contactInfo, boolean contactPublic) {
         PlazaPost post = requireManageablePost(postId, userId);
         PlazaPost.Board boardValue = PlazaPost.Board.fromKey(board);
         post.setBoard(boardValue);
-        post.setCategory(boardValue == PlazaPost.Board.FREE ? null : PlazaPost.Category.fromKey(category));
+        post.setCategory(resolveCategory(boardValue, category));
+        post.setContactInfo(normalizeContact(boardValue, contactInfo));
+        post.setContactPublic(isJobBoard(boardValue) && contactPublic);
         post.setTitle(title);
         post.setContent(content);
         post.setAnonymous(!post.isOfficial() && anonymous);
@@ -442,5 +449,28 @@ public class PlazaService {
             map.put((Long) row[0], (Long) row[1]);
         }
         return map;
+    }
+
+    private static boolean isJobBoard(PlazaPost.Board board) {
+        return board == PlazaPost.Board.JOB_OFFER || board == PlazaPost.Board.JOB_SEEK;
+    }
+
+    /** 시설 유형 결정 — 자유게시판은 항상 null, 구인구직은 선택 사항 */
+    private static PlazaPost.Category resolveCategory(PlazaPost.Board board, String category) {
+        if (board == PlazaPost.Board.FREE) {
+            return null;
+        }
+        if (isJobBoard(board) && (category == null || category.isBlank())) {
+            return null;
+        }
+        return PlazaPost.Category.fromKey(category);
+    }
+
+    /** 연락처는 구인구직 글에만 저장한다 */
+    private static String normalizeContact(PlazaPost.Board board, String contactInfo) {
+        if (!isJobBoard(board) || contactInfo == null || contactInfo.isBlank()) {
+            return null;
+        }
+        return contactInfo.trim();
     }
 }

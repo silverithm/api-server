@@ -51,6 +51,9 @@ public final class PlazaDTO {
             long likeCount,
             boolean likedByMe,
             boolean reportedByMe,
+            /** 구인구직 연락처 — 비공개 글은 비로그인 사용자에게 null로 내려간다 */
+            String contactInfo,
+            boolean contactPublic,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             List<CommentDTO> comments

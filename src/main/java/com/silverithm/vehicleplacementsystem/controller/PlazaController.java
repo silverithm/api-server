@@ -113,7 +113,8 @@ public class PlazaController {
     /** isOfficial/isPinned는 광장 운영자만 반영된다 (서비스에서 검증) */
     public record PostRequest(String board, String category, String title, String content, Boolean isAnonymous,
                               String authorName, String companyName,
-                              Boolean isOfficial, Boolean isPinned) {
+                              Boolean isOfficial, Boolean isPinned,
+                              String contactInfo, Boolean contactPublic) {
     }
 
     @PostMapping("/posts")
@@ -134,7 +135,9 @@ public class PlazaController {
                     request.authorName() != null ? request.authorName() : "사용자",
                     request.companyName(),
                     Boolean.TRUE.equals(request.isOfficial()),
-                    Boolean.TRUE.equals(request.isPinned()));
+                    Boolean.TRUE.equals(request.isPinned()),
+                    request.contactInfo(),
+                    Boolean.TRUE.equals(request.contactPublic()));
             return ResponseEntity.ok(Map.of("id", id));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
@@ -154,7 +157,9 @@ public class PlazaController {
                     request.title().trim(),
                     request.content().trim(),
                     Boolean.TRUE.equals(request.isAnonymous()),
-                    requireUserId(authentication));
+                    requireUserId(authentication),
+                    request.contactInfo(),
+                    Boolean.TRUE.equals(request.contactPublic()));
             return ResponseEntity.ok(Map.of("success", true));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
