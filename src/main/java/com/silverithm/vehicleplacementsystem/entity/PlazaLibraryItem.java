@@ -59,7 +59,8 @@ public class PlazaLibraryItem extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(length = 1000)
+    /** 자료 설명 — 게시글 본문처럼 길게 쓸 수 있다 */
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(nullable = false, length = 300)

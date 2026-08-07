@@ -295,6 +295,21 @@ public class PlazaService {
 
     // ── 자료실 ────────────────────────────────────────────
 
+    /**
+     * 자료실 이용 자격: 자유게시판에 글을 1개 이상 쓴 회원만.
+     * 받기만 하고 나누지 않는 이용을 막기 위한 참여 조건이다. 운영자는 항상 허용.
+     */
+    @Transactional(readOnly = true)
+    public boolean canAccessLibrary(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return false;
+        }
+        if (isPlazaAdmin(userId)) {
+            return true;
+        }
+        return postRepository.existsByAuthorIdAndBoardAndIsHiddenFalse(userId, PlazaPost.Board.FREE);
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> getLibraryItems(String categoryKey, String search, int page, int size, String currentUserId) {
         PlazaLibraryItem.Category category = categoryKey == null || categoryKey.isBlank() || "all".equalsIgnoreCase(categoryKey)
@@ -350,11 +365,31 @@ public class PlazaService {
         return new Object[]{item.getFileName(), bytes};
     }
 
+    /**
+     * 자료 정보 수정 — 제목·분류·설명만 바꾼다.
+     * 파일 자체를 바꾸려면 삭제 후 다시 올린다(다운로드 수 등 이력이 초기화되는 게 자연스럽다).
+     * 커뮤니티 운영자는 관리 목적으로 다른 사람 자료도 수정할 수 있다.
+     */
+    @Transactional
+    public void updateLibraryItem(Long itemId, String category, String title, String description, String userId) {
+        PlazaLibraryItem item = libraryRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("자료를 찾을 수 없습니다"));
+        if (!item.getUploaderId().equals(userId) && !isPlazaAdmin(userId)) {
+            throw new IllegalStateException("본인이 올린 자료만 수정할 수 있습니다");
+        }
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("제목을 입력해주세요");
+        }
+        item.setCategory(PlazaLibraryItem.Category.fromKey(category));
+        item.setTitle(title.trim());
+        item.setDescription(description == null || description.isBlank() ? null : description.trim());
+    }
+
     @Transactional
     public void deleteLibraryItem(Long itemId, String userId) {
         PlazaLibraryItem item = libraryRepository.findById(itemId)
                 .orElseThrow(() -> new IllegalArgumentException("자료를 찾을 수 없습니다"));
-        if (!item.getUploaderId().equals(userId)) {
+        if (!item.getUploaderId().equals(userId) && !isPlazaAdmin(userId)) {
             throw new IllegalStateException("본인이 올린 자료만 삭제할 수 있습니다");
         }
         try {

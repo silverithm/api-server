@@ -279,6 +279,19 @@ public class PlazaController {
 
     // ── 자료실 ────────────────────────────────────────────
 
+    /** 자료실 이용 자격 사전 확인 — 자유게시판 글 1개 이상 필요 */
+    @GetMapping("/library/access")
+    public ResponseEntity<?> getLibraryAccess(Authentication authentication) {
+        String userId = currentUserId(authentication);
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.ok(Map.of("allowed", false, "reason", "LOGIN_REQUIRED"));
+        }
+        boolean allowed = plazaService.canAccessLibrary(userId);
+        return ResponseEntity.ok(allowed
+                ? Map.of("allowed", true)
+                : Map.of("allowed", false, "reason", "FREE_POST_REQUIRED"));
+    }
+
     @GetMapping("/library")
     public ResponseEntity<?> getLibraryItems(
             @RequestParam(required = false) String category,
@@ -287,9 +300,19 @@ public class PlazaController {
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
         try {
+            String userId = currentUserId(authentication);
+            if (userId == null || userId.isBlank()) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "자료실은 로그인 후 이용할 수 있습니다", "code", "LOGIN_REQUIRED"));
+            }
+            if (!plazaService.canAccessLibrary(userId)) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "자료실은 자유게시판에 글을 1개 이상 작성한 회원만 이용할 수 있습니다",
+                                "code", "FREE_POST_REQUIRED"));
+            }
             int safeSize = Math.min(Math.max(size, 1), 50);
             return ResponseEntity.ok(plazaService.getLibraryItems(category, search, Math.max(page, 0), safeSize,
-                    currentUserId(authentication)));
+                    userId));
         } catch (Exception e) {
             log.error("[Plaza API] 자료 목록 조회 오류:", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "자료 목록 조회 중 오류가 발생했습니다"));
@@ -325,8 +348,14 @@ public class PlazaController {
     }
 
     @GetMapping("/library/{itemId}/download")
-    public ResponseEntity<?> downloadLibraryItem(@PathVariable Long itemId) {
+    public ResponseEntity<?> downloadLibraryItem(@PathVariable Long itemId, Authentication authentication) {
         try {
+            String userId = currentUserId(authentication);
+            if (userId == null || userId.isBlank() || !plazaService.canAccessLibrary(userId)) {
+                return ResponseEntity.status(403)
+                        .body(Map.of("error", "자료실은 자유게시판에 글을 1개 이상 작성한 회원만 이용할 수 있습니다",
+                                "code", "FREE_POST_REQUIRED"));
+            }
             Object[] result = plazaService.downloadLibraryItem(itemId);
             String fileName = (String) result[0];
             byte[] bytes = (byte[]) result[1];
@@ -341,6 +370,26 @@ public class PlazaController {
         } catch (Exception e) {
             log.error("[Plaza API] 자료 다운로드 오류:", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "자료 다운로드 중 오류가 발생했습니다"));
+        }
+    }
+
+    public record LibraryUpdateRequest(String category, String title, String description) {
+    }
+
+    /** 자료 정보 수정 — 파일은 그대로 두고 제목·분류·설명만 바꾼다 */
+    @PutMapping("/library/{itemId}")
+    public ResponseEntity<?> updateLibraryItem(@PathVariable Long itemId,
+                                               @RequestBody LibraryUpdateRequest request,
+                                               Authentication authentication) {
+        try {
+            plazaService.updateLibraryItem(itemId, request.category(), request.title(), request.description(),
+                    requireUserId(authentication));
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Plaza API] 자료 수정 오류:", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "자료 수정 중 오류가 발생했습니다"));
         }
     }
 
