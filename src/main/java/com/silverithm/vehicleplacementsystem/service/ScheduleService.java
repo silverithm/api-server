@@ -578,24 +578,33 @@ public class ScheduleService {
     }
 
     /**
-     * 라벨 삭제
+     * 라벨 삭제.
+     *
+     * 예전에는 그 라벨을 쓰는 일정이 하나라도 있으면 삭제를 거부했다. 그러면 라벨을 정리하려고
+     * 지난 일정을 하나씩 열어 라벨을 바꿔야 해서 사실상 지울 수 없었다.
+     * 이제는 참조를 떼고(일정은 "라벨 없음"으로 남는다) 라벨만 지운다. 일정 자체는 사라지지 않는다.
+     *
+     * @return 라벨이 떨어진 일정 수 (화면 안내용)
      */
     @Transactional
-    public void deleteLabel(Long labelId) {
+    public long deleteLabel(Long labelId) {
         log.info("[Schedule Service] 라벨 삭제: id={}", labelId);
 
         ScheduleLabel label = scheduleLabelRepository.findById(labelId)
                 .orElseThrow(() -> new RuntimeException("라벨을 찾을 수 없습니다: " + labelId));
         resourceScopeGuard.requireSameCompany(label.getCompany());
 
-        // 사용 중인 일정 확인
-        long usageCount = scheduleRepository.countByLabelId(labelId);
-        if (usageCount > 0) {
-            throw new RuntimeException("이 라벨을 사용 중인 일정이 " + usageCount + "개 있습니다. 먼저 해당 일정의 라벨을 변경해주세요.");
+        List<Schedule> using = scheduleRepository.findByLabelId(labelId);
+        for (Schedule schedule : using) {
+            schedule.setLabel(null);
+        }
+        if (!using.isEmpty()) {
+            scheduleRepository.saveAll(using);
         }
 
         scheduleLabelRepository.delete(label);
-        log.info("[Schedule Service] 라벨 삭제 완료: id={}", labelId);
+        log.info("[Schedule Service] 라벨 삭제 완료: id={}, 참조 해제 {}건", labelId, using.size());
+        return using.size();
     }
 
     /**

@@ -89,4 +89,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     // 특정 라벨을 사용하는 일정 수
     long countByLabelId(Long labelId);
+
+    // 라벨을 삭제할 때 참조를 떼기 위해
+    List<Schedule> findByLabelId(Long labelId);
 }

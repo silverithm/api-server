@@ -126,13 +126,16 @@ public class ScheduleLabelController {
         try {
             log.info("[ScheduleLabel API] 라벨 삭제: id={}", id);
 
-            scheduleService.deleteLabel(id);
+            long detachedCount = scheduleService.deleteLabel(id);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
                     .body(Map.of(
                             "success", true,
-                            "message", "라벨이 삭제되었습니다."
+                            "detachedCount", detachedCount,
+                            "message", detachedCount > 0
+                                    ? "라벨이 삭제되었습니다. 이 라벨을 쓰던 일정 " + detachedCount + "건은 라벨 없음으로 바뀌었습니다."
+                                    : "라벨이 삭제되었습니다."
                     ));
 
         } catch (RuntimeException e) {

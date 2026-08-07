@@ -12,6 +12,7 @@ import com.silverithm.vehicleplacementsystem.repository.VacationDeadlineSettingR
 import com.silverithm.vehicleplacementsystem.repository.VacationLimitRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepository;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class VacationAdjustmentReminderScheduler {
 
     private final VacationDeadlineSettingRepository settingRepository;
+    private final VacationDeadlineDateService deadlineDateService;
     private final VacationLimitRepository vacationLimitRepository;
     private final VacationRequestRepository vacationRequestRepository;
     private final CompanyRepository companyRepository;
@@ -60,8 +62,10 @@ public class VacationAdjustmentReminderScheduler {
 
         for (VacationDeadlineSetting setting : settings) {
             try {
-                int deadlineDay = Math.min(setting.getDeadlineDay(), today.lengthOfMonth());
-                if (today.getDayOfMonth() <= deadlineDay) {
+                // 이번 달에 따로 지정한 마감일이 있으면 그 날짜가 매월 고정일보다 우선한다
+                LocalDate deadline = deadlineDateService.resolveDeadline(
+                        setting.getCompanyId(), YearMonth.from(today), setting.getDeadlineDay());
+                if (deadline == null || !today.isAfter(deadline)) {
                     continue; // 아직 마감 전
                 }
                 remindCompany(setting.getCompanyId(), today);
