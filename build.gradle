@@ -99,6 +99,9 @@ dependencies {
     // AWS S3 SDK
     implementation platform('software.amazon.awssdk:bom:2.21.0')
     implementation 'software.amazon.awssdk:s3'
+
+    // HTML 파싱 (외부 공지 크롤링용)
+    implementation 'org.jsoup:jsoup:1.21.1'
 }
 
 tasks.named('test') {
