@@ -859,10 +859,15 @@ public class ChatService {
                     String fcmToken = resolveParticipantFcmToken(participantIdLong, participant.getUserName());
 
                     if (fcmToken != null) {
+                        // @이름으로 호출된 사람은 일반 메시지와 구분해서 알린다 (많은 대화 속에서 놓치지 않게)
+                        boolean mentioned = isMentioned(message.getContent(), participant.getUserName());
+
                         FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
                                 .recipientToken(fcmToken)
-                                .title(room.getName())
-                                .message(message.getSenderName() + ": " + message.getDisplayContent())
+                                .title(mentioned ? room.getName() + " — 나를 호출했어요" : room.getName())
+                                .message(mentioned
+                                        ? message.getSenderName() + "님이 회원님을 호출했습니다: " + message.getDisplayContent()
+                                        : message.getSenderName() + ": " + message.getDisplayContent())
                                 .recipientUserId(participant.getUserId())
                                 .recipientUserName(participant.getUserName())
                                 .type("CHAT")
@@ -871,7 +876,8 @@ public class ChatService {
                                 .data(Map.of(
                                         "type", "chat",
                                         "roomId", String.valueOf(room.getId()),
-                                        "messageId", String.valueOf(message.getId())
+                                        "messageId", String.valueOf(message.getId()),
+                                        "mention", String.valueOf(mentioned)
                                 ))
                                 .build();
 
@@ -884,6 +890,29 @@ public class ChatService {
             }
         } catch (Exception e) {
             log.error("[Chat Service] 메시지 알림 전송 중 오류: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 본문에 '@이름' 형태로 이 사람이 호출됐는지.
+     *
+     * 이름 뒤에 다른 글자가 이어지면 다른 사람(예: @김영 vs @김영희)이므로,
+     * 이름 다음 글자가 한글·영문·숫자면 호출로 보지 않는다.
+     */
+    private boolean isMentioned(String content, String userName) {
+        if (content == null || userName == null || userName.isBlank()) {
+            return false;
+        }
+        String token = "@" + userName;
+        int from = 0;
+        while (true) {
+            int idx = content.indexOf(token, from);
+            if (idx < 0) return false;
+            int after = idx + token.length();
+            if (after >= content.length() || !Character.isLetterOrDigit(content.charAt(after))) {
+                return true;
+            }
+            from = after;
         }
     }
 
