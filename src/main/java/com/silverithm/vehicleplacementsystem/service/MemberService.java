@@ -119,66 +119,48 @@ public class MemberService {
 
         String positionName = requestedPosition != null ? requestedPosition.getName() : requestDTO.getPosition();
 
-        // 이미 올린 신청이 대기 중이면 새로 만들지 않고 그 건을 갱신한다.
-        // 두 번 눌렀을 때 목록에 같은 사람이 두 줄로 뜨는 걸 막으면서,
-        // 직책을 잘못 골라 다시 신청하는 경우에는 최신 내용이 반영되게 하려는 것이다.
+        // 이미 올린 신청이 대기 중이면 새로 받지 않고 그 사실을 알린다.
+        // 조용히 덮어쓰면 본인은 신청된 줄 모르고 계속 누르게 되고, 목록에는 같은 사람이 쌓인다.
         List<MemberJoinRequest> pendingDuplicates = memberJoinRequestRepository.findPendingDuplicates(
                 company, requestDTO.getUsername(), requestDTO.getEmail());
 
-        MemberJoinRequest joinRequest;
-        boolean isNewRequest = pendingDuplicates.isEmpty();
-        if (isNewRequest) {
-            joinRequest = MemberJoinRequest.builder()
-                    .username(requestDTO.getUsername())
-                    .password(passwordEncoder.encode(requestDTO.getPassword())) // 비밀번호 암호화
-                    .name(requestDTO.getName())
-                    .email(requestDTO.getEmail())
-                    .phoneNumber(requestDTO.getPhoneNumber())
-                    .requestedRole(role)
-                    .department(requestDTO.getDepartment())
-                    .position(positionName)
-                    .positionEntity(requestedPosition)
-                    .fcmToken(requestDTO.getFcmToken())
-                    .company(company)
-                    .status(MemberJoinRequest.RequestStatus.PENDING)
-                    .build();
-        } else {
-            // 가장 먼저 올린 건을 남기고 나머지는 지운다 (이 확인이 없던 때 쌓인 중복 정리)
-            joinRequest = pendingDuplicates.get(0);
-            if (pendingDuplicates.size() > 1) {
-                List<MemberJoinRequest> extras = pendingDuplicates.subList(1, pendingDuplicates.size());
-                memberJoinRequestRepository.deleteAll(extras);
-                log.info("[Member Service] 중복 가입 신청 {}건 정리: companyId={}, username={}",
-                        extras.size(), company.getId(), PrivacyMask.name(requestDTO.getUsername()));
-            }
-
-            joinRequest.setUsername(requestDTO.getUsername());
-            joinRequest.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
-            joinRequest.setName(requestDTO.getName());
-            joinRequest.setEmail(requestDTO.getEmail());
-            joinRequest.setPhoneNumber(requestDTO.getPhoneNumber());
-            joinRequest.setRequestedRole(role);
-            joinRequest.setDepartment(requestDTO.getDepartment());
-            joinRequest.setPosition(positionName);
-            joinRequest.setPositionEntity(requestedPosition);
-            joinRequest.setFcmToken(requestDTO.getFcmToken());
-            log.info("[Member Service] 대기 중인 가입 신청 갱신: id={}, companyId={}",
-                    joinRequest.getId(), company.getId());
+        if (!pendingDuplicates.isEmpty()) {
+            MemberJoinRequest existing = pendingDuplicates.get(0);
+            log.info("[Member Service] 중복 가입 신청 차단: companyId={}, 기존 신청 id={}",
+                    company.getId(), existing.getId());
+            throw new IllegalArgumentException(String.format(
+                    "이미 %s에 가입을 신청하셨습니다. 관리자 승인을 기다려주세요. (신청일: %s)",
+                    company.getName(),
+                    existing.getCreatedAt() != null
+                            ? existing.getCreatedAt().toLocalDate().toString()
+                            : "확인 불가"));
         }
+
+        MemberJoinRequest joinRequest = MemberJoinRequest.builder()
+                .username(requestDTO.getUsername())
+                .password(passwordEncoder.encode(requestDTO.getPassword())) // 비밀번호 암호화
+                .name(requestDTO.getName())
+                .email(requestDTO.getEmail())
+                .phoneNumber(requestDTO.getPhoneNumber())
+                .requestedRole(role)
+                .department(requestDTO.getDepartment())
+                .position(positionName)
+                .positionEntity(requestedPosition)
+                .fcmToken(requestDTO.getFcmToken())
+                .company(company)
+                .status(MemberJoinRequest.RequestStatus.PENDING)
+                .build();
 
         MemberJoinRequest saved = memberJoinRequestRepository.save(joinRequest);
 
-        log.info("[Member Service] 회원가입 요청 처리 완료: 회사 {}, ID={}", company.getName(), saved.getId());
+        log.info("[Member Service] 회원가입 요청 생성 완료: 회사 {}, ID={}", company.getName(), saved.getId());
 
-        // 새로 올라온 신청만 알린다 — 두 번 눌렀다고 관리자에게 두 번 갈 이유는 없다.
-        // (헬퍼는 예전부터 있었지만 어디서도 부르지 않아 실제로는 한 번도 나가지 않았다)
-        if (isNewRequest) {
-            try {
-                sendJoinRequestNotificationToAdmins(saved);
-            } catch (Exception e) {
-                // 알림 실패가 가입 신청 자체를 막지는 않는다
-                log.error("[Member Service] 가입 신청 관리자 알림 실패: {}", e.getMessage());
-            }
+        // 헬퍼는 예전부터 있었지만 어디서도 부르지 않아 실제로는 한 번도 나가지 않았다.
+        try {
+            sendJoinRequestNotificationToAdmins(saved);
+        } catch (Exception e) {
+            // 알림 실패가 가입 신청 자체를 막지는 않는다
+            log.error("[Member Service] 가입 신청 관리자 알림 실패: {}", e.getMessage());
         }
 
         return MemberJoinRequestResponseDTO.fromEntity(saved);
