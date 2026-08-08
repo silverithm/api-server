@@ -57,13 +57,18 @@ public class MemberController {
      * FCM 토큰 업데이트
      */
     /**
-     * FCM 토큰 삭제 (로그아웃 시)
+     * FCM 토큰 삭제 (로그아웃 시).
+     *
+     * fcmToken을 주면 그 기기만 뗀다. 주지 않으면 예전처럼 전부 해제한다
+     * (토큰을 보내지 않는 구버전 앱 호환).
      */
     @DeleteMapping("/{id}/fcm-token")
-    public ResponseEntity<Map<String, String>> deleteFcmToken(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> deleteFcmToken(
+            @PathVariable Long id,
+            @RequestParam(required = false) String fcmToken) {
         try {
-            log.info("[Member API] FCM 토큰 삭제: memberId={}", id);
-            memberService.clearFcmToken(id);
+            log.info("[Member API] FCM 토큰 삭제: memberId={}, 기기지정={}", id, fcmToken != null);
+            memberService.clearFcmToken(id, fcmToken);
             return ResponseEntity.ok(Map.of("message", "FCM 토큰이 삭제되었습니다"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

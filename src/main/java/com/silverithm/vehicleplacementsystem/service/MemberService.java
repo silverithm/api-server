@@ -13,6 +13,7 @@ import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.PositionRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserDeviceRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -49,6 +50,8 @@ public class MemberService {
     private final CompanyRepository companyRepository;
     private final NotificationService notificationService;
     private final AdminNotificationTargets adminNotificationTargets;
+    private final DeviceTokenService deviceTokenService;
+    private final UserDeviceRepository userDeviceRepository;
     private final PasswordEncoder passwordEncoder;
     private final ResourceScopeGuard resourceScopeGuard;
     private final SlackService slackService;
@@ -696,6 +699,10 @@ public class MemberService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
         resourceScopeGuard.requireSameCompany(member.getCompany());
 
+        // 기기 목록에 등록한다 — 실제 발송 대상은 이쪽이라 폰·태블릿을 같이 써도 모두 받는다
+        deviceTokenService.register(memberId, null, tokenUpdateDTO.getFcmToken());
+
+        // 사용자 행의 컬럼은 "마지막에 쓴 기기"로 남겨 둔다 (기존 코드가 아직 참조한다)
         member.setFcmToken(tokenUpdateDTO.getFcmToken());
         memberRepository.save(member);
 
@@ -725,13 +732,28 @@ public class MemberService {
 
     /** 로그아웃 시 기기 토큰 폐기 — 로그아웃한 기기로 알림이 가지 않도록 한다 */
     @Transactional
-    public void clearFcmToken(Long memberId) {
+    public void clearFcmToken(Long memberId, String fcmToken) {
         log.info("[Member Service] FCM 토큰 삭제: memberId={}", memberId);
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + memberId));
         resourceScopeGuard.requireSameCompany(member.getCompany());
 
+        if (fcmToken != null && !fcmToken.isBlank()) {
+            // 로그아웃한 그 기기만 뗀다. 예전에는 컬럼을 통째로 비워서, 폰에서 로그아웃하면
+            // 멀쩡히 쓰던 태블릿까지 알림이 멈췄다.
+            deviceTokenService.remove(fcmToken);
+            if (fcmToken.equals(member.getFcmToken())) {
+                member.setFcmToken(null);
+                memberRepository.save(member);
+            }
+            return;
+        }
+
+        // 어느 기기인지 모르면 예전처럼 전부 해제한다 (토큰을 보내지 않는 구버전 앱)
+        for (var device : userDeviceRepository.findByMemberId(memberId)) {
+            deviceTokenService.remove(device.getFcmToken());
+        }
         member.setFcmToken(null);
         memberRepository.save(member);
     }

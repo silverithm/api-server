@@ -314,10 +314,12 @@ public class UserController {
 
 
     @DeleteMapping("api/v1/{id}/fcm-token")
-    public ResponseEntity<Map<String, String>> deleteFcmToken(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> deleteFcmToken(
+            @PathVariable Long id,
+            @RequestParam(required = false) String fcmToken) {
         try {
-            log.info("[User API] FCM 토큰 삭제: userId={}", id);
-            userService.clearFcmToken(id);
+            log.info("[User API] FCM 토큰 삭제: userId={}, 기기지정={}", id, fcmToken != null);
+            userService.clearFcmToken(id, fcmToken);
             return ResponseEntity.ok(Map.of("message", "FCM 토큰이 삭제되었습니다"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

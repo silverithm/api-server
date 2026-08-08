@@ -24,11 +24,20 @@ public class FCMService {
 
     private final MemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final DeviceTokenService deviceTokenService;
 
     public String sendNotification(String token, String title, String body) {
         return sendNotification(token, title, body, null);
     }
 
+    /**
+     * 토큰 하나를 받지만 <b>그 사람의 로그인된 모든 기기</b>로 보낸다.
+     *
+     * <p>발송 지점이 여러 서비스에 흩어져 있어 각자 기기 목록을 챙기게 두면 새 알림을 붙일 때마다
+     * 빠뜨린다. 수신 거부 확인과 마찬가지로 여기 한 곳을 지나가게 한다.
+     *
+     * <p>반환값은 첫 기기의 messageId다 — 호출부는 성공/실패만 보고, 기기별 결과는 로그에 남긴다.
+     */
     public String sendNotification(String token, String title, String body, Map<String, String> data) {
         log.info("[FCM Service] 알림 전송 요청: token={}, title={}", maskToken(token), title);
 
@@ -49,6 +58,34 @@ public class FCMService {
             return "dev-mode-" + System.currentTimeMillis();
         }
 
+        List<String> targets = deviceTokenService.siblingTokensOf(token);
+        if (targets.size() > 1) {
+            log.info("[FCM Service] 기기 {}대로 전송", targets.size());
+        }
+
+        String firstMessageId = null;
+        RuntimeException firstFailure = null;
+        for (String target : targets) {
+            try {
+                String messageId = sendToSingleDevice(target, title, body, data);
+                if (firstMessageId == null) {
+                    firstMessageId = messageId;
+                }
+            } catch (RuntimeException e) {
+                // 한 기기가 실패해도 나머지 기기에는 보낸다
+                if (firstFailure == null) {
+                    firstFailure = e;
+                }
+            }
+        }
+
+        if (firstMessageId != null) {
+            return firstMessageId;
+        }
+        throw firstFailure != null ? firstFailure : new RuntimeException("보낼 수 있는 기기가 없습니다");
+    }
+
+    private String sendToSingleDevice(String token, String title, String body, Map<String, String> data) {
         try {
             Message.Builder builder = Message.builder()
                     .setToken(token)
@@ -97,6 +134,23 @@ public class FCMService {
      */
     private boolean isPushEnabledFor(String token) {
         try {
+            // 기기 테이블로 주인을 먼저 찾는다 — 새로 등록된 기기는 사용자 행의 컬럼에 없을 수 있다
+            var device = deviceTokenService.ownerOf(token);
+            if (device.isPresent()) {
+                Long memberId = device.get().getMemberId();
+                Long appUserId = device.get().getAppUserId();
+                if (memberId != null) {
+                    return memberRepository.findById(memberId)
+                            .map(m -> !Boolean.FALSE.equals(m.getPushEnabled()))
+                            .orElse(true);
+                }
+                if (appUserId != null) {
+                    return userRepository.findById(appUserId)
+                            .map(u -> !Boolean.FALSE.equals(u.getPushEnabled()))
+                            .orElse(true);
+                }
+            }
+
             for (Member member : memberRepository.findByFcmToken(token)) {
                 if (Boolean.FALSE.equals(member.getPushEnabled())) {
                     return false;
@@ -120,6 +174,9 @@ public class FCMService {
      */
     private void removeDeadToken(String token) {
         try {
+            // 죽은 기기 행부터 뗀다 — 이게 실제 발송 대상이다
+            deviceTokenService.remove(token);
+
             List<Member> members = memberRepository.findByFcmToken(token);
             for (Member member : members) {
                 member.setFcmToken(null);

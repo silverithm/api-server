@@ -83,6 +83,10 @@ public class UserService {
     private CompanyCodeService companyCodeService;
     @Autowired
     private FileStorageService fileStorageService;
+    @Autowired
+    private DeviceTokenService deviceTokenService;
+    @Autowired
+    private com.silverithm.vehicleplacementsystem.repository.UserDeviceRepository userDeviceRepository;
 
     private Key secretKey;
 
@@ -662,18 +666,38 @@ public class UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + userId));
 
+        // 기기 목록에 등록한다 — 실제 발송 대상은 이쪽이라 여러 기기를 써도 모두 받는다
+        deviceTokenService.register(null, userId, tokenUpdateDTO.getFcmToken());
+
+        // 사용자 행의 컬럼은 "마지막에 쓴 기기"로 남겨 둔다 (기존 코드가 아직 참조한다)
         user.updateFcmToken(tokenUpdateDTO.getFcmToken());
         userRepository.save(user);
         log.info("[User Service] FCM 토큰 업데이트 완료: userId={}", userId);
     }
 
-    /** 로그아웃 시 기기 토큰 폐기 — 로그아웃한 기기로 알림이 가지 않도록 한다 */
+    /**
+     * 로그아웃 시 기기 토큰 폐기 — 로그아웃한 기기로 알림이 가지 않도록 한다.
+     * fcmToken을 주면 그 기기만 뗀다(다른 기기는 계속 받는다).
+     */
     @Transactional
-    public void clearFcmToken(Long userId) {
+    public void clearFcmToken(Long userId, String fcmToken) {
         log.info("[User Service] FCM 토큰 삭제: userId={}", userId);
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + userId));
 
+        if (fcmToken != null && !fcmToken.isBlank()) {
+            deviceTokenService.remove(fcmToken);
+            if (fcmToken.equals(user.getFcmToken())) {
+                user.updateFcmToken(null);
+                userRepository.save(user);
+            }
+            return;
+        }
+
+        // 어느 기기인지 모르면 예전처럼 전부 해제한다 (토큰을 보내지 않는 구버전 앱)
+        for (var device : userDeviceRepository.findByAppUserId(userId)) {
+            deviceTokenService.remove(device.getFcmToken());
+        }
         user.updateFcmToken(null);
         userRepository.save(user);
     }
