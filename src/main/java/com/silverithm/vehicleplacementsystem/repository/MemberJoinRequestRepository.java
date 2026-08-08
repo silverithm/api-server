@@ -22,8 +22,21 @@ public interface MemberJoinRequestRepository extends JpaRepository<MemberJoinReq
     
     List<MemberJoinRequest> findByCompanyAndStatusOrderByCreatedAtDesc(Company company, MemberJoinRequest.RequestStatus status);
     
+    /**
+     * 같은 기관에 이미 올라와 있는 대기 중 신청 (아이디 또는 이메일이 같으면 같은 사람으로 본다).
+     *
+     * 여러 건이 나올 수 있어 목록으로 받는다 — 이 확인을 넣기 전에 쌓인 중복이 남아 있다.
+     */
+    @Query("SELECT jr FROM MemberJoinRequest jr WHERE jr.company = :company "
+            + "AND jr.status = com.silverithm.vehicleplacementsystem.entity.MemberJoinRequest.RequestStatus.PENDING "
+            + "AND (jr.username = :username OR jr.email = :email) "
+            + "ORDER BY jr.createdAt ASC")
+    List<MemberJoinRequest> findPendingDuplicates(@Param("company") Company company,
+                                                  @Param("username") String username,
+                                                  @Param("email") String email);
+
     Optional<MemberJoinRequest> findByUsername(String username);
-    
+
     Optional<MemberJoinRequest> findByEmail(String email);
     
     @Query("SELECT jr FROM MemberJoinRequest jr WHERE jr.createdAt BETWEEN :startDate AND :endDate ORDER BY jr.createdAt DESC")
