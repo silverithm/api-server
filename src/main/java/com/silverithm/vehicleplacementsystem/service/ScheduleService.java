@@ -86,20 +86,9 @@ public class ScheduleService {
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 저장 완료: id={}", saved.getId());
 
-        // 참석자 추가
+        // 참석자 추가 — 한 번에 조회한다. 한 명씩 findById로 돌면 참석자 수만큼 쿼리가 나간다.
         if (request.getParticipantIds() != null && !request.getParticipantIds().isEmpty()) {
-            List<ScheduleParticipant> participants = new ArrayList<>();
-            for (Long memberId : request.getParticipantIds()) {
-                Member member = memberRepository.findById(memberId).orElse(null);
-                if (member != null) {
-                    ScheduleParticipant participant = ScheduleParticipant.builder()
-                            .schedule(saved)
-                            .memberId(member.getId())
-                            .memberName(member.getName())
-                            .build();
-                    participants.add(participant);
-                }
-            }
+            List<ScheduleParticipant> participants = buildParticipants(saved, request.getParticipantIds());
             if (!participants.isEmpty()) {
                 scheduleParticipantRepository.saveAll(participants);
                 log.info("[Schedule Service] 참석자 {} 명 추가 완료", participants.size());
@@ -169,18 +158,7 @@ public class ScheduleService {
 
         // 새로운 참석자 추가
         if (request.getParticipantIds() != null && !request.getParticipantIds().isEmpty()) {
-            List<ScheduleParticipant> participants = new ArrayList<>();
-            for (Long memberId : request.getParticipantIds()) {
-                Member member = memberRepository.findById(memberId).orElse(null);
-                if (member != null) {
-                    ScheduleParticipant participant = ScheduleParticipant.builder()
-                            .schedule(saved)
-                            .memberId(member.getId())
-                            .memberName(member.getName())
-                            .build();
-                    participants.add(participant);
-                }
-            }
+            List<ScheduleParticipant> participants = buildParticipants(saved, request.getParticipantIds());
             if (!participants.isEmpty()) {
                 scheduleParticipantRepository.saveAll(participants);
                 log.info("[Schedule Service] 참석자 {} 명 업데이트 완료", participants.size());
@@ -636,14 +614,44 @@ public class ScheduleService {
     }
 
     /**
+     * 요청받은 회원 id로 참석자 목록을 만든다. 없는 id는 건너뛴다.
+     *
+     * 한 번에 조회한 뒤 요청받은 순서대로 다시 세운다 — findAllById는 순서를 보장하지 않는데,
+     * 참석자는 화면에서 고른 순서대로 보이는 편이 자연스럽다.
+     */
+    private List<ScheduleParticipant> buildParticipants(Schedule schedule, List<Long> memberIds) {
+        Map<Long, Member> membersById = memberRepository.findAllById(memberIds).stream()
+                .collect(Collectors.toMap(Member::getId, member -> member));
+
+        List<ScheduleParticipant> participants = new ArrayList<>();
+        for (Long memberId : memberIds) {
+            Member member = membersById.get(memberId);
+            if (member == null) {
+                continue;
+            }
+            participants.add(ScheduleParticipant.builder()
+                    .schedule(schedule)
+                    .memberId(member.getId())
+                    .memberName(member.getName())
+                    .build());
+        }
+        return participants;
+    }
+
+    /**
      * 참석자들에게 FCM 알림 전송
      */
     private void sendNotificationsToParticipants(List<ScheduleParticipant> participants, Schedule schedule) {
         log.info("[Schedule Service] 참석자 {}명에게 알림 전송 시작", participants.size());
 
+        // 참석자를 한 번에 조회해둔다 — 한 명씩 찾으면 인원수만큼 쿼리가 나간다.
+        Map<Long, Member> membersById = memberRepository.findAllById(
+                        participants.stream().map(ScheduleParticipant::getMemberId).toList()).stream()
+                .collect(Collectors.toMap(Member::getId, member -> member));
+
         for (ScheduleParticipant participant : participants) {
             try {
-                Member member = memberRepository.findById(participant.getMemberId()).orElse(null);
+                Member member = membersById.get(participant.getMemberId());
                 if (member != null && member.getFcmToken() != null && !member.getFcmToken().isEmpty()) {
                     String title = "새로운 일정 알림";
                     String body = String.format("%s - %s", schedule.getTitle(),
