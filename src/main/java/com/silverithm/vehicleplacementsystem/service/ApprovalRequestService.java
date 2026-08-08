@@ -655,6 +655,7 @@ public class ApprovalRequestService {
                     .approverId(member.getId())
                     .name(member.getName())
                     .position(member.getPosition())
+                    .profileImageUrl(member.getProfileImageUrl())
                     .build());
         }
 

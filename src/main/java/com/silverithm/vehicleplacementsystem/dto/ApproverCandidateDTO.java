@@ -20,4 +20,5 @@ public class ApproverCandidateDTO {
     private Long approverId;       // app_user.id 또는 members.id
     private String name;
     private String position;       // 역할/직책 (표시용, 없으면 null)
+    private String profileImageUrl; // 프로필 사진 (없으면 null — 화면은 이니셜로 대체한다)
 }
