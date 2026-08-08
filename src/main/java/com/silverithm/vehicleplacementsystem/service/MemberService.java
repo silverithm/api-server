@@ -124,8 +124,9 @@ public class MemberService {
 
         // 이미 올린 신청이 대기 중이면 새로 받지 않고 그 사실을 알린다.
         // 조용히 덮어쓰면 본인은 신청된 줄 모르고 계속 누르게 되고, 목록에는 같은 사람이 쌓인다.
-        List<MemberJoinRequest> pendingDuplicates = memberJoinRequestRepository.findPendingDuplicates(
-                company, requestDTO.getUsername(), requestDTO.getEmail());
+        List<MemberJoinRequest> pendingDuplicates = memberJoinRequestRepository.findDuplicatesByStatus(
+                company, MemberJoinRequest.RequestStatus.PENDING,
+                requestDTO.getUsername(), requestDTO.getEmail());
 
         if (!pendingDuplicates.isEmpty()) {
             MemberJoinRequest existing = pendingDuplicates.get(0);

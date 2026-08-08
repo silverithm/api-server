@@ -23,17 +23,20 @@ public interface MemberJoinRequestRepository extends JpaRepository<MemberJoinReq
     List<MemberJoinRequest> findByCompanyAndStatusOrderByCreatedAtDesc(Company company, MemberJoinRequest.RequestStatus status);
     
     /**
-     * 같은 기관에 이미 올라와 있는 대기 중 신청 (아이디 또는 이메일이 같으면 같은 사람으로 본다).
+     * 같은 기관에 이미 올라와 있는 같은 상태의 신청 (아이디 또는 이메일이 같으면 같은 사람으로 본다).
      *
      * 여러 건이 나올 수 있어 목록으로 받는다 — 이 확인을 넣기 전에 쌓인 중복이 남아 있다.
+     * 상태는 파라미터로 받는다. 중첩 enum을 JPQL 안에 상수로 적으면 Hibernate가 경로를 해석하지 못해
+     * 리포지토리 생성 단계에서 애플리케이션이 아예 뜨지 않는다.
      */
     @Query("SELECT jr FROM MemberJoinRequest jr WHERE jr.company = :company "
-            + "AND jr.status = com.silverithm.vehicleplacementsystem.entity.MemberJoinRequest.RequestStatus.PENDING "
+            + "AND jr.status = :status "
             + "AND (jr.username = :username OR jr.email = :email) "
             + "ORDER BY jr.createdAt ASC")
-    List<MemberJoinRequest> findPendingDuplicates(@Param("company") Company company,
-                                                  @Param("username") String username,
-                                                  @Param("email") String email);
+    List<MemberJoinRequest> findDuplicatesByStatus(@Param("company") Company company,
+                                                   @Param("status") MemberJoinRequest.RequestStatus status,
+                                                   @Param("username") String username,
+                                                   @Param("email") String email);
 
     Optional<MemberJoinRequest> findByUsername(String username);
 
