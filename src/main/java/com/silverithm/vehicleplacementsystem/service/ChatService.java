@@ -862,12 +862,13 @@ public class ChatService {
                         // @이름으로 호출된 사람은 일반 메시지와 구분해서 알린다 (많은 대화 속에서 놓치지 않게)
                         boolean mentioned = isMentioned(message.getContent(), participant.getUserName());
 
+                        // 메신저 관례대로 제목=보낸 사람, 본문=내용 (방 이름·이름 접두사 중복 제거)
                         FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
                                 .recipientToken(fcmToken)
-                                .title(mentioned ? room.getName() + " — 나를 호출했어요" : room.getName())
-                                .message(mentioned
-                                        ? message.getSenderName() + "님이 회원님을 호출했습니다: " + message.getDisplayContent()
-                                        : message.getSenderName() + ": " + message.getDisplayContent())
+                                .title(mentioned
+                                        ? message.getSenderName() + " — 나를 호출했어요"
+                                        : message.getSenderName())
+                                .message(message.getDisplayContent())
                                 .recipientUserId(participant.getUserId())
                                 .recipientUserName(participant.getUserName())
                                 .type("CHAT")
