@@ -61,6 +61,7 @@ public class MemberService {
     private final PositionRepository positionRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final ChatService chatService;
 
     /**
      * JWT 인증된 사용자로부터 adminId를 결정한다.
@@ -564,6 +565,10 @@ public class MemberService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(member.getCompany());
+
+        // 회원 행을 지우기 전에 채팅방에서 먼저 내보낸다. 참가자 행은 회원을 FK로 걸고 있지 않아
+        // 그냥 두면 없는 사람이 계속 참가자 목록·읽음 집계에 남는다.
+        chatService.handleMemberDeleted(String.valueOf(member.getId()), member.getName());
 
         memberRepository.delete(member);
 

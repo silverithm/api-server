@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.*;
 import com.silverithm.vehicleplacementsystem.repository.*;
+import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +26,27 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatService {
+
+    /**
+     * 관리자(AppUser)를 가리키는 채팅 사용자 식별자의 접두사.
+     *
+     * 관리자와 직원(Member)은 서로 다른 테이블이라 id가 겹친다. 채팅이 원시 숫자 하나로만
+     * 사람을 가리키면 관리자 3번과 직원 3번이 같은 사람이 되어, 이름·프로필이 뒤바뀌고
+     * (방, user_id) 유니크 제약 때문에 둘이 같은 방에 들어가지도 못하며, 서로의 메시지를
+     * 자기 것으로 보게 된다. 그래서 관리자만 접두사를 붙여 갈라놓는다.
+     * 결재선이 이미 쓰고 있는 표기(approverIdLegacy = "admin_&lt;id&gt;")와 같은 규약이다.
+     */
+    public static final String ADMIN_ID_PREFIX = "admin_";
+
+    /** 채팅 식별자가 관리자를 가리키는지 */
+    public static boolean isAdminChatUserId(String userId) {
+        return userId != null && userId.startsWith(ADMIN_ID_PREFIX);
+    }
+
+    /** 관리자 AppUser id를 채팅 식별자로 */
+    public static String toAdminChatUserId(Long appUserId) {
+        return ADMIN_ID_PREFIX + appUserId;
+    }
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatParticipantRepository chatParticipantRepository;
@@ -89,10 +112,13 @@ public class ChatService {
         log.info("[Chat Service] 채팅방 저장 완료: id={}", savedRoom.getId());
 
         // 참가자 추가 (생성자는 ADMIN 역할)
-        for (String participantId : request.getParticipantIds()) {
-            String participantName = getParticipantName(participantId);
+        // 같은 사람을 두 번 보내오면 (방, user_id) 유니크 제약에 걸리므로 먼저 걸러낸다
+        for (String participantId : new LinkedHashSet<>(request.getParticipantIds())) {
+            boolean isCreator = participantId.equals(request.getCreatedBy());
+            // 만든 사람의 이름은 로그인 세션이 알려준 값이 가장 정확하다
+            String participantName = isCreator ? request.getCreatedByName() : getParticipantName(participantId);
             ChatParticipant.ParticipantRole role =
-                    participantId.equals(request.getCreatedBy()) ?
+                    isCreator ?
                             ChatParticipant.ParticipantRole.ADMIN :
                             ChatParticipant.ParticipantRole.MEMBER;
 
@@ -283,7 +309,8 @@ public class ChatService {
         List<ChatParticipantDTO> addedParticipants = new ArrayList<>();
         StringBuilder joinMessage = new StringBuilder();
 
-        for (String userId : userIds) {
+        // 같은 사람이 두 번 담겨 오면 (방, user_id) 유니크 제약에 걸린다
+        for (String userId : new LinkedHashSet<>(userIds == null ? List.<String>of() : userIds)) {
             // 이미 참가 중인지 확인
             Optional<ChatParticipant> existing = chatParticipantRepository.findByChatRoomIdAndUserId(roomId, userId);
 
@@ -749,51 +776,93 @@ public class ChatService {
     }
 
     private String getParticipantName(String userId) {
-        return findMemberByUserId(userId)
-                .map(Member::getName)
+        return findChatUser(userId)
+                .map(ChatUserProfile::name)
                 .orElse("사용자");
     }
 
     private String getParticipantPosition(String userId) {
-        return findMemberByUserId(userId)
-                .map(Member::getPosition)
+        return findChatUser(userId)
+                .map(ChatUserProfile::position)
                 .orElse(null);
     }
 
     private String getParticipantProfileImageUrl(String userId) {
-        return findMemberByUserId(userId)
-                .map(Member::getProfileImageUrl)
+        return findChatUser(userId)
+                .map(ChatUserProfile::profileImageUrl)
                 .orElse(null);
     }
 
     private String getParticipantMemberRole(String userId) {
-        return findMemberByUserId(userId)
-                .map(Member::getRole)
-                .map(Enum::name)
+        return findChatUser(userId)
+                .map(ChatUserProfile::memberRole)
                 .orElse(null);
     }
 
-    private Optional<Member> findMemberByUserId(String userId) {
+    /**
+     * 채팅 참가자 하나의 표시 정보. 출처가 직원(Member)이든 관리자(AppUser)든 이 형태로 좁혀
+     * 조회 쪽에서는 어느 테이블 사람인지 신경 쓰지 않게 한다.
+     */
+    private record ChatUserProfile(String name, String position, String profileImageUrl,
+                                   String memberRole, String fcmToken) {
+    }
+
+    /**
+     * 채팅 사용자 식별자로 사람을 찾는다.
+     *
+     * 관리자는 {@link #ADMIN_ID_PREFIX} 접두사가 붙는다 — 접두사 없이 원시 숫자만 쓰면
+     * 관리자 3번과 직원 3번을 구별할 수 없다(자세한 이유는 상수 주석 참고).
+     * 숫자만 있는 값은 직원으로 보고, 그래도 못 찾으면 예전 방식대로 아이디·이메일로 찾아본다.
+     */
+    private Optional<ChatUserProfile> findChatUser(String userId) {
         if (userId == null || userId.isBlank()) {
             return Optional.empty();
         }
 
+        if (isAdminChatUserId(userId)) {
+            return parseId(userId.substring(ADMIN_ID_PREFIX.length()))
+                    .flatMap(userRepository::findById)
+                    .map(ChatService::adminProfile);
+        }
+
+        Optional<Member> member = parseId(userId).flatMap(memberRepository::findById);
+        if (member.isPresent()) {
+            return member.map(ChatService::memberProfile);
+        }
+
+        Optional<Member> byUsername = memberRepository.findByUsername(userId);
+        if (byUsername.isPresent()) {
+            return byUsername.map(ChatService::memberProfile);
+        }
+
+        return memberRepository.findByEmail(userId).map(ChatService::memberProfile);
+    }
+
+    private static ChatUserProfile memberProfile(Member member) {
+        return new ChatUserProfile(
+                member.getName(),
+                member.getPosition(),
+                member.getProfileImageUrl(),
+                member.getRole() != null ? member.getRole().name() : null,
+                member.getFcmToken());
+    }
+
+    /** 관리자 계정에는 프로필 사진이 없다. 직책은 정해둔 값을 쓰고, 없으면 결재선 후보와 같은 표기('관리자') */
+    private static ChatUserProfile adminProfile(AppUser appUser) {
+        return new ChatUserProfile(
+                appUser.getUsername(),
+                AdminDisplay.position(appUser),
+                null,
+                Member.Role.ADMIN.name(),
+                appUser.getFcmToken());
+    }
+
+    private static Optional<Long> parseId(String value) {
         try {
-            Long memberIdLong = Long.parseLong(userId);
-            Optional<Member> memberById = memberRepository.findById(memberIdLong);
-            if (memberById.isPresent()) {
-                return memberById;
-            }
+            return Optional.of(Long.parseLong(value));
         } catch (NumberFormatException e) {
-            log.debug("[Chat Service] userId가 숫자가 아닙니다: {}", userId);
+            return Optional.empty();
         }
-
-        Optional<Member> memberByUsername = memberRepository.findByUsername(userId);
-        if (memberByUsername.isPresent()) {
-            return memberByUsername;
-        }
-
-        return memberRepository.findByEmail(userId);
     }
 
     private boolean isAdminRequester(String requesterIdentifier) {
@@ -855,8 +924,7 @@ public class ChatService {
                 }
 
                 try {
-                    Long participantIdLong = Long.parseLong(participant.getUserId());
-                    String fcmToken = resolveParticipantFcmToken(participantIdLong, participant.getUserName());
+                    String fcmToken = resolveParticipantFcmToken(participant.getUserId(), participant.getUserName());
 
                     if (fcmToken != null) {
                         // @이름으로 호출된 사람은 일반 메시지와 구분해서 알린다 (많은 대화 속에서 놓치지 않게)
@@ -918,14 +986,25 @@ public class ChatService {
     }
 
     /**
-     * 참가자의 FCM 토큰 결정. 참가자 userId는 Member id와 AppUser(관리자) id가
-     * 접두사 없이 섞여 저장돼 충돌할 수 있으므로, 참가 시점 스냅샷 이름과 일치하는
-     * 계정을 우선 선택한다. 이름으로 판별이 안 되면 기존 동작(Member 우선)을 유지하고,
-     * Member가 없을 때만 AppUser로 폴백해 관리자도 채팅 알림을 받게 한다.
+     * 참가자의 FCM 토큰 결정.
+     *
+     * 식별자에 접두사가 있으면 어느 계정인지 확정되므로 그대로 따른다. 접두사 도입 이전에
+     * 저장된 관리자 행이 남아 있을 수 있어(마이그레이션이 이름으로 판별할 수 없었던 경우),
+     * 숫자만 있는 식별자는 참가 시점 스냅샷 이름과 맞는 계정을 우선 고르는 기존 판별을
+     * 폴백으로 남겨둔다.
      */
-    private String resolveParticipantFcmToken(Long participantId, String snapshotName) {
-        Member member = memberRepository.findById(participantId).orElse(null);
-        AppUser appUser = userRepository.findById(participantId).orElse(null);
+    private String resolveParticipantFcmToken(String userId, String snapshotName) {
+        if (isAdminChatUserId(userId)) {
+            return findChatUser(userId).map(ChatUserProfile::fcmToken).orElse(null);
+        }
+
+        Long numericId = parseId(userId).orElse(null);
+        if (numericId == null) {
+            return findChatUser(userId).map(ChatUserProfile::fcmToken).orElse(null);
+        }
+
+        Member member = memberRepository.findById(numericId).orElse(null);
+        AppUser appUser = userRepository.findById(numericId).orElse(null);
 
         boolean memberMatches = member != null && Objects.equals(member.getName(), snapshotName);
         boolean appUserMatches = appUser != null && Objects.equals(appUser.getUsername(), snapshotName);
