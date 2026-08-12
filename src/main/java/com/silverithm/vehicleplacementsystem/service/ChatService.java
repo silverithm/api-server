@@ -114,6 +114,7 @@ public class ChatService {
         // 참가자 추가 (생성자는 ADMIN 역할)
         // 같은 사람을 두 번 보내오면 (방, user_id) 유니크 제약에 걸리므로 먼저 걸러낸다
         for (String participantId : new LinkedHashSet<>(request.getParticipantIds())) {
+            requireInvitable(participantId, companyId);
             boolean isCreator = participantId.equals(request.getCreatedBy());
             // 만든 사람의 이름은 로그인 세션이 알려준 값이 가장 정확하다
             String participantName = isCreator ? request.getCreatedByName() : getParticipantName(participantId);
@@ -309,8 +310,11 @@ public class ChatService {
         List<ChatParticipantDTO> addedParticipants = new ArrayList<>();
         StringBuilder joinMessage = new StringBuilder();
 
+        Long roomCompanyId = room.getCompany() != null ? room.getCompany().getId() : null;
+
         // 같은 사람이 두 번 담겨 오면 (방, user_id) 유니크 제약에 걸린다
         for (String userId : new LinkedHashSet<>(userIds == null ? List.<String>of() : userIds)) {
+            requireInvitable(userId, roomCompanyId);
             // 이미 참가 중인지 확인
             Optional<ChatParticipant> existing = chatParticipantRepository.findByChatRoomIdAndUserId(roomId, userId);
 
@@ -804,7 +808,7 @@ public class ChatService {
      * 조회 쪽에서는 어느 테이블 사람인지 신경 쓰지 않게 한다.
      */
     private record ChatUserProfile(String name, String position, String profileImageUrl,
-                                   String memberRole, String fcmToken) {
+                                   String memberRole, String fcmToken, Long companyId) {
     }
 
     /**
@@ -844,7 +848,8 @@ public class ChatService {
                 member.getPosition(),
                 member.getProfileImageUrl(),
                 member.getRole() != null ? member.getRole().name() : null,
-                member.getFcmToken());
+                member.getFcmToken(),
+                member.getCompany() != null ? member.getCompany().getId() : null);
     }
 
     /** 관리자 계정에는 프로필 사진이 없다. 직책은 정해둔 값을 쓰고, 없으면 결재선 후보와 같은 표기('관리자') */
@@ -854,7 +859,25 @@ public class ChatService {
                 AdminDisplay.position(appUser),
                 null,
                 Member.Role.ADMIN.name(),
-                appUser.getFcmToken());
+                appUser.getFcmToken(),
+                appUser.getCompany() != null ? appUser.getCompany().getId() : null);
+    }
+
+    /**
+     * 이 사람을 그 기관 방에 넣어도 되는지.
+     *
+     * 참가자 식별자는 클라이언트가 보내는 값이다. 화면이 같은 기관 사람만 보여준다는 것은
+     * 보장이 아니므로, 넣을 수 있는지는 서버가 정한다. 소속을 확인할 수 없는 계정
+     * (없는 사람, 어느 기관에도 안 붙은 계정)은 넣지 않는다 — 애초에 후보 목록에도 뜨지 않는다.
+     */
+    private void requireInvitable(String userId, Long companyId) {
+        Long ownerCompanyId = findChatUser(userId)
+                .map(ChatUserProfile::companyId)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방에 넣을 수 없는 사용자입니다: " + userId));
+
+        if (ownerCompanyId == null || !ownerCompanyId.equals(companyId)) {
+            throw new IllegalArgumentException("다른 기관 사람은 채팅방에 넣을 수 없습니다: " + userId);
+        }
     }
 
     private static Optional<Long> parseId(String value) {

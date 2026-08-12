@@ -80,6 +80,13 @@ public class ChatController {
                             "message", "채팅방이 생성되었습니다."
                     ));
 
+        } catch (IllegalArgumentException e) {
+            // 넣을 수 없는 사람(다른 기관·없는 계정)은 서버 오류가 아니라 잘못된 요청이다
+            log.warn("[Chat API] 채팅방 생성 거절: companyId={}, {}", companyId, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
         } catch (Exception e) {
             log.error("[Chat API] 채팅방 생성 오류:", e);
             return ResponseEntity.internalServerError()
@@ -294,6 +301,13 @@ public class ChatController {
                             "participants", added,
                             "message", "참가자가 추가되었습니다."
                     ));
+
+        } catch (IllegalArgumentException e) {
+            // 넣을 수 없는 사람(다른 기관·없는 계정)은 서버 오류가 아니라 잘못된 요청이다
+            log.warn("[Chat API] 참가자 추가 거절: roomId={}, {}", roomId, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
 
         } catch (Exception e) {
             log.error("[Chat API] 참가자 추가 오류:", e);
