@@ -852,12 +852,12 @@ public class ChatService {
                 member.getCompany() != null ? member.getCompany().getId() : null);
     }
 
-    /** 관리자 계정에는 프로필 사진이 없다. 직책은 정해둔 값을 쓰고, 없으면 결재선 후보와 같은 표기('관리자') */
+    /** 관리자도 직원과 같은 규격의 프로필 사진·직책을 갖는다 (없으면 직책은 '관리자'로 보인다) */
     private static ChatUserProfile adminProfile(AppUser appUser) {
         return new ChatUserProfile(
                 appUser.getUsername(),
                 AdminDisplay.position(appUser),
-                null,
+                appUser.getProfileImageUrl(),
                 Member.Role.ADMIN.name(),
                 appUser.getFcmToken(),
                 appUser.getCompany() != null ? appUser.getCompany().getId() : null);

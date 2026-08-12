@@ -41,6 +41,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import jakarta.validation.Valid;
 
 
@@ -248,6 +250,33 @@ public class UserController {
         response.put("positionId", positionId);
         response.put("position", position);
         return ResponseEntity.ok(response);
+    }
+
+    /** 관리자 본인 프로필 사진 등록/교체 */
+    @PostMapping(value = "api/v1/users/profile-image", consumes = "multipart/form-data")
+    public ResponseEntity<Map<String, Object>> uploadMyProfileImage(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        String profileImageUrl = userService.uploadMyProfileImage(userDetails.getUsername(), file);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "profileImageUrl", profileImageUrl != null ? profileImageUrl : "",
+                "message", "프로필 사진이 등록되었습니다."
+        ));
+    }
+
+    /** 관리자 본인 프로필 사진 삭제 */
+    @DeleteMapping("api/v1/users/profile-image")
+    public ResponseEntity<Map<String, Object>> deleteMyProfileImage(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        userService.deleteMyProfileImage(userDetails.getUsername());
+        return ResponseEntity.ok(Map.of("success", true, "message", "프로필 사진이 삭제되었습니다."));
+    }
+
+    /** 기관의 관리자 계정 목록 — 회원관리에서 직원과 한 표에 놓기 위한 것 */
+    @GetMapping("api/v1/users/admins")
+    public ResponseEntity<Map<String, Object>> getCompanyAdmins(@RequestParam Long companyId) {
+        return ResponseEntity.ok(Map.of("admins", userService.getCompanyAdmins(companyId)));
     }
 
     /** 기관 홈페이지 주소 등록/변경 (빈 값이면 해제) */

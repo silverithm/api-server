@@ -57,12 +57,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
+import java.io.IOException;
+import java.util.Set;
+import org.springframework.web.multipart.MultipartFile;
+import com.silverithm.vehicleplacementsystem.dto.AdminSummaryDTO;
+import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
 import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 
 @Slf4j
 @Service
 public class UserService {
+
+    // 프로필 사진 규격은 직원(MemberService)과 같아야 한다 — 같은 목록에 나란히 뜬다
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -474,7 +483,7 @@ public class UserService {
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     findUser.getCompany().getCompanyCode(),
                     new SubscriptionResponseDTO(), findUser.getCustomerKey(), companySealUrl, companyHomepageUrl,
-                    findUser.getPosition(), positionId);
+                    findUser.getPosition(), positionId, findUser.getProfileImageUrl());
         }
 
         return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
@@ -482,7 +491,7 @@ public class UserService {
                 findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                 findUser.getCompany().getCompanyCode(),
                 new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(), companySealUrl,
-                companyHomepageUrl, findUser.getPosition(), positionId);
+                companyHomepageUrl, findUser.getPosition(), positionId, findUser.getProfileImageUrl());
     }
 
     /** 푸시 알림 수신 여부 조회 (값이 없던 기존 계정은 받는 것으로 본다) */
@@ -523,6 +532,123 @@ public class UserService {
         findUser.updatePosition(position);
         log.info("[User Service] 관리자 직책 변경: userId={}, position={}", findUser.getId(), position.getName());
         return position.getName();
+    }
+
+    /**
+     * 관리자 본인 프로필 사진 등록/교체.
+     *
+     * 직원(MemberService.uploadProfileImage)과 같은 규칙·같은 보관 위치를 쓴다 —
+     * 두 목록이 나란히 뜨는데 규격이 다르면 크기·형식이 제각각이 된다.
+     */
+    @Transactional
+    public String uploadMyProfileImage(String userEmail, MultipartFile file) throws IOException {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (file == null || file.isEmpty()) {
+            throw new CustomException("파일이 비어 있습니다.", HttpStatus.BAD_REQUEST);
+        }
+        if (file.getSize() > MAX_PROFILE_IMAGE_SIZE) {
+            throw new CustomException("파일 크기는 5MB를 초과할 수 없습니다.", HttpStatus.BAD_REQUEST);
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        String extension = (originalFilename != null && originalFilename.contains("."))
+                ? originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase()
+                : "";
+        if (!ALLOWED_PROFILE_IMAGE_EXTENSIONS.contains(extension)) {
+            throw new CustomException("허용되지 않는 파일 형식입니다. (허용: jpg, jpeg, png, webp)", HttpStatus.BAD_REQUEST);
+        }
+
+        String oldRelativePath = toRelativeFileKey(findUser.getProfileImageUrl());
+        String newRelativePath = fileStorageService.storeFile(file, "profiles");
+
+        if (oldRelativePath != null) {
+            try {
+                fileStorageService.deleteFile(oldRelativePath);
+            } catch (Exception e) {
+                log.warn("[User Service] 기존 프로필 사진 삭제 실패(무시): {}", e.getMessage());
+            }
+        }
+
+        String absoluteUrl = toAbsoluteFileUrl(newRelativePath);
+        findUser.updateProfileImageUrl(absoluteUrl);
+        userRepository.save(findUser);
+
+        log.info("[User Service] 관리자 프로필 사진 등록: userId={}", findUser.getId());
+        return absoluteUrl;
+    }
+
+    /** 관리자 본인 프로필 사진 삭제 */
+    @Transactional
+    public void deleteMyProfileImage(String userEmail) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        String relativePath = toRelativeFileKey(findUser.getProfileImageUrl());
+        if (relativePath != null) {
+            try {
+                fileStorageService.deleteFile(relativePath);
+            } catch (Exception e) {
+                log.warn("[User Service] 프로필 사진 삭제 실패(무시): {}", e.getMessage());
+            }
+        }
+
+        findUser.updateProfileImageUrl(null);
+        userRepository.save(findUser);
+        log.info("[User Service] 관리자 프로필 사진 삭제: userId={}", findUser.getId());
+    }
+
+    /**
+     * 기관의 관리자 계정 목록.
+     *
+     * 회원관리 화면이 직원과 관리자를 한 표에 보여주려면 관리자 쪽도 받아와야 한다.
+     * 직원 목록(/api/v1/members)에 섞지 않고 따로 두는 것은, 그 응답을 배차·휴가 대리등록처럼
+     * 직원만 대상이어야 하는 화면들이 함께 쓰기 때문이다.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminSummaryDTO> getCompanyAdmins(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new CustomException("회사를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+
+        if (company.getUsers() == null) {
+            return List.of();
+        }
+
+        return company.getUsers().stream()
+                .filter(user -> user.getDeletedAt() == null)
+                .map(user -> AdminSummaryDTO.builder()
+                        .id(user.getId())
+                        .name(user.getUsername())
+                        .email(user.getEmail())
+                        .position(AdminDisplay.position(user))
+                        .positionId(user.getPositionEntity() != null ? user.getPositionEntity().getId() : null)
+                        .profileImageUrl(user.getProfileImageUrl())
+                        .build())
+                .toList();
+    }
+
+    /** 프로필 사진 절대 URL에서 보관 경로만 떼어낸다 (MemberService와 같은 규칙) */
+    private String toRelativeFileKey(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String prefix = fileStorageService.getFileUrl("");
+        if (prefix != null && !prefix.isBlank() && value.startsWith(prefix)) {
+            return value.substring(prefix.length());
+        }
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            // 알 수 없는 호스트의 절대 URL — 삭제 대상 경로를 특정할 수 없으므로 스킵
+            return null;
+        }
+        return value;
+    }
+
+    private String toAbsoluteFileUrl(String path) {
+        if (path == null || path.isEmpty() || path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        return fileStorageService.getFileUrl(path);
     }
 
     /** 푸시 알림 수신 on/off */

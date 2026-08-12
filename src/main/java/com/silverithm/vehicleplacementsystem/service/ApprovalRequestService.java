@@ -641,6 +641,7 @@ public class ApprovalRequestService {
                         .approverId(appUser.getId())
                         .name(appUser.getUsername())
                         .position(AdminDisplay.position(appUser))
+                        .profileImageUrl(appUser.getProfileImageUrl())
                         .build());
             }
         }

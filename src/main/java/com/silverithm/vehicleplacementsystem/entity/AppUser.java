@@ -90,6 +90,10 @@ public class AppUser extends BaseEntity {
     @Column(name = "signature_url", length = 1000)
     private String signatureUrl;
 
+    /** 관리자 프로필 사진. 직원(members.profile_image_url)과 같은 규격의 절대 URL */
+    @Column(name = "profile_image_url", length = 1000)
+    private String profileImageUrl;
+
 
 
     public AppUser(String name, String email, String encode, UserRole role, String refreshToken,
@@ -145,6 +149,10 @@ public class AppUser extends BaseEntity {
 
     public void updateSignature(String signatureUrl) {
         this.signatureUrl = signatureUrl;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 
     /**
