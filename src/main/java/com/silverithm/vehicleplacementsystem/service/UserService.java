@@ -21,6 +21,7 @@ import com.silverithm.vehicleplacementsystem.dto.UserSigninDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
+import com.silverithm.vehicleplacementsystem.entity.Position;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
 import com.silverithm.vehicleplacementsystem.entity.UserRole;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
@@ -87,6 +88,8 @@ public class UserService {
     private DeviceTokenService deviceTokenService;
     @Autowired
     private com.silverithm.vehicleplacementsystem.repository.UserDeviceRepository userDeviceRepository;
+    @Autowired
+    private com.silverithm.vehicleplacementsystem.repository.PositionRepository positionRepository;
 
     private Key secretKey;
 
@@ -462,13 +465,16 @@ public class UserService {
 
         String companySealUrl = resolveCompanySealUrl(findUser.getCompany());
         String companyHomepageUrl = findUser.getCompany() != null ? findUser.getCompany().getHomepageUrl() : null;
+        // 지연 로딩 프록시라도 식별자는 조회 없이 읽을 수 있다
+        Long positionId = findUser.getPositionEntity() != null ? findUser.getPositionEntity().getId() : null;
 
         if (findUser.getSubscription() == null) {
             return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
                     findUser.getCompany().getId(), findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     findUser.getCompany().getCompanyCode(),
-                    new SubscriptionResponseDTO(), findUser.getCustomerKey(), companySealUrl, companyHomepageUrl);
+                    new SubscriptionResponseDTO(), findUser.getCustomerKey(), companySealUrl, companyHomepageUrl,
+                    findUser.getPosition(), positionId);
         }
 
         return new UserInfoResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getEmail(),
@@ -476,7 +482,7 @@ public class UserService {
                 findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                 findUser.getCompany().getCompanyCode(),
                 new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(), companySealUrl,
-                companyHomepageUrl);
+                companyHomepageUrl, findUser.getPosition(), positionId);
     }
 
     /** 푸시 알림 수신 여부 조회 (값이 없던 기존 계정은 받는 것으로 본다) */
@@ -485,6 +491,38 @@ public class UserService {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
         return !Boolean.FALSE.equals(findUser.getPushEnabled());
+    }
+
+    /**
+     * 관리자 본인의 직책 변경 (시설장·사무국장 등).
+     *
+     * 직원과 같은 기관 직책 목록(positions)에서 고르게 해서 표기가 어긋나지 않게 한다.
+     * positionId가 null이면 직책 없음으로 되돌린다 — 그때는 화면에 '관리자'로 보인다.
+     */
+    @Transactional
+    public String updateMyPosition(String userEmail, Long positionId) {
+        AppUser findUser = userRepository.findActiveByEmail(userEmail)
+                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
+
+        if (positionId == null) {
+            findUser.updatePosition(null);
+            log.info("[User Service] 관리자 직책 해제: userId={}", findUser.getId());
+            return null;
+        }
+
+        Position position = positionRepository.findById(positionId)
+                .orElseThrow(() -> new CustomException("직책을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
+
+        // 남의 기관 직책을 붙이면 결재선·채팅에 엉뚱한 직책이 뜬다
+        Long ownerCompanyId = position.getCompany() != null ? position.getCompany().getId() : null;
+        Long myCompanyId = findUser.getCompany() != null ? findUser.getCompany().getId() : null;
+        if (ownerCompanyId == null || !ownerCompanyId.equals(myCompanyId)) {
+            throw new CustomException("우리 기관의 직책이 아닙니다", HttpStatus.FORBIDDEN);
+        }
+
+        findUser.updatePosition(position);
+        log.info("[User Service] 관리자 직책 변경: userId={}, position={}", findUser.getId(), position.getName());
+        return position.getName();
     }
 
     /** 푸시 알림 수신 on/off */

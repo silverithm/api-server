@@ -23,6 +23,7 @@ import com.silverithm.vehicleplacementsystem.service.UserService;
 import com.silverithm.vehicleplacementsystem.util.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -226,6 +227,27 @@ public class UserController {
         boolean enabled = Boolean.parseBoolean(String.valueOf(body.getOrDefault("pushEnabled", true)));
         userService.updatePushEnabled(userDetails.getUsername(), enabled);
         return ResponseEntity.ok(Map.of("pushEnabled", enabled));
+    }
+
+    /**
+     * 관리자 본인 직책 변경 (시설장·사무국장 등).
+     * positionId를 비우면 직책 없음으로 되돌아가고, 화면에는 '관리자'로 보인다.
+     */
+    @PutMapping("api/v1/users/position")
+    public ResponseEntity<Map<String, Object>> updateMyPosition(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Map<String, Object> body) {
+        Object raw = body.get("positionId");
+        Long positionId = (raw == null || String.valueOf(raw).isBlank())
+                ? null
+                : Long.valueOf(String.valueOf(raw));
+        String position = userService.updateMyPosition(userDetails.getUsername(), positionId);
+
+        // 직책을 해제하면 두 값이 모두 null이라 Map.of를 쓸 수 없다
+        Map<String, Object> response = new HashMap<>();
+        response.put("positionId", positionId);
+        response.put("position", position);
+        return ResponseEntity.ok(response);
     }
 
     /** 기관 홈페이지 주소 등록/변경 (빈 값이면 해제) */

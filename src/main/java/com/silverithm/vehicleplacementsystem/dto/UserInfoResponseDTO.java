@@ -6,5 +6,8 @@ public record UserInfoResponseDTO(Long userId, String userName, String userEmail
                                 String companyCode,
                                 SubscriptionResponseDTO subscription, String customerKey,
                                 String companySealUrl,
-                                String companyHomepageUrl) {
+                                String companyHomepageUrl,
+                                /** 관리자 직책 — 정해두지 않았으면 null (화면에서는 '관리자'로 보인다) */
+                                String position,
+                                Long positionId) {
 }

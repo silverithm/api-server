@@ -22,6 +22,7 @@ import com.silverithm.vehicleplacementsystem.repository.DocumentNumberCounterRep
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService.CallerIdentity;
+import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -639,7 +640,7 @@ public class ApprovalRequestService {
                         .approverType(ApprovalStep.ApproverType.ADMIN.name())
                         .approverId(appUser.getId())
                         .name(appUser.getUsername())
-                        .position("관리자")
+                        .position(AdminDisplay.position(appUser))
                         .build());
             }
         }

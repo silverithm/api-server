@@ -40,6 +40,17 @@ public class AppUser extends BaseEntity {
 
     private String username;
 
+    /**
+     * 직책 표시명 (시설장·사무국장 등). 직원(Member)과 같은 방식으로 둔다.
+     * 비어 있으면 화면에서는 '관리자'로 보인다.
+     */
+    @Column
+    private String position;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "position_id")
+    private Position positionEntity;
+
     @Column(nullable = false)
     private String email;
 
@@ -134,6 +145,16 @@ public class AppUser extends BaseEntity {
 
     public void updateSignature(String signatureUrl) {
         this.signatureUrl = signatureUrl;
+    }
+
+    /**
+     * 직책 변경. 직원(Member)과 같이 FK와 표시명을 함께 들고 있는다 —
+     * 표시할 때 지연 로딩을 타지 않도록 이름을 스냅샷으로 남긴다.
+     * null을 주면 직책 없음(화면에는 '관리자')으로 돌아간다.
+     */
+    public void updatePosition(Position position) {
+        this.positionEntity = position;
+        this.position = position != null ? position.getName() : null;
     }
 
 
