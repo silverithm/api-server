@@ -51,7 +51,9 @@ public class ScheduleTaskReminderScheduler {
                 }
 
                 String body = String.format("%s - %s", task.getSchedule().getTitle(), task.getContent());
-                fcmService.sendNotification(member.getFcmToken(), "완료하지 않은 업무가 있습니다", body);
+                // 데이터가 없으면 알림은 떠도 눌렀을 때 앱이 갈 곳을 모른다
+                fcmService.sendNotification(member.getFcmToken(), "완료하지 않은 업무가 있습니다", body,
+                        ScheduleService.scheduleNotificationData(task.getSchedule()));
                 sent++;
             } catch (Exception e) {
                 log.error("[Task Reminder] 알림 전송 실패: taskId={}", task.getId(), e);
@@ -91,7 +93,8 @@ public class ScheduleTaskReminderScheduler {
                 fcmService.sendNotification(
                         manager.getFcmToken(),
                         "오늘 일정이 아직 완료되지 않았습니다",
-                        schedule.getTitle());
+                        schedule.getTitle(),
+                        ScheduleService.scheduleNotificationData(schedule));
                 sent++;
             } catch (Exception e) {
                 log.error("[Schedule Reminder] 알림 전송 실패: scheduleId={}", schedule.getId(), e);

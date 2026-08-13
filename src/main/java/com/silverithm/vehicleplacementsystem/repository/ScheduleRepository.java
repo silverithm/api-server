@@ -25,6 +25,14 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
             + "AND s.startDate <= :today AND s.endDate >= :today")
     List<Schedule> findTodayIncompleteWithManager(@Param("today") LocalDate today);
 
+    /**
+     * 그 날 시작하는 일정 중 알림을 켜 둔 것 (시작 전 리마인더용).
+     *
+     * 시작일 기준이다 — 여러 날짜에 걸친 일정을 매일 알리면 같은 일정으로 계속 울린다.
+     */
+    @Query("SELECT s FROM Schedule s WHERE s.sendNotification = true AND s.startDate = :date")
+    List<Schedule> findByStartDateWithNotification(@Param("date") LocalDate date);
+
     // 회사별 기간 내 일정 조회 (시작일 또는 종료일이 기간에 포함되는 일정)
     // 라벨은 DTO 변환에서 반드시 읽으므로 같이 가져온다 — 지연 로딩이면 일정 수만큼 쿼리가 더 나간다.
     @Query("SELECT s FROM Schedule s LEFT JOIN FETCH s.label WHERE s.company.id = :companyId " +

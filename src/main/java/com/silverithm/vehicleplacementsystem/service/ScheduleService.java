@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -639,6 +640,22 @@ public class ScheduleService {
     }
 
     /**
+     * 일정 알림에 실어 보낼 데이터.
+     *
+     * 이게 없으면 알림은 뜨지만 눌러도 앱이 어디로 갈지 알 수 없어 아무 일도 일어나지 않는다.
+     * 앱은 별도 일정 상세 화면 없이 날짜를 골라 펼치는 구조라 시작일을 함께 보낸다.
+     */
+    static Map<String, String> scheduleNotificationData(Schedule schedule) {
+        Map<String, String> data = new HashMap<>();
+        data.put("type", "schedule");
+        data.put("scheduleId", String.valueOf(schedule.getId()));
+        if (schedule.getStartDate() != null) {
+            data.put("scheduleDate", schedule.getStartDate().toString());
+        }
+        return data;
+    }
+
+    /**
      * 참석자들에게 FCM 알림 전송
      */
     private void sendNotificationsToParticipants(List<ScheduleParticipant> participants, Schedule schedule) {
@@ -657,7 +674,8 @@ public class ScheduleService {
                     String body = String.format("%s - %s", schedule.getTitle(),
                             schedule.getStartDate().toString());
 
-                    fcmService.sendNotification(member.getFcmToken(), title, body);
+                    fcmService.sendNotification(member.getFcmToken(), title, body,
+                            scheduleNotificationData(schedule));
                     log.info("[Schedule Service] 알림 전송 완료: member={}", PrivacyMask.name(member.getName()));
                 } else {
                     log.debug("[Schedule Service] FCM 토큰 없음: memberId={}", participant.getMemberId());

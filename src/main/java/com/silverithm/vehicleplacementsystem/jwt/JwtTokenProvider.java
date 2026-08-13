@@ -36,7 +36,15 @@ import java.util.stream.Collectors;
 public class JwtTokenProvider {
 
     public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 60 * 1000L;
-    public static final long REFRESH_TOKEN_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000L;
+
+    /**
+     * 로그인 유지 기간.
+     *
+     * 7일이었는데, 앱을 매일 열지 않는 직원은 알림을 누를 때마다 로그인 화면을 만났다.
+     * 알림에서 바로 그 대화·일정으로 들어가려면 로그인이 유지돼 있어야 하므로 90일로 둔다.
+     * (액세스 토큰은 30분 그대로 — 실제 인증은 짧게 돌고, 이 값은 재로그인 주기다)
+     */
+    public static final long REFRESH_TOKEN_EXPIRE_TIME = 90L * 24 * 60 * 60 * 1000L;
     // 30 seconds
 //    public static final long ACCESS_TOKEN_EXPIRE_TIME = 30 * 1000L;
 //    // 2 minutes
