@@ -1,6 +1,10 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
+import com.google.firebase.messaging.ApnsConfig;
+import com.google.firebase.messaging.Aps;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
@@ -92,6 +96,19 @@ public class FCMService {
                     .setNotification(Notification.builder()
                             .setTitle(title)
                             .setBody(body)
+                            .build())
+                    // iOS는 aps.sound가 없으면 배너만 조용히 뜨고 소리·진동이 울리지 않는다.
+                    // "default"를 주면 기기 설정(무음 스위치·햅틱)에 따라 소리/진동이 나간다.
+                    .setApnsConfig(ApnsConfig.builder()
+                            .setAps(Aps.builder().setSound("default").build())
+                            .build())
+                    // Android는 앱이 만들어둔 고중요도 채널(소리·진동 켜짐)로 태워 보낸다.
+                    // 채널을 지정하지 않으면 기본 채널로 가서 조용히 표시될 수 있다.
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setNotification(AndroidNotification.builder()
+                                    .setSound("default")
+                                    .setChannelId("high_importance_channel")
+                                    .build())
                             .build());
             if (data != null && !data.isEmpty()) {
                 builder.putAllData(data);
