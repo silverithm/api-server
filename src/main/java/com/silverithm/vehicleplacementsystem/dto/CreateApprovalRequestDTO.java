@@ -31,4 +31,16 @@ public class CreateApprovalRequestDTO {
 
     // 결재선 (선택 — 없으면 기존 단일 승인 방식, 앱은 이 필드를 보내지 않음)
     private List<ApprovalLineEntryDTO> approvalLine;
+
+    /**
+     * 상신하지 않고 임시저장만 한다.
+     *
+     * 임시저장은 결재함에 뜨지 않고 알림도 나가지 않으며, 결재선을 아직 안 정했어도 저장된다.
+     * 값을 보내지 않으면 예전처럼 곧바로 상신된다.
+     */
+    private Boolean draft;
+
+    public boolean isDraft() {
+        return Boolean.TRUE.equals(draft);
+    }
 }

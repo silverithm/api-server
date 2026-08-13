@@ -133,7 +133,7 @@ public class ApprovalRequestController {
                     .body(Map.of(
                             "success", true,
                             "approval", approval,
-                            "message", "결재 요청이 제출되었습니다."
+                            "message", request.isDraft() ? "임시저장했습니다." : "결재 요청이 제출되었습니다."
                     ));
 
         } catch (Exception e) {
@@ -141,6 +141,62 @@ public class ApprovalRequestController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "결재 요청 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 임시저장 문서 이어쓰기 (기안자 본인)
+     */
+    @PutMapping("/{id}/draft")
+    public ResponseEntity<Map<String, Object>> updateDraft(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody CreateApprovalRequestDTO request) {
+        try {
+            ApprovalRequestDTO approval = approvalService.updateDraft(id, userDetails, request);
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "approval", approval, "message", "임시저장했습니다."));
+
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Approval API] 임시저장 갱신 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "임시저장 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 임시저장 문서 상신 (기안자 본인) — 이 시점에 결재선이 검증되고 알림이 나간다
+     */
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<Map<String, Object>> submitDraft(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody(required = false) CreateApprovalRequestDTO request) {
+        try {
+            ApprovalRequestDTO approval = approvalService.submitDraft(id, userDetails, request);
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "approval", approval, "message", "결재 요청이 제출되었습니다."));
+
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Approval API] 임시저장 상신 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "상신 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 

@@ -131,6 +131,11 @@ public class ApprovalRequest {
     }
 
     public enum ApprovalStatus {
+        /**
+         * 임시저장. 아직 상신하지 않은 문서로 기안자 본인에게만 보이고 결재함에는 뜨지 않는다.
+         * 공문은 한 번에 다 쓰기 어려워, 중간까지 적어두었다가 나중에 마저 쓰는 경우가 많다.
+         */
+        DRAFT,
         PENDING,    // 대기중
         APPROVED,   // 승인됨
         REJECTED    // 반려됨

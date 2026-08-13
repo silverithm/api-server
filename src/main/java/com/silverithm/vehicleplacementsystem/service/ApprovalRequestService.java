@@ -91,11 +91,13 @@ public class ApprovalRequestService {
         }
 
         return requests.stream()
+                // 임시저장은 아직 상신 전이라 결재함에 뜨면 안 된다 — 기안자 본인 목록에만 보인다
+                .filter(request -> request.getStatus() != ApprovalStatus.DRAFT)
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-    // 내 결재 요청 조회 (직원용)
+    // 내 결재 요청 조회 (직원용 — 내 임시저장도 함께 온다)
     @Transactional(readOnly = true)
     public List<ApprovalRequestDTO> getMyApprovalRequests(String requesterId) {
         return requestRepository.findByRequesterIdOrderByCreatedAtDesc(requesterId)
@@ -127,13 +129,15 @@ public class ApprovalRequestService {
                 .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + dto.getTemplateId()));
         resourceScopeGuard.requireSameCompany(template.getCompany());
 
+        boolean asDraft = dto.isDraft();
+
         ApprovalRequest request = ApprovalRequest.builder()
                 .company(company)
                 .template(template)
                 .title(dto.getTitle())
                 .requesterId(requesterId)
                 .requesterName(requesterName)
-                .status(ApprovalStatus.PENDING)
+                .status(asDraft ? ApprovalStatus.DRAFT : ApprovalStatus.PENDING)
                 .formData(dto.getFormData())
                 .attachmentUrl(dto.getAttachmentUrl())
                 .attachmentFileName(dto.getAttachmentFileName())
@@ -146,17 +150,106 @@ public class ApprovalRequestService {
         }
 
         ApprovalRequest saved = requestRepository.save(request);
-        log.info("[ApprovalRequest] 결재 요청 생성: id={}, title={}, requester={}, 결재선={}단계",
+        log.info("[ApprovalRequest] 결재 요청 {}: id={}, title={}, requester={}, 결재선={}단계",
+                asDraft ? "임시저장" : "생성",
                 saved.getId(), saved.getTitle(), requesterName, saved.getSteps().size());
 
+        // 임시저장은 아직 상신이 아니다 — 결재자에게 알리면 없는 결재를 보러 가게 된다
+        if (!asDraft) {
+            if (hasLine) {
+                // 결재선이 있으면 1단계 결재자에게만 알림
+                notifyStepApprover(saved, saved.currentStep());
+            } else {
+                notifyAdminsOfSubmission(saved);
+            }
+        }
+
+        return toDTO(saved);
+    }
+
+    /**
+     * 임시저장 문서 이어쓰기. 기안자 본인만, 아직 상신 전인 문서만.
+     *
+     * 결재선까지 통째로 다시 받는다 — 쓰다 보면 결재 경로가 바뀌는 게 보통이라
+     * 부분 수정으로 두면 화면과 서버의 결재선이 어긋난다.
+     */
+    public ApprovalRequestDTO updateDraft(Long id, UserDetails userDetails, CreateApprovalRequestDTO dto) {
+        ApprovalRequest request = requireOwnDraft(id, userDetails);
+
+        request.setTitle(dto.getTitle());
+        request.setFormData(dto.getFormData());
+        request.setAttachmentUrl(dto.getAttachmentUrl());
+        request.setAttachmentFileName(dto.getAttachmentFileName());
+        request.setAttachmentFileSize(dto.getAttachmentFileSize());
+
+        replaceApprovalLine(request, dto.getApprovalLine());
+
+        ApprovalRequest saved = requestRepository.save(request);
+        log.info("[ApprovalRequest] 임시저장 갱신: id={}, title={}", saved.getId(), saved.getTitle());
+        return toDTO(saved);
+    }
+
+    /**
+     * 임시저장 문서를 상신한다.
+     *
+     * 이 시점에야 결재선이 검증되고 알림이 나간다 — 임시저장 때는 결재선이 비어 있어도 됐다.
+     */
+    public ApprovalRequestDTO submitDraft(Long id, UserDetails userDetails, CreateApprovalRequestDTO dto) {
+        ApprovalRequest request = requireOwnDraft(id, userDetails);
+
+        if (dto != null) {
+            request.setTitle(dto.getTitle());
+            request.setFormData(dto.getFormData());
+            request.setAttachmentUrl(dto.getAttachmentUrl());
+            request.setAttachmentFileName(dto.getAttachmentFileName());
+            request.setAttachmentFileSize(dto.getAttachmentFileSize());
+            replaceApprovalLine(request, dto.getApprovalLine());
+        }
+
+        request.setStatus(ApprovalStatus.PENDING);
+        ApprovalRequest saved = requestRepository.save(request);
+
+        boolean hasLine = !saved.getSteps().isEmpty();
+        log.info("[ApprovalRequest] 임시저장 상신: id={}, title={}, 결재선={}단계",
+                saved.getId(), saved.getTitle(), saved.getSteps().size());
+
         if (hasLine) {
-            // 결재선이 있으면 1단계 결재자에게만 알림
             notifyStepApprover(saved, saved.currentStep());
         } else {
             notifyAdminsOfSubmission(saved);
         }
 
         return toDTO(saved);
+    }
+
+    /** 임시저장 문서를 꺼낼 때의 공통 검사 — 남의 임시저장이나 이미 상신된 문서는 손대지 못한다 */
+    private ApprovalRequest requireOwnDraft(Long id, UserDetails userDetails) {
+        ApprovalRequest request = requestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("결재 요청을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(request.getCompany());
+
+        if (request.getStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalArgumentException("이미 상신된 문서입니다.");
+        }
+
+        CallerIdentity caller = accessService.resolveCaller(userDetails);
+        boolean isRequester = caller != null && caller.legacyId().equals(request.getRequesterId());
+        if (!isRequester) {
+            throw new SecurityException("본인이 임시저장한 문서만 수정할 수 있습니다.");
+        }
+
+        return request;
+    }
+
+    /** 결재선을 통째로 갈아끼운다 (임시저장 수정·상신에서만 쓴다) */
+    private void replaceApprovalLine(ApprovalRequest request, List<ApprovalLineEntryDTO> line) {
+        request.getSteps().clear();
+        request.setHasApprovalLine(false);
+        request.setCurrentStepOrder(null);
+
+        if (line != null && !line.isEmpty()) {
+            buildApprovalLine(request, request.getCompany(), line);
+        }
     }
 
     /** 결재선 검증 및 단계 생성. 리스트 순서=결재 순서, 마지막=최종 결재자. */
