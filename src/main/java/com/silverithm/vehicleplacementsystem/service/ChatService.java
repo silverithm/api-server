@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.*;
 import com.silverithm.vehicleplacementsystem.repository.*;
 import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
+import com.silverithm.vehicleplacementsystem.util.PersonDisplay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -953,12 +954,16 @@ public class ChatService {
                         // @이름으로 호출된 사람은 일반 메시지와 구분해서 알린다 (많은 대화 속에서 놓치지 않게)
                         boolean mentioned = isMentioned(message.getContent(), participant.getUserName());
 
-                        // 메신저 관례대로 제목=보낸 사람, 본문=내용 (방 이름·이름 접두사 중복 제거)
+                        // 메신저 관례대로 제목=보낸 사람, 본문=내용 (방 이름·이름 접두사 중복 제거).
+                        // 이름만 적으면 동명이인일 때 누구인지 알 수 없어 직책을 함께 보여준다.
+                        String sender = PersonDisplay.withPosition(
+                                message.getSenderName(), message.getSenderPosition());
+
                         FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
                                 .recipientToken(fcmToken)
                                 .title(mentioned
-                                        ? message.getSenderName() + " — 나를 호출했어요"
-                                        : message.getSenderName())
+                                        ? sender + " — 나를 호출했어요"
+                                        : sender)
                                 .message(message.getDisplayContent())
                                 .recipientUserId(participant.getUserId())
                                 .recipientUserName(participant.getUserName())

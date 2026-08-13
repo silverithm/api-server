@@ -23,6 +23,7 @@ import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService.CallerIdentity;
 import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
+import com.silverithm.vehicleplacementsystem.util.PersonDisplay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -609,7 +610,7 @@ public class ApprovalRequestService {
                     notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
                             .recipientToken(token)
                             .title("새 전자결재 요청")
-                            .message(request.getRequesterName() + "님이 '" + request.getTitle() + "' 결재를 상신했습니다.")
+                            .message(requesterDisplayName(request) + "님이 '" + request.getTitle() + "' 결재를 상신했습니다.")
                             .recipientUserId("admin")
                             .recipientUserName("관리자")
                             .type("approval")
@@ -666,6 +667,34 @@ public class ApprovalRequestService {
         }
     }
 
+    /**
+     * 알림에 적을 기안자 표기 — "김하늘(요양보호사)".
+     *
+     * 이름만 적으면 동명이인일 때 누구인지 알 수 없다. 직원이면 직책을,
+     * 관리자가 기안했으면 관리자 직책(없으면 '관리자')을 붙인다.
+     * 못 찾으면 이름만 쓴다 — 알림 문구 때문에 결재가 막히면 안 된다.
+     */
+    private String requesterDisplayName(ApprovalRequest request) {
+        String name = request.getRequesterName();
+        try {
+            Member requester = findRequester(request.getRequesterId());
+            if (requester != null) {
+                return PersonDisplay.withPosition(name, requester.getPosition());
+            }
+
+            String requesterId = request.getRequesterId();
+            if (requesterId != null && !requesterId.isBlank()) {
+                AppUser admin = userRepository.findById(Long.valueOf(requesterId.trim())).orElse(null);
+                if (admin != null) {
+                    return PersonDisplay.withPosition(name, AdminDisplay.position(admin));
+                }
+            }
+        } catch (Exception e) {
+            log.debug("[ApprovalRequest] 기안자 직책 조회 실패: requestId={}, {}", request.getId(), e.getMessage());
+        }
+        return name;
+    }
+
     /** 다음 차례 결재 단계의 결재자에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음. */
     private void notifyStepApprover(ApprovalRequest request, ApprovalStep step) {
         if (step == null) {
@@ -700,7 +729,7 @@ public class ApprovalRequestService {
             notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
                     .recipientToken(token)
                     .title("결재 요청 도착")
-                    .message(request.getRequesterName() + "님의 '" + request.getTitle() + "' 결재가 결재를 기다리고 있습니다.")
+                    .message(requesterDisplayName(request) + "님의 '" + request.getTitle() + "' 결재가 결재를 기다리고 있습니다.")
                     .recipientUserId(recipientUserId)
                     .recipientUserName(recipientUserName)
                     .type("approval")

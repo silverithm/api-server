@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import com.silverithm.vehicleplacementsystem.util.PersonDisplay;
 import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Service
@@ -502,6 +503,8 @@ public class VacationService {
 
     private void sendVacationSubmittedNotificationToAdmins(VacationRequest vacation, Company company) {
         List<String> adminFcmTokens = getAdminFcmTokens(company);
+        // 이름만 적으면 동명이인일 때 누구인지 알 수 없어 직책을 함께 보여준다
+        String submitter = PersonDisplay.withPosition(vacation.getUserName(), findSubmitterPosition(vacation));
 
         for (String adminToken : adminFcmTokens) {
             try {
@@ -509,13 +512,28 @@ public class VacationService {
                         adminToken,
                         "admin", // 관리자 사용자 ID
                         "관리자", // 관리자 이름
-                        vacation.getUserName(),
+                        submitter,
                         vacation.getDate().toString(),
                         vacation.getId()
                 );
             } catch (Exception e) {
                 log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
             }
+        }
+    }
+
+    /** 신청자의 직책. 못 찾으면 null이라 이름만 나간다 (알림 때문에 신청이 막히면 안 된다) */
+    private String findSubmitterPosition(VacationRequest vacation) {
+        String userId = vacation.getUserId();
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        try {
+            return memberRepository.findById(Long.valueOf(userId.trim()))
+                    .map(Member::getPosition)
+                    .orElse(null);
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 
