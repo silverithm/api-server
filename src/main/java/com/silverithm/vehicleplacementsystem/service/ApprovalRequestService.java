@@ -248,6 +248,12 @@ public class ApprovalRequestService {
         request.setHasApprovalLine(false);
         request.setCurrentStepOrder(null);
 
+        // 지우기와 새로 넣기를 한 번에 flush하면 Hibernate가 INSERT를 DELETE보다 먼저 내보내
+        // (approval_request_id, step_order) 유니크 제약에 걸린다.
+        // 실제로 임시저장을 고쳐 상신할 때 "Duplicate entry '390-1'"로 실패했다.
+        // 지우기를 먼저 DB에 반영한 뒤 새 단계를 넣는다.
+        requestRepository.flush();
+
         if (line != null && !line.isEmpty()) {
             buildApprovalLine(request, request.getCompany(), line);
         }
