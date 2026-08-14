@@ -27,6 +27,16 @@ public class ChatMessage {
     @Column(nullable = false)
     private String senderId;
 
+    /**
+     * 사람을 가리키는 제대로 된 참조 (V1.66). 문자열 senderId와 함께 채워둔다 —
+     * 조회는 아직 문자열을 쓰고, 이 칼럼들이 FK로 무결성을 지킨다. 규칙은 {@link ChatPersonRef}.
+     */
+    @Column(name = "sender_member_id")
+    private Long senderMemberId;
+
+    @Column(name = "sender_app_user_id")
+    private Long senderAppUserId;
+
     @Column(nullable = false)
     private String senderName;
 
@@ -79,6 +89,8 @@ public class ChatMessage {
         createdAt = LocalDateTime.now();
         if (isDeleted == null) {
             isDeleted = false;
+        // 문자열 식별자와 참조 칼럼이 어긋나지 않게 함께 채운다 (V1.66, ChatPersonRef 참고)
+        syncPersonRef();
         }
     }
 
@@ -120,5 +132,13 @@ public class ChatMessage {
         public String getDisplayName() {
             return displayName;
         }
+    }
+
+    /** 문자열 senderId에서 참조 칼럼을 파생시킨다. 어느 경로로 저장되든 둘이 같은 사람을 가리키게 한다. */
+    @PreUpdate
+    void syncPersonRef() {
+        ChatPersonRef ref = ChatPersonRef.of(this.senderId);
+        this.senderMemberId = ref.memberId();
+        this.senderAppUserId = ref.appUserId();
     }
 }
