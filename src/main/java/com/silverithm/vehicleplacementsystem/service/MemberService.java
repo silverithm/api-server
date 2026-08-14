@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.entity.MemberJoinRequest;
 import com.silverithm.vehicleplacementsystem.entity.Notification;
 import com.silverithm.vehicleplacementsystem.entity.Position;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
+import com.silverithm.vehicleplacementsystem.jwt.CarevPrincipal;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberJoinRequestRepository;
@@ -685,7 +686,8 @@ public class MemberService {
 
         // JWT 토큰 생성
         UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(member.getUsername(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())));
+                List.of(new SimpleGrantedAuthority("ROLE_" + member.getRole().name())),
+                CarevPrincipal.TYPE_MEMBER, member.getId());
 
         // 로그인 성공 처리
         member.setLastLoginAt(LocalDateTime.now());

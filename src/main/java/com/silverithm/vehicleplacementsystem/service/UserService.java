@@ -25,6 +25,7 @@ import com.silverithm.vehicleplacementsystem.entity.Position;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionStatus;
 import com.silverithm.vehicleplacementsystem.entity.UserRole;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
+import com.silverithm.vehicleplacementsystem.jwt.CarevPrincipal;
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
@@ -120,7 +121,8 @@ public class UserService {
                     new UsernamePasswordAuthenticationToken(userSigninDTO.getEmail(), userSigninDTO.getPassword()));
 
             TokenInfo tokenInfo = jwtTokenProvider.generateToken(userSigninDTO.getEmail(),
-                    Collections.singleton(findUser.getUserRole()));
+                    Collections.singleton(findUser.getUserRole()),
+                    CarevPrincipal.TYPE_ADMIN, findUser.getId());
 
             findUser.update(tokenInfo.getRefreshToken());
 
@@ -347,8 +349,12 @@ public class UserService {
         String userName = jwtTokenProvider.getUsernameFromToken(tokenRefreshRequest.refreshToken());
         Authentication authentication = jwtTokenProvider.getAuthentication(tokenRefreshRequest.refreshToken());
 
+        // 새로 내주는 토큰에도 원래 신원을 그대로 옮긴다 — 안 옮기면 리프레시 한 번에
+        // 클레임이 사라져 다시 DB 조회로 돌아간다
         UserResponseDTO.TokenInfo tokenInfo = jwtTokenProvider.generateToken(userName,
-                authentication.getAuthorities());
+                authentication.getAuthorities(),
+                jwtTokenProvider.getPrincipalType(tokenRefreshRequest.refreshToken()),
+                jwtTokenProvider.getPrincipalId(tokenRefreshRequest.refreshToken()));
 
         return tokenInfo;
     }

@@ -53,6 +53,9 @@ public class JwtTokenProvider {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String AUTHORITIES_KEY = "auth";
     private static final String BEARER_TYPE = "Bearer";
+    /** 로그인 주체 유형(ADMIN/MEMBER)과 그 id — CarevPrincipal 참고 */
+    private static final String PRINCIPAL_TYPE_KEY = "ptype";
+    private static final String PRINCIPAL_ID_KEY = "pid";
     private static final String TYPE_ACCESS = "access";
     private static final String TYPE_REFRESH = "refresh";
 
@@ -74,6 +77,19 @@ public class JwtTokenProvider {
     //name, authorities 를 가지고 AccessToken, RefreshToken 을 생성하는 메서드
     public UserResponseDTO.TokenInfo generateToken(String name,
                                                    Collection<? extends GrantedAuthority> inputAuthorities) {
+        return generateToken(name, inputAuthorities, null, null);
+    }
+
+    /**
+     * 로그인 주체(관리자 계정 / 직원)와 그 id까지 토큰에 담아 발급한다.
+     *
+     * 이 값이 있으면 서버는 "이 요청을 보낸 사람이 누구인지"를 클라이언트가 보낸 값에 기대지 않고
+     * 토큰만으로 정할 수 있다. principalType/principalId가 null이면 예전처럼 이름만 담는다.
+     */
+    public UserResponseDTO.TokenInfo generateToken(String name,
+                                                   Collection<? extends GrantedAuthority> inputAuthorities,
+                                                   String principalType,
+                                                   Long principalId) {
         //권한 가져오기
         String authorities = inputAuthorities.stream()
                 .map(GrantedAuthority::getAuthority)
@@ -82,20 +98,24 @@ public class JwtTokenProvider {
         Date now = new Date();
 
         //Generate AccessToken
-        String accessToken = Jwts.builder()
+        io.jsonwebtoken.JwtBuilder accessBuilder = Jwts.builder()
                 .setSubject(name)
                 .claim(AUTHORITIES_KEY, authorities)
-                .claim("type", TYPE_ACCESS)
+                .claim("type", TYPE_ACCESS);
+        addPrincipalClaims(accessBuilder, principalType, principalId);
+        String accessToken = accessBuilder
                 .setIssuedAt(now)   //토큰 발행 시간 정보
                 .setExpiration(new Date(now.getTime() + ACCESS_TOKEN_EXPIRE_TIME))  //토큰 만료 시간 설정
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
 
         //Generate RefreshToken
-        String refreshToken = Jwts.builder()
+        io.jsonwebtoken.JwtBuilder refreshBuilder = Jwts.builder()
                 .setSubject(name)
                 .claim(AUTHORITIES_KEY, authorities)
-                .claim("type", TYPE_REFRESH)
+                .claim("type", TYPE_REFRESH);
+        addPrincipalClaims(refreshBuilder, principalType, principalId);
+        String refreshToken = refreshBuilder
                 .setIssuedAt(now)   //토큰 발행 시간 정보
                 .setExpiration(new Date(now.getTime() + REFRESH_TOKEN_EXPIRE_TIME)) //토큰 만료 시간 설정
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -127,8 +147,43 @@ public class JwtTokenProvider {
                         .collect(Collectors.toList());
 
         //UserDetails 객체를 만들어서 Authentication 리턴
-        UserDetails principal = new User(claims.getSubject(), "", authorities);
+        //(옛 토큰에는 신원 클레임이 없어 null이 들어간다 — 받는 쪽에서 DB로 메운다)
+        UserDetails principal = new CarevPrincipal(
+                claims.getSubject(), authorities, principalTypeOf(claims), principalIdOf(claims));
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
+    }
+
+    private void addPrincipalClaims(io.jsonwebtoken.JwtBuilder builder, String principalType, Long principalId) {
+        if (principalType != null && principalId != null) {
+            builder.claim(PRINCIPAL_TYPE_KEY, principalType).claim(PRINCIPAL_ID_KEY, principalId);
+        }
+    }
+
+    private String principalTypeOf(Claims claims) {
+        Object value = claims.get(PRINCIPAL_TYPE_KEY);
+        return value == null ? null : value.toString();
+    }
+
+    private Long principalIdOf(Claims claims) {
+        Object value = claims.get(PRINCIPAL_ID_KEY);
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value.toString());
+        } catch (NumberFormatException e) {
+            log.warn("[JWT] 잘못된 principal id 클레임: {}", value);
+            return null;
+        }
+    }
+
+    /** 리프레시로 새 토큰을 낼 때 원래 토큰의 신원을 그대로 옮기기 위해 꺼낸다 */
+    public String getPrincipalType(String token) {
+        return principalTypeOf(parseClaims(token));
+    }
+
+    public Long getPrincipalId(String token) {
+        return principalIdOf(parseClaims(token));
     }
 
     //토큰 정보를 검증하는 메서드

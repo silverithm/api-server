@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
+import com.silverithm.vehicleplacementsystem.service.ChatCallerResolver;
 import com.silverithm.vehicleplacementsystem.service.ChatService;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,8 @@ import java.util.Map;
 public class ChatController {
 
     private final ChatService chatService;
+    /** '나'를 가리키는 값은 요청이 아니라 토큰에서 정한다 (ChatCallerResolver 참고) */
+    private final ChatCallerResolver chatCallerResolver;
     private final FileStorageService fileStorageService;
 
     @Value("${app.base-url:https://silverithm.site}")
@@ -43,9 +47,10 @@ public class ChatController {
             @RequestParam String userId) {
 
         try {
-            log.info("[Chat API] 채팅방 목록 조회: companyId={}, userId={}", companyId, userId);
+            String callerId = chatCallerResolver.resolveSelf(userId);
+            log.info("[Chat API] 채팅방 목록 조회: companyId={}, userId={}", companyId, callerId);
 
-            List<ChatRoomDTO> rooms = chatService.getChatRooms(companyId, userId);
+            List<ChatRoomDTO> rooms = chatService.getChatRooms(companyId, callerId);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -68,6 +73,24 @@ public class ChatController {
             @Valid @RequestBody ChatRoomCreateRequest request) {
 
         try {
+            // 만든 사람은 토큰으로 정한다. 옛 앱은 관리자도 원시 숫자를 보내는데, 그대로 두면
+            // 참가자 행이 남(같은 숫자 id의 직원)으로 들어가 정작 만든 본인이 방을 못 본다.
+            String creatorId = chatCallerResolver.resolveSelf(request.getCreatedBy());
+            if (!creatorId.equals(request.getCreatedBy())) {
+                List<String> fixed = new ArrayList<>();
+                for (String participantId : request.getParticipantIds()) {
+                    fixed.add(participantId.equals(request.getCreatedBy()) ? creatorId : participantId);
+                }
+                request.setParticipantIds(fixed);
+                request.setCreatedBy(creatorId);
+            }
+            // 만든 사람이 빠져 있으면 넣어준다 (자기 방을 못 보는 일이 없게)
+            if (!request.getParticipantIds().contains(creatorId)) {
+                List<String> withCreator = new ArrayList<>(request.getParticipantIds());
+                withCreator.add(creatorId);
+                request.setParticipantIds(withCreator);
+            }
+
             log.info("[Chat API] 채팅방 생성: companyId={}, name={}", companyId, request.getName());
 
             ChatRoomDTO room = chatService.createChatRoom(companyId, request);
@@ -191,7 +214,7 @@ public class ChatController {
 
         try {
             // 쿼리 파라미터 또는 request body에서 userId 가져오기
-            String effectiveUserId = userId;
+            String effectiveUserId = chatCallerResolver.resolveSelf(userId);
             if (effectiveUserId == null && request != null) {
                 effectiveUserId = request.get("userId");
             }
@@ -359,9 +382,10 @@ public class ChatController {
             @RequestParam(required = false) String userId) {
 
         try {
-            log.info("[Chat API] 메시지 목록 조회: roomId={}, page={}, size={}, userId={}", roomId, page, size, userId);
+            String callerId = chatCallerResolver.resolveSelf(userId);
+            log.info("[Chat API] 메시지 목록 조회: roomId={}, page={}, size={}, userId={}", roomId, page, size, callerId);
 
-            List<ChatMessageDTO> messages = chatService.getMessages(roomId, page, size, userId);
+            List<ChatMessageDTO> messages = chatService.getMessages(roomId, page, size, callerId);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -387,6 +411,7 @@ public class ChatController {
             @Valid @RequestBody ChatMessageCreateRequest request) {
 
         try {
+            request.setSenderId(chatCallerResolver.resolveSelf(request.getSenderId()));
             log.info("[Chat API] 메시지 전송: roomId={}, senderId={}", roomId, request.getSenderId());
 
             ChatMessageDTO message = chatService.sendMessage(roomId, request);
@@ -446,7 +471,7 @@ public class ChatController {
             @RequestBody Map<String, String> request) {
 
         try {
-            String userId = request.get("userId");
+            String userId = chatCallerResolver.resolveSelf(request.get("userId"));
             String userName = request.get("userName");
             String emoji = request.get("emoji");
 
@@ -492,7 +517,7 @@ public class ChatController {
         try {
             log.info("[Chat API] 리액션 조회: roomId={}, messageId={}", roomId, messageId);
 
-            var reactions = chatService.getReactions(messageId, userId);
+            var reactions = chatService.getReactions(messageId, chatCallerResolver.resolveSelf(userId));
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -517,7 +542,7 @@ public class ChatController {
             @RequestBody Map<String, Object> request) {
 
         try {
-            String userId = (String) request.get("userId");
+            String userId = chatCallerResolver.resolveSelf((String) request.get("userId"));
             String userName = (String) request.get("userName");
             Long lastMessageId = Long.valueOf(request.get("lastMessageId").toString());
 
@@ -653,6 +678,7 @@ public class ChatController {
             @RequestParam String senderName) {
 
         try {
+            senderId = chatCallerResolver.resolveSelf(senderId);
             log.info("[Chat API] 파일 업로드 시작: roomId={}, fileName={}, fileSize={}, senderId={}",
                     roomId, file.getOriginalFilename(), file.getSize(), senderId);
 
