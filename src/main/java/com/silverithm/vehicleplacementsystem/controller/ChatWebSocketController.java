@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.ChatMessageCreateRequest;
 import com.silverithm.vehicleplacementsystem.dto.ChatMessageDTO;
 import com.silverithm.vehicleplacementsystem.dto.ChatWebSocketMessage;
 import com.silverithm.vehicleplacementsystem.service.ChatService;
+import com.silverithm.vehicleplacementsystem.service.ChatUserIdResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -13,6 +14,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
 import java.util.Map;
 
 @Controller
@@ -21,6 +23,7 @@ import java.util.Map;
 public class ChatWebSocketController {
 
     private final ChatService chatService;
+    private final ChatUserIdResolver chatUserIdResolver;
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
@@ -31,9 +34,13 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/{roomId}/send")
     public void sendMessage(
             @DestinationVariable Long roomId,
-            @Payload ChatMessageCreateRequest request) {
+            @Payload ChatMessageCreateRequest request,
+            Principal principal) {
 
         try {
+            // 옛 앱은 관리자도 접두사 없이 보낸다. 여기는 SecurityContext가 없어 Principal로 판단한다.
+            request.setSenderId(chatUserIdResolver.resolve(
+                    request.getSenderId(), principal != null ? principal.getName() : null));
             log.info("[Chat WebSocket] 메시지 전송: roomId={}, senderId={}", roomId, request.getSenderId());
 
             // ChatService를 통해 메시지 저장 및 브로드캐스트 (이미 내부에서 처리)
@@ -52,10 +59,12 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/{roomId}/typing")
     public void sendTypingStatus(
             @DestinationVariable Long roomId,
-            @Payload Map<String, Object> payload) {
+            @Payload Map<String, Object> payload,
+            Principal principal) {
 
         try {
-            String userId = (String) payload.get("userId");
+            String userId = chatUserIdResolver.resolve(
+                    (String) payload.get("userId"), principal != null ? principal.getName() : null);
             String userName = (String) payload.get("userName");
             Boolean isTyping = (Boolean) payload.get("isTyping");
 
@@ -80,10 +89,12 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/{roomId}/read")
     public void markAsRead(
             @DestinationVariable Long roomId,
-            @Payload Map<String, Object> payload) {
+            @Payload Map<String, Object> payload,
+            Principal principal) {
 
         try {
-            String userId = (String) payload.get("userId");
+            String userId = chatUserIdResolver.resolve(
+                    (String) payload.get("userId"), principal != null ? principal.getName() : null);
             String userName = (String) payload.get("userName");
             Long lastMessageId = Long.valueOf(payload.get("lastMessageId").toString());
 

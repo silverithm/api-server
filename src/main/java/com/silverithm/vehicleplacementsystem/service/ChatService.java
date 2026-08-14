@@ -59,6 +59,7 @@ public class ChatService {
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
+    private final ChatUserIdResolver chatUserIdResolver;
     private final ResourceScopeGuard resourceScopeGuard;
 
     // ==================== 채팅방 관리 ====================
@@ -67,7 +68,9 @@ public class ChatService {
      * 채팅방 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<ChatRoomDTO> getChatRooms(Long companyId, String userId) {
+    public List<ChatRoomDTO> getChatRooms(Long companyId, String rawUserId) {
+        // 옛 앱은 관리자도 접두사 없이 보낸다 (ChatUserIdResolver 참고)
+        String userId = chatUserIdResolver.resolve(rawUserId);
         log.info("[Chat Service] 채팅방 목록 조회: companyId={}, userId={}", companyId, userId);
 
         List<ChatRoom> rooms = chatRoomRepository.findActiveRoomsByCompanyIdAndUserId(companyId, userId);
@@ -228,7 +231,8 @@ public class ChatService {
      * 채팅방 나가기
      */
     @Transactional
-    public void leaveChatRoom(Long roomId, String userId) {
+    public void leaveChatRoom(Long roomId, String rawUserId) {
+        String userId = chatUserIdResolver.resolve(rawUserId);
         log.info("[Chat Service] 채팅방 나가기: roomId={}, userId={}", roomId, userId);
 
         ChatParticipant participant = chatParticipantRepository
@@ -417,7 +421,8 @@ public class ChatService {
      * 메시지 목록 조회 (리액션 포함, 현재 사용자 ID로 myReaction 판단)
      */
     @Transactional(readOnly = true)
-    public List<ChatMessageDTO> getMessages(Long roomId, int page, int size, String currentUserId) {
+    public List<ChatMessageDTO> getMessages(Long roomId, int page, int size, String rawCurrentUserId) {
+        String currentUserId = chatUserIdResolver.resolve(rawCurrentUserId);
         log.info("[Chat Service] 메시지 목록 조회: roomId={}, page={}, size={}", roomId, page, size);
 
         Pageable pageable = PageRequest.of(page, size);
@@ -454,6 +459,8 @@ public class ChatService {
      */
     @Transactional
     public ChatMessageDTO sendMessage(Long roomId, ChatMessageCreateRequest request) {
+        // 옛 앱은 관리자도 접두사 없이 보낸다 — 그대로 두면 참가자 확인에서 걸린다
+        request.setSenderId(chatUserIdResolver.resolve(request.getSenderId()));
         log.info("[Chat Service] 메시지 전송: roomId={}, senderId={}", roomId, request.getSenderId());
 
         ChatRoom room = chatRoomRepository.findById(roomId)
@@ -545,7 +552,8 @@ public class ChatService {
      * 읽음 처리
      */
     @Transactional
-    public void markAsRead(Long roomId, String userId, String userName, Long lastMessageId) {
+    public void markAsRead(Long roomId, String rawUserId, String userName, Long lastMessageId) {
+        String userId = chatUserIdResolver.resolve(rawUserId);
         log.info("[Chat Service] 읽음 처리: roomId={}, userId={}, lastMessageId={}", roomId, userId, lastMessageId);
 
         // 참가자 정보 업데이트
@@ -590,7 +598,8 @@ public class ChatService {
      * 리액션 토글 (있으면 삭제, 없으면 추가)
      */
     @Transactional
-    public ChatReactionDTO toggleReaction(Long roomId, Long messageId, String userId, String userName, String emoji) {
+    public ChatReactionDTO toggleReaction(Long roomId, Long messageId, String rawUserId, String userName, String emoji) {
+        String userId = chatUserIdResolver.resolve(rawUserId);
         log.info("[Chat Service] 리액션 토글: roomId={}, messageId={}, userId={}, emoji={}",
                 roomId, messageId, userId, emoji);
 
