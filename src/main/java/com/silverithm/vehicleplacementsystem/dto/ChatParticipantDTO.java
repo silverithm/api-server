@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
 import com.silverithm.vehicleplacementsystem.entity.ChatParticipant;
+import com.silverithm.vehicleplacementsystem.entity.ChatPersonRef;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -14,7 +15,13 @@ public class ChatParticipantDTO {
 
     private Long id;
     private Long chatRoomId;
+    /** 예전 문자열 표기. 앱이 새 필드로 옮겨가면 뺀다 */
+    @Deprecated
     private String userId;
+    /** ADMIN | MEMBER */
+    private String userType;
+    /** 원시 id (app_user.id 또는 members.id) */
+    private Long userRefId;
     private String userName;
     private String position;
     private String role;
@@ -44,7 +51,10 @@ public class ChatParticipantDTO {
         return ChatParticipantDTO.builder()
                 .id(participant.getId())
                 .chatRoomId(participant.getChatRoom() != null ? participant.getChatRoom().getId() : null)
-                .userId(participant.getUserId())
+                .userId(person(participant).legacyId() != null
+                        ? person(participant).legacyId() : participant.getUserId())
+                .userType(person(participant).type())
+                .userRefId(person(participant).refId())
                 .userName(participant.getUserName())
                 .position(position)
                 .role(participant.getRole().name())
@@ -57,5 +67,10 @@ public class ChatParticipantDTO {
                 .leftAt(participant.getLeftAt())
                 .leaveReason(participant.getLeaveReason() != null ? participant.getLeaveReason().name() : null)
                 .build();
+    }
+
+    /** 문자열이 아니라 참조 칼럼에서 사람을 읽는다 */
+    private static ChatPersonRef person(ChatParticipant participant) {
+        return ChatPersonRef.of(participant.getMemberId(), participant.getAppUserId());
     }
 }

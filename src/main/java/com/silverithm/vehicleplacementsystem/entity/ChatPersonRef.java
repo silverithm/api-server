@@ -37,6 +37,35 @@ public record ChatPersonRef(Long memberId, Long appUserId) {
      */
     private static final String ChatService_ADMIN_PREFIX = "admin_";
 
+    /** ADMIN / MEMBER / null(사람이 아닌 값). 결재선의 approverType과 같은 표기 */
+    public String type() {
+        if (appUserId != null) {
+            return "ADMIN";
+        }
+        return memberId != null ? "MEMBER" : null;
+    }
+
+    /** 사람의 원시 id (app_user.id 또는 members.id) */
+    public Long refId() {
+        return appUserId != null ? appUserId : memberId;
+    }
+
+    /**
+     * 예전부터 쓰던 문자열 표기("12" / "admin_12").
+     * 클라이언트가 아직 이 값으로 '내 것인지'를 판단하므로 계속 함께 내려준다.
+     * 저장된 칼럼이 아니라 참조에서 만들어낸 값이다.
+     */
+    public String legacyId() {
+        if (appUserId != null) {
+            return ChatService_ADMIN_PREFIX + appUserId;
+        }
+        return memberId != null ? String.valueOf(memberId) : null;
+    }
+
+    public static ChatPersonRef of(Long memberId, Long appUserId) {
+        return new ChatPersonRef(memberId, appUserId);
+    }
+
     private static Long parse(String value) {
         try {
             return Long.valueOf(value);
