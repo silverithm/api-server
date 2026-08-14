@@ -567,8 +567,9 @@ public class MemberService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(member.getCompany());
 
-        // 회원 행을 지우기 전에 채팅방에서 먼저 내보낸다. 참가자 행은 회원을 FK로 걸고 있지 않아
-        // 그냥 두면 없는 사람이 계속 참가자 목록·읽음 집계에 남는다.
+        // 회원 행을 지우기 전에 채팅방에서 먼저 내보낸다 — 나갔다는 시스템 메시지를 남기기 위해서다.
+        // (V1.68부터 참가자 행이 FK로 걸려 있어 회원을 지우면 DB가 알아서 함께 지우지만,
+        //  그 경로로는 이 안내가 남지 않는다. 순서를 바꾸지 말 것)
         chatService.handleMemberDeleted(String.valueOf(member.getId()), member.getName());
 
         memberRepository.delete(member);

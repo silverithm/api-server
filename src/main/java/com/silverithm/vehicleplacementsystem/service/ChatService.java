@@ -61,6 +61,15 @@ public class ChatService {
     private final NotificationService notificationService;
     private final ResourceScopeGuard resourceScopeGuard;
 
+
+    /**
+     * 채팅 식별자 문자열을 참조 칼럼 짝으로 푼다.
+     * 조회는 이제 member_id / app_user_id를 본다 (V1.68) — 문자열은 호환을 위해 계속 함께 저장한다.
+     */
+    private static ChatPersonRef person(String chatUserId) {
+        return ChatPersonRef.of(chatUserId);
+    }
+
     // ==================== 채팅방 관리 ====================
 
     /**
@@ -70,7 +79,7 @@ public class ChatService {
     public List<ChatRoomDTO> getChatRooms(Long companyId, String userId) {
         log.info("[Chat Service] 채팅방 목록 조회: companyId={}, userId={}", companyId, userId);
 
-        List<ChatRoom> rooms = chatRoomRepository.findActiveRoomsByCompanyIdAndUserId(companyId, userId);
+        List<ChatRoom> rooms = chatRoomRepository.findActiveRoomsByCompanyIdAndPerson(companyId, person(userId).memberId(), person(userId).appUserId());
 
         return rooms.stream()
                 .map(room -> {
@@ -232,7 +241,7 @@ public class ChatService {
         log.info("[Chat Service] 채팅방 나가기: roomId={}, userId={}", roomId, userId);
 
         ChatParticipant participant = chatParticipantRepository
-                .findByChatRoomIdAndUserIdAndIsActiveTrue(roomId, userId)
+                .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
                 .orElseThrow(() -> new RuntimeException("참가자 정보를 찾을 수 없습니다"));
 
         participant.leave(ChatParticipant.LeaveReason.SELF_LEFT);
@@ -317,7 +326,7 @@ public class ChatService {
         for (String userId : new LinkedHashSet<>(userIds == null ? List.<String>of() : userIds)) {
             requireInvitable(userId, roomCompanyId);
             // 이미 참가 중인지 확인
-            Optional<ChatParticipant> existing = chatParticipantRepository.findByChatRoomIdAndUserId(roomId, userId);
+            Optional<ChatParticipant> existing = chatParticipantRepository.findByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId());
 
             if (existing.isPresent()) {
                 ChatParticipant participant = existing.get();
@@ -378,7 +387,7 @@ public class ChatService {
         log.info("[Chat Service] 참가자 제거: roomId={}, userId={}, isKicked={}", roomId, userId, isKicked);
 
         ChatParticipant participant = chatParticipantRepository
-                .findByChatRoomIdAndUserIdAndIsActiveTrue(roomId, userId)
+                .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
                 .orElseThrow(() -> new RuntimeException("참가자를 찾을 수 없습니다"));
 
         ChatParticipant.LeaveReason reason = isKicked ?
@@ -460,7 +469,7 @@ public class ChatService {
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
 
         // 참가자 확인
-        chatParticipantRepository.findByChatRoomIdAndUserIdAndIsActiveTrue(roomId, request.getSenderId())
+        chatParticipantRepository.findActiveByRoomAndPerson(roomId, person(request.getSenderId()).memberId(), person(request.getSenderId()).appUserId())
                 .orElseThrow(() -> new RuntimeException("채팅방 참가자가 아닙니다"));
 
         // 메시지 타입 파싱
@@ -550,7 +559,7 @@ public class ChatService {
 
         // 참가자 정보 업데이트
         ChatParticipant participant = chatParticipantRepository
-                .findByChatRoomIdAndUserIdAndIsActiveTrue(roomId, userId)
+                .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
                 .orElseThrow(() -> new RuntimeException("참가자를 찾을 수 없습니다"));
 
         participant.updateLastRead(lastMessageId);
@@ -603,7 +612,7 @@ public class ChatService {
 
         // 이미 존재하는지 확인
         Optional<ChatMessageReaction> existing = chatMessageReactionRepository
-                .findByMessageIdAndUserIdAndEmoji(messageId, userId, emoji);
+                .findByMessageAndPersonAndEmoji(messageId, person(userId).memberId(), person(userId).appUserId(), emoji);
 
         if (existing.isPresent()) {
             // 이미 있으면 삭제
@@ -716,7 +725,7 @@ public class ChatService {
     public void handleMemberDeleted(String userId, String userName) {
         log.info("[Chat Service] 회원 삭제로 인한 채팅방 퇴장 처리: userId={}", userId);
 
-        List<ChatParticipant> participations = chatParticipantRepository.findByUserIdAndIsActiveTrue(userId);
+        List<ChatParticipant> participations = chatParticipantRepository.findActiveByPerson(person(userId).memberId(), person(userId).appUserId());
 
         for (ChatParticipant participant : participations) {
             participant.leave(ChatParticipant.LeaveReason.ACCOUNT_DELETED);
@@ -753,7 +762,7 @@ public class ChatService {
     }
 
     private void markMessageAsRead(ChatMessage message, String userId, String userName) {
-        if (!chatMessageReadRepository.existsByMessageIdAndUserId(message.getId(), userId)) {
+        if (!chatMessageReadRepository.existsByMessageAndPerson(message.getId(), person(userId).memberId(), person(userId).appUserId())) {
             ChatMessageRead read = ChatMessageRead.builder()
                     .message(message)
                     .userId(userId)
@@ -765,7 +774,7 @@ public class ChatService {
 
     private int calculateUnreadCount(Long roomId, String userId) {
         ChatParticipant participant = chatParticipantRepository
-                .findByChatRoomIdAndUserIdAndIsActiveTrue(roomId, userId)
+                .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
                 .orElse(null);
 
         if (participant == null) {

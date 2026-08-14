@@ -17,13 +17,23 @@ public interface ChatMessageReadRepository extends JpaRepository<ChatMessageRead
     List<ChatMessageRead> findByMessageIdOrderByReadAtDesc(Long messageId);
 
     // 특정 사용자의 메시지 읽음 확인
-    Optional<ChatMessageRead> findByMessageIdAndUserId(Long messageId, String userId);
+    @Query("SELECT r FROM ChatMessageRead r WHERE r.message.id = :messageId "
+            + "AND ((:memberId IS NOT NULL AND r.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND r.appUserId = :appUserId))")
+    Optional<ChatMessageRead> findByMessageAndPerson(@Param("messageId") Long messageId,
+                                                     @Param("memberId") Long memberId,
+                                                     @Param("appUserId") Long appUserId);
 
     // 메시지를 읽은 사용자 수
     long countByMessageId(Long messageId);
 
     // 특정 사용자가 특정 메시지를 읽었는지 확인
-    boolean existsByMessageIdAndUserId(Long messageId, String userId);
+    @Query("SELECT COUNT(r) > 0 FROM ChatMessageRead r WHERE r.message.id = :messageId "
+            + "AND ((:memberId IS NOT NULL AND r.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND r.appUserId = :appUserId))")
+    boolean existsByMessageAndPerson(@Param("messageId") Long messageId,
+                                     @Param("memberId") Long memberId,
+                                     @Param("appUserId") Long appUserId);
 
     // 채팅방의 특정 메시지까지 일괄 읽음 처리를 위한 메시지 ID 조회
     @Query("SELECT m.id FROM ChatMessage m " +

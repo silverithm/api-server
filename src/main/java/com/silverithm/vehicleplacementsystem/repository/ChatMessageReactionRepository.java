@@ -16,7 +16,13 @@ public interface ChatMessageReactionRepository extends JpaRepository<ChatMessage
 
     List<ChatMessageReaction> findByMessageIdIn(List<Long> messageIds);
 
-    Optional<ChatMessageReaction> findByMessageIdAndUserIdAndEmoji(Long messageId, String userId, String emoji);
+    @Query("SELECT r FROM ChatMessageReaction r WHERE r.message.id = :messageId AND r.emoji = :emoji "
+            + "AND ((:memberId IS NOT NULL AND r.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND r.appUserId = :appUserId))")
+    Optional<ChatMessageReaction> findByMessageAndPersonAndEmoji(@Param("messageId") Long messageId,
+                                                                 @Param("memberId") Long memberId,
+                                                                 @Param("appUserId") Long appUserId,
+                                                                 @Param("emoji") String emoji);
 
     void deleteByMessageIdAndUserIdAndEmoji(Long messageId, String userId, String emoji);
 

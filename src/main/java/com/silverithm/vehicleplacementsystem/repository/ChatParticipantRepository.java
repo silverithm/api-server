@@ -19,10 +19,20 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
     List<ChatParticipant> findByChatRoomIdOrderByJoinedAtAsc(Long chatRoomId);
 
     // 특정 사용자의 채팅방 참가 정보
-    Optional<ChatParticipant> findByChatRoomIdAndUserId(Long chatRoomId, String userId);
+    @Query("SELECT p FROM ChatParticipant p WHERE p.chatRoom.id = :chatRoomId "
+            + "AND ((:memberId IS NOT NULL AND p.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND p.appUserId = :appUserId))")
+    Optional<ChatParticipant> findByRoomAndPerson(@Param("chatRoomId") Long chatRoomId,
+                                                  @Param("memberId") Long memberId,
+                                                  @Param("appUserId") Long appUserId);
 
     // 활성 참가자인지 확인
-    Optional<ChatParticipant> findByChatRoomIdAndUserIdAndIsActiveTrue(Long chatRoomId, String userId);
+    @Query("SELECT p FROM ChatParticipant p WHERE p.chatRoom.id = :chatRoomId AND p.isActive = true "
+            + "AND ((:memberId IS NOT NULL AND p.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND p.appUserId = :appUserId))")
+    Optional<ChatParticipant> findActiveByRoomAndPerson(@Param("chatRoomId") Long chatRoomId,
+                                                        @Param("memberId") Long memberId,
+                                                        @Param("appUserId") Long appUserId);
 
     // 채팅방의 활성 참가자 수
     long countByChatRoomIdAndIsActiveTrue(Long chatRoomId);
@@ -37,7 +47,11 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
     boolean isRoomAdmin(@Param("chatRoomId") Long chatRoomId, @Param("userId") String userId);
 
     // 특정 사용자의 모든 채팅방 참가 정보 (계정 삭제 시 사용)
-    List<ChatParticipant> findByUserIdAndIsActiveTrue(String userId);
+    @Query("SELECT p FROM ChatParticipant p WHERE p.isActive = true "
+            + "AND ((:memberId IS NOT NULL AND p.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND p.appUserId = :appUserId))")
+    List<ChatParticipant> findActiveByPerson(@Param("memberId") Long memberId,
+                                             @Param("appUserId") Long appUserId);
 
     // 채팅방에서 메시지를 읽지 않은 참가자 목록
     @Query("SELECT p FROM ChatParticipant p " +
