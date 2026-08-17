@@ -491,12 +491,11 @@ public class DemoProvisioningService {
     }
 
     private void seedChat(Company company, AppUser admin, List<Member> members) {
-        String adminId = String.valueOf(admin.getId());
-        // 채팅 참가자 식별자는 관리자(AppUser id)와 직원(Member id)이 모두 원시 숫자 문자열이라
-        // id가 우연히 겹치면 (chat_room_id, user_id) 유니크 제약에 걸린다 — 겹치는 직원은 제외한다.
-        List<Member> chatMembers = members.stream()
-                .filter(m -> !String.valueOf(m.getId()).equals(adminId))
-                .toList();
+        // 관리자는 'admin_' 접두사가 붙어야 한다. 접두사가 없으면 ChatPersonRef가 이 값을 직원으로
+        // 읽어 creator_member_id에 넣고, members에 없는 id라 FK 위반으로 체험 시작 전체가 실패한다.
+        String adminId = ChatService.toAdminChatUserId(admin.getId());
+        // 접두사가 붙어 관리자와 직원 id는 더 이상 겹치지 않는다 — 직원을 걸러낼 이유가 없다.
+        List<Member> chatMembers = members;
 
         ChatRoom noticeRoom = chatRoomRepository.save(ChatRoom.builder()
                 .name("전체 공지방")
