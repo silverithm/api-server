@@ -153,10 +153,13 @@ public class ChatController {
             Object rawId = body.get("messageId");
             Long messageId = rawId == null ? null : Long.valueOf(String.valueOf(rawId));
             String setByName = body.get("setByName") == null ? null : String.valueOf(body.get("setByName"));
+            // 공지에 딸린 파일 메시지 (선택) — 배너에서 파일을 바로 열 수 있게 한다
+            Object rawFileId = body.get("fileMessageId");
+            Long fileMessageId = rawFileId == null ? null : Long.valueOf(String.valueOf(rawFileId));
 
-            log.info("[Chat API] 방 공지 변경: roomId={}, messageId={}", roomId, messageId);
+            log.info("[Chat API] 방 공지 변경: roomId={}, messageId={}, fileMessageId={}", roomId, messageId, fileMessageId);
 
-            ChatRoomDTO room = chatService.updateChatRoomNotice(roomId, messageId, setByName);
+            ChatRoomDTO room = chatService.updateChatRoomNotice(roomId, messageId, setByName, fileMessageId);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())

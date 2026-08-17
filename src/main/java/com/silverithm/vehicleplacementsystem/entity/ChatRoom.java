@@ -78,6 +78,13 @@ public class ChatRoom {
     @Column(name = "notice_at")
     private LocalDateTime noticeAt;
 
+    /** 공지에 딸린 파일 스냅샷 — 공지 배너에서 바로 열 수 있게 파일명·URL을 남긴다 (V1.69) */
+    @Column(name = "notice_file_name", length = 255)
+    private String noticeFileName;
+
+    @Column(name = "notice_file_url", length = 1000)
+    private String noticeFileUrl;
+
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ChatParticipant> participants = new ArrayList<>();

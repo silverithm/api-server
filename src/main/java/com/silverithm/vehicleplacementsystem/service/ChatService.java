@@ -197,6 +197,15 @@ public class ChatService {
      */
     @Transactional
     public ChatRoomDTO updateChatRoomNotice(Long roomId, Long messageId, String setByName) {
+        return updateChatRoomNotice(roomId, messageId, setByName, null);
+    }
+
+    /**
+     * @param fileMessageId 공지에 딸린 파일 메시지 (선택). 승인 공문처럼 "요약 텍스트를 고정하되
+     *                      파일도 배너에서 바로 열게" 하려고 파일명·URL을 공지에 스냅샷으로 남긴다.
+     */
+    @Transactional
+    public ChatRoomDTO updateChatRoomNotice(Long roomId, Long messageId, String setByName, Long fileMessageId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
         resourceScopeGuard.requireSameCompany(room.getCompany());
@@ -206,6 +215,8 @@ public class ChatService {
             room.setNoticeContent(null);
             room.setNoticeByName(null);
             room.setNoticeAt(null);
+            room.setNoticeFileName(null);
+            room.setNoticeFileUrl(null);
             log.info("[Chat Service] 방 공지 해제: roomId={}", roomId);
         } else {
             ChatMessage message = chatMessageRepository.findById(messageId)
@@ -223,11 +234,25 @@ public class ChatService {
                 snapshot = snapshot.substring(0, 1000);
             }
 
+            // 파일 참조: 지정한 파일 메시지가 있으면 그 파일을, 없으면 고정한 메시지 자체의 파일을 쓴다
+            ChatMessage fileSource = message;
+            if (fileMessageId != null && !fileMessageId.equals(messageId)) {
+                ChatMessage fileMessage = chatMessageRepository.findById(fileMessageId)
+                        .orElseThrow(() -> new RuntimeException("파일 메시지를 찾을 수 없습니다: " + fileMessageId));
+                if (fileMessage.getChatRoom() == null || !fileMessage.getChatRoom().getId().equals(roomId)) {
+                    throw new IllegalArgumentException("이 방의 메시지가 아닙니다.");
+                }
+                fileSource = fileMessage;
+            }
+
             room.setNoticeMessageId(message.getId());
             room.setNoticeContent(snapshot);
             room.setNoticeByName(setByName);
             room.setNoticeAt(LocalDateTime.now());
-            log.info("[Chat Service] 방 공지 설정: roomId={}, messageId={}", roomId, messageId);
+            room.setNoticeFileName(fileSource.getFileUrl() != null ? fileSource.getFileName() : null);
+            room.setNoticeFileUrl(fileSource.getFileUrl());
+            log.info("[Chat Service] 방 공지 설정: roomId={}, messageId={}, fileMessageId={}",
+                    roomId, messageId, fileMessageId);
         }
 
         return ChatRoomDTO.fromEntity(chatRoomRepository.save(room));

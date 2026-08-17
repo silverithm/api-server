@@ -34,6 +34,8 @@ public class ChatRoomDTO {
     private String noticeContent;
     private String noticeByName;
     private LocalDateTime noticeAt;
+    private String noticeFileName;
+    private String noticeFileUrl;
 
     public static ChatRoomDTO fromEntity(ChatRoom room) {
         return ChatRoomDTO.builder()
@@ -53,6 +55,8 @@ public class ChatRoomDTO {
                 .noticeContent(room.getNoticeContent())
                 .noticeByName(room.getNoticeByName())
                 .noticeAt(room.getNoticeAt())
+                .noticeFileName(room.getNoticeFileName())
+                .noticeFileUrl(room.getNoticeFileUrl())
                 .build();
     }
 
