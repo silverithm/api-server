@@ -47,6 +47,11 @@ public class ApprovalTemplate {
     @Column(name = "default_approval_line", columnDefinition = "JSON")
     private String defaultApprovalLine;
 
+    /** 이 양식으로 기안한 문서의 기본 열람 대상 — 기안 시 문서로 복사된다 */
+    @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private java.util.List<ApprovalTemplateViewer> defaultViewers = new java.util.ArrayList<>();
+
     @Column(nullable = true)
     private String fileUrl;
 

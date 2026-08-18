@@ -78,6 +78,11 @@ public class ApprovalRequest {
     @Builder.Default
     private List<ApprovalStep> steps = new ArrayList<>();
 
+    // 열람 대상 (관리자·기안자·결재선 참여자는 여기에 없어도 볼 수 있다)
+    @OneToMany(mappedBy = "approvalRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ApprovalRequestViewer> viewers = new ArrayList<>();
+
     @Column(name = "doc_number", length = 50)
     private String docNumber;
 

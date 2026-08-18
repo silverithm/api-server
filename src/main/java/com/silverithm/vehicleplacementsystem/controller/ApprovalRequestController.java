@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApproveRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalViewerCandidatesDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApproverCandidateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateApprovalAttachmentRequestDTO;
@@ -40,18 +41,21 @@ public class ApprovalRequestController {
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getApprovals(
+            @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam Long companyId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String searchQuery) {
+            @RequestParam(required = false) String searchQuery,
+            @RequestParam(required = false) Long templateId,
+            @RequestParam(required = false) String category) {
 
         try {
             log.info("[Approval API] 결재 목록 조회: companyId={}", companyId);
 
             List<ApprovalRequestDTO> approvals = approvalService.getApprovalRequests(
-                    companyId, status, startDate, endDate, searchQuery);
-            Map<String, Long> stats = approvalService.getStats(companyId);
+                    companyId, status, startDate, endDate, searchQuery, templateId, category, userDetails);
+            Map<String, Long> stats = approvalService.getStats(companyId, userDetails);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -60,6 +64,11 @@ public class ApprovalRequestController {
                             "stats", stats
                     ));
 
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 목록 조회 권한 거부: companyId={}, {}", companyId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Approval API] 목록 조회 오류:", e);
             return ResponseEntity.internalServerError()
@@ -94,16 +103,22 @@ public class ApprovalRequestController {
      * 결재 요청 상세 조회
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getApproval(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getApproval(@AuthenticationPrincipal UserDetails userDetails,
+                                                          @PathVariable Long id) {
         try {
             log.info("[Approval API] 결재 상세 조회: id={}", id);
 
-            ApprovalRequestDTO approval = approvalService.getApprovalRequest(id);
+            ApprovalRequestDTO approval = approvalService.getApprovalRequest(id, userDetails);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
                     .body(Map.of("approval", approval));
 
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 상세 조회 권한 거부: id={}, {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Approval API] 상세 조회 오류:", e);
             return ResponseEntity.internalServerError()
@@ -474,6 +489,31 @@ public class ApprovalRequestController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "결재자 후보 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 열람 대상 지정 후보 목록 (직책 + 사람)
+     */
+    @GetMapping("/viewer-candidates")
+    public ResponseEntity<Map<String, Object>> getViewerCandidates(@RequestParam Long companyId) {
+        try {
+            log.info("[Approval API] 열람 대상 후보 조회: companyId={}", companyId);
+
+            ApprovalViewerCandidatesDTO candidates = approvalService.getViewerCandidates(companyId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "positions", candidates.getPositions(),
+                            "people", candidates.getPeople()
+                    ));
+
+        } catch (Exception e) {
+            log.error("[Approval API] 열람 대상 후보 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "열람 대상 후보 조회 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 

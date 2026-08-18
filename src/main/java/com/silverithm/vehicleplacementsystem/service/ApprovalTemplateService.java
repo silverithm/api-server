@@ -2,7 +2,9 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalTemplateRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalViewerEntryDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplate;
+import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplateViewer;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalRequestRepository;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalTemplateRepository;
@@ -12,7 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +30,7 @@ public class ApprovalTemplateService {
     private final ApprovalRequestRepository approvalRequestRepository;
     private final CompanyRepository companyRepository;
     private final ResourceScopeGuard resourceScopeGuard;
+    private final ApprovalViewerResolver viewerResolver;
 
     // 전체 양식 조회 (관리자용)
     @Transactional(readOnly = true)
@@ -72,8 +78,11 @@ public class ApprovalTemplateService {
                 .isActive(true)
                 .build();
 
+        applyDefaultViewers(template, request.getDefaultViewers());
+
         ApprovalTemplate saved = templateRepository.save(template);
-        log.info("[ApprovalTemplate] 양식 생성: id={}, name={}", saved.getId(), saved.getName());
+        log.info("[ApprovalTemplate] 양식 생성: id={}, name={}, 열람대상={}건",
+                saved.getId(), saved.getName(), saved.getDefaultViewers().size());
 
         return ApprovalTemplateDTO.from(saved);
     }
@@ -95,11 +104,44 @@ public class ApprovalTemplateService {
         template.setFileUrl(request.getFileUrl());
         template.setFileName(request.getFileName());
         template.setFileSize(request.getFileSize());
+        applyDefaultViewers(template, request.getDefaultViewers());
 
         ApprovalTemplate saved = templateRepository.save(template);
-        log.info("[ApprovalTemplate] 양식 수정: id={}, name={}", saved.getId(), saved.getName());
+        log.info("[ApprovalTemplate] 양식 수정: id={}, name={}, 열람대상={}건",
+                saved.getId(), saved.getName(), saved.getDefaultViewers().size());
 
         return ApprovalTemplateDTO.from(saved);
+    }
+
+    /**
+     * 기본 열람 대상 교체. null이면 손대지 않고(이 필드를 모르는 클라이언트 보호),
+     * 빈 배열이면 지정을 모두 지운다.
+     */
+    private void applyDefaultViewers(ApprovalTemplate template, List<ApprovalViewerEntryDTO> entries) {
+        if (entries == null) {
+            return;
+        }
+
+        Long companyId = template.getCompany() != null ? template.getCompany().getId() : null;
+
+        List<ApprovalTemplateViewer> resolved = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (ApprovalViewerEntryDTO entry : entries) {
+            if (entry == null || entry.getViewerType() == null || entry.getRefId() == null) {
+                continue;
+            }
+            if (seen.add(entry.getViewerType() + ":" + entry.getRefId())) {
+                resolved.add(ApprovalTemplateViewer.builder()
+                        .template(template)
+                        .viewerType(entry.getViewerType())
+                        .refId(entry.getRefId())
+                        .viewerName(viewerResolver.resolveName(entry.getViewerType(), entry.getRefId(), companyId))
+                        .build());
+            }
+        }
+
+        template.getDefaultViewers().clear();
+        template.getDefaultViewers().addAll(resolved);
     }
 
     // 양식 활성화/비활성화 토글

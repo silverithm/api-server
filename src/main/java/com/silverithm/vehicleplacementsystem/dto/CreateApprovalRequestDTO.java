@@ -33,6 +33,15 @@ public class CreateApprovalRequestDTO {
     private List<ApprovalLineEntryDTO> approvalLine;
 
     /**
+     * 열람 대상 (선택).
+     *
+     * 보내지 않으면(null) 양식에 지정된 기본 열람 대상이 그대로 적용된다.
+     * 빈 배열을 보내면 기본값 없이 "지정 없음"이 된다 — 앱처럼 이 필드를 모르는 클라이언트가
+     * 기본값을 지우지 않도록 null과 빈 배열을 구분한다.
+     */
+    private List<ApprovalViewerEntryDTO> viewers;
+
+    /**
      * 상신하지 않고 임시저장만 한다.
      *
      * 임시저장은 결재함에 뜨지 않고 알림도 나가지 않으며, 결재선을 아직 안 정했어도 저장된다.

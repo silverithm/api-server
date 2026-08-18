@@ -3,6 +3,8 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalLineEntryDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalStepDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalViewerEntryDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalViewerCandidatesDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApproverCandidateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.DocumentFooterDTO;
@@ -10,7 +12,10 @@ import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest.ApprovalStatus;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalStep;
+import com.silverithm.vehicleplacementsystem.entity.ApprovalRequestViewer;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplate;
+import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplateViewer;
+import com.silverithm.vehicleplacementsystem.entity.ApprovalViewerType;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.DocumentNumberCounter;
@@ -20,6 +25,7 @@ import com.silverithm.vehicleplacementsystem.repository.ApprovalTemplateReposito
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.DocumentNumberCounterRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.PositionRepository;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService.CallerIdentity;
 import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
@@ -62,15 +68,29 @@ public class ApprovalRequestService {
     private final ApprovalAccessService accessService;
     private final DocumentNumberCounterRepository docNumberCounterRepository;
     private final ResourceScopeGuard resourceScopeGuard;
+    private final ApprovalViewerResolver viewerResolver;
+    private final PositionRepository positionRepository;
 
-    // 결재 요청 목록 조회 (관리자용, 필터 적용)
+    /** 대분류가 비어 있는(미분류) 문서만 보고 싶을 때 쓰는 값 */
+    public static final String UNCATEGORIZED_FILTER = "__NONE__";
+
+    /**
+     * 결재함 목록.
+     *
+     * 관리자는 기관 전체를, 그 밖의 사람은 열람 권한이 있는 문서만 본다
+     * (기안자 본인 / 결재선 참여자 / 열람 대상으로 지정된 개인·직책).
+     * 임시저장은 결재함에 뜨지 않는다 — 기안자 본인 목록(getMyApprovalRequests)에만 보인다.
+     */
     @Transactional(readOnly = true)
     public List<ApprovalRequestDTO> getApprovalRequests(
             Long companyId,
             String status,
             String startDate,
             String endDate,
-            String searchQuery
+            String searchQuery,
+            Long templateId,
+            String category,
+            UserDetails userDetails
     ) {
         LocalDateTime start = startDate != null ? LocalDate.parse(startDate).atStartOfDay() : LocalDate.now().minusMonths(1).atStartOfDay();
         LocalDateTime end = endDate != null ? LocalDate.parse(endDate).atTime(LocalTime.MAX) : LocalDate.now().atTime(LocalTime.MAX);
@@ -84,18 +104,53 @@ public class ApprovalRequestService {
             }
         }
 
-        List<ApprovalRequest> requests;
-        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
-            requests = requestRepository.findByCompanyIdAndFiltersWithSearch(companyId, statusEnum, start, end, searchQuery);
-        } else {
-            requests = requestRepository.findByCompanyIdAndFilters(companyId, statusEnum, start, end);
-        }
+        ViewerScope scope = resolveViewerScope(userDetails, companyId);
 
-        return requests.stream()
-                // 임시저장은 아직 상신 전이라 결재함에 뜨면 안 된다 — 기안자 본인 목록에만 보인다
-                .filter(request -> request.getStatus() != ApprovalStatus.DRAFT)
+        return requestRepository.searchViewable(
+                        companyId,
+                        statusEnum,
+                        start,
+                        end,
+                        templateId,
+                        blankToNull(category),
+                        blankToNull(searchQuery),
+                        scope.isAdmin(),
+                        scope.legacyId(),
+                        scope.stepType(),
+                        scope.viewerType(),
+                        scope.refId(),
+                        scope.positionId())
+                .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    /** 목록 조회에 쓰는 호출자 신원 묶음 — 값이 없는 자리는 어디에도 매칭되지 않는 값으로 채운다 */
+    private record ViewerScope(boolean isAdmin, String legacyId, ApprovalStep.ApproverType stepType,
+                               ApprovalViewerType viewerType, Long refId, Long positionId) {
+    }
+
+    private ViewerScope resolveViewerScope(UserDetails userDetails, Long companyId) {
+        CallerIdentity caller = accessService.resolveCaller(userDetails);
+        if (caller == null) {
+            throw new SecurityException("인증 정보가 없습니다");
+        }
+
+        if (caller.companyId() == null || !caller.companyId().equals(companyId)) {
+            throw new SecurityException("다른 기관의 결재 문서는 조회할 수 없습니다");
+        }
+
+        return new ViewerScope(
+                accessService.isCompanyAdmin(caller, companyId),
+                caller.legacyId(),
+                caller.type(),
+                accessService.toViewerType(caller),
+                caller.refId(),
+                accessService.resolvePositionId(caller));
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 
     // 내 결재 요청 조회 (직원용 — 내 임시저장도 함께 온다)
@@ -107,12 +162,13 @@ public class ApprovalRequestService {
                 .collect(Collectors.toList());
     }
 
-    // 결재 요청 상세 조회
+    // 결재 요청 상세 조회 — 열람 권한이 있는 사람만
     @Transactional(readOnly = true)
-    public ApprovalRequestDTO getApprovalRequest(Long id) {
+    public ApprovalRequestDTO getApprovalRequest(Long id, UserDetails userDetails) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(request.getCompany());
+        accessService.requireCanView(accessService.resolveCaller(userDetails), request);
         return toDTO(request);
     }
 
@@ -150,6 +206,8 @@ public class ApprovalRequestService {
             buildApprovalLine(request, company, dto.getApprovalLine());
         }
 
+        applyViewers(request, template, dto.getViewers());
+
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 결재 요청 {}: id={}, title={}, requester={}, 결재선={}단계",
                 asDraft ? "임시저장" : "생성",
@@ -184,6 +242,7 @@ public class ApprovalRequestService {
         request.setAttachmentFileSize(dto.getAttachmentFileSize());
 
         replaceApprovalLine(request, dto.getApprovalLine());
+        applyViewers(request, request.getTemplate(), dto.getViewers());
 
         ApprovalRequest saved = requestRepository.save(request);
         log.info("[ApprovalRequest] 임시저장 갱신: id={}, title={}", saved.getId(), saved.getTitle());
@@ -205,6 +264,7 @@ public class ApprovalRequestService {
             request.setAttachmentFileName(dto.getAttachmentFileName());
             request.setAttachmentFileSize(dto.getAttachmentFileSize());
             replaceApprovalLine(request, dto.getApprovalLine());
+            applyViewers(request, request.getTemplate(), dto.getViewers());
         }
 
         request.setStatus(ApprovalStatus.PENDING);
@@ -792,6 +852,37 @@ public class ApprovalRequestService {
         return candidates;
     }
 
+    /**
+     * 열람 대상 후보 — 직책 목록(재직 인원수 포함)과 사람 목록.
+     * 사람은 결재선 후보와 같은 범위(기관 관리자 + 재직 직원)를 그대로 쓴다.
+     */
+    @Transactional(readOnly = true)
+    public ApprovalViewerCandidatesDTO getViewerCandidates(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
+        resourceScopeGuard.requireSameCompany(company);
+
+        Map<Long, Long> memberCountByPosition = memberRepository.findByCompanyOrderByCreatedAtDesc(company).stream()
+                .filter(member -> member.getStatus() == Member.MemberStatus.ACTIVE)
+                .filter(member -> member.getPositionEntity() != null)
+                .collect(Collectors.groupingBy(member -> member.getPositionEntity().getId(), Collectors.counting()));
+
+        List<ApprovalViewerCandidatesDTO.PositionCandidate> positions =
+                positionRepository.findByCompanyIdOrderBySortOrderAscNameAsc(companyId).stream()
+                        .map(position -> ApprovalViewerCandidatesDTO.PositionCandidate.builder()
+                                .id(position.getId())
+                                .name(position.getName())
+                                .description(position.getDescription())
+                                .memberCount(memberCountByPosition.getOrDefault(position.getId(), 0L))
+                                .build())
+                        .collect(Collectors.toList());
+
+        return ApprovalViewerCandidatesDTO.builder()
+                .positions(positions)
+                .people(getApproverCandidates(companyId))
+                .build();
+    }
+
     /** requesterId(Member id 또는 username)로 기안자 조회 */
     private Member findRequester(String requesterId) {
         if (requesterId == null || requesterId.isBlank()) {
@@ -806,12 +897,76 @@ public class ApprovalRequestService {
 
     // 통계 조회
     @Transactional(readOnly = true)
-    public Map<String, Long> getStats(Long companyId) {
+    public Map<String, Long> getStats(Long companyId, UserDetails userDetails) {
+        ViewerScope scope = resolveViewerScope(userDetails, companyId);
+
         Map<String, Long> stats = new HashMap<>();
-        stats.put("pending", requestRepository.countByCompanyIdAndStatus(companyId, ApprovalStatus.PENDING));
-        stats.put("approved", requestRepository.countByCompanyIdAndStatus(companyId, ApprovalStatus.APPROVED));
-        stats.put("rejected", requestRepository.countByCompanyIdAndStatus(companyId, ApprovalStatus.REJECTED));
+        stats.put("pending", 0L);
+        stats.put("approved", 0L);
+        stats.put("rejected", 0L);
+
+        for (Object[] row : requestRepository.countViewableByStatus(companyId, scope.isAdmin(), scope.legacyId(),
+                scope.stepType(), scope.viewerType(), scope.refId(), scope.positionId())) {
+            ApprovalStatus rowStatus = (ApprovalStatus) row[0];
+            Long count = (Long) row[1];
+            switch (rowStatus) {
+                case PENDING -> stats.put("pending", count);
+                case APPROVED -> stats.put("approved", count);
+                case REJECTED -> stats.put("rejected", count);
+                default -> { /* DRAFT는 결재함 집계에서 제외된다 */ }
+            }
+        }
+
         return stats;
+    }
+
+    /**
+     * 문서의 열람 대상을 정한다.
+     *
+     * <p>entries가 null이면 양식에 지정된 기본 열람 대상을 그대로 복사한다 —
+     * 이 필드를 아직 모르는 클라이언트(앱)가 기안해도 양식 설정이 지켜지게 하기 위해서다.
+     * 빈 배열을 보내면 "지정 없음"으로 비운다.
+     */
+    private void applyViewers(ApprovalRequest request, ApprovalTemplate template,
+                              List<ApprovalViewerEntryDTO> entries) {
+        Long companyId = request.getCompany() != null ? request.getCompany().getId() : null;
+
+        List<ApprovalRequestViewer> resolved = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        if (entries == null) {
+            List<ApprovalTemplateViewer> defaults = template != null && template.getDefaultViewers() != null
+                    ? template.getDefaultViewers()
+                    : List.of();
+            for (ApprovalTemplateViewer preset : defaults) {
+                if (seen.add(preset.getViewerType() + ":" + preset.getRefId())) {
+                    resolved.add(ApprovalRequestViewer.builder()
+                            .approvalRequest(request)
+                            .viewerType(preset.getViewerType())
+                            .refId(preset.getRefId())
+                            // 이름은 지금 다시 읽는다 — 양식에 박아둔 뒤 개명·직책명 변경이 있었을 수 있다
+                            .viewerName(viewerResolver.resolveName(preset.getViewerType(), preset.getRefId(), companyId))
+                            .build());
+                }
+            }
+        } else {
+            for (ApprovalViewerEntryDTO entry : entries) {
+                if (entry == null || entry.getViewerType() == null || entry.getRefId() == null) {
+                    continue;
+                }
+                if (seen.add(entry.getViewerType() + ":" + entry.getRefId())) {
+                    resolved.add(ApprovalRequestViewer.builder()
+                            .approvalRequest(request)
+                            .viewerType(entry.getViewerType())
+                            .refId(entry.getRefId())
+                            .viewerName(viewerResolver.resolveName(entry.getViewerType(), entry.getRefId(), companyId))
+                            .build());
+                }
+            }
+        }
+
+        request.getViewers().clear();
+        request.getViewers().addAll(resolved);
     }
 
     // DTO 변환 시 S3 URL로 변환

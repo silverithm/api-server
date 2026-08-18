@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -29,6 +31,7 @@ public class ApprovalTemplateDTO {
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<ApprovalViewerDTO> defaultViewers;   // 기본 열람 대상 (직책/개인)
 
     public static ApprovalTemplateDTO from(ApprovalTemplate template) {
         return ApprovalTemplateDTO.builder()
@@ -45,6 +48,14 @@ public class ApprovalTemplateDTO {
                 .isActive(template.getIsActive())
                 .createdAt(template.getCreatedAt())
                 .updatedAt(template.getUpdatedAt())
+                .defaultViewers(template.getDefaultViewers() == null ? List.of()
+                        : template.getDefaultViewers().stream()
+                                .map(viewer -> ApprovalViewerDTO.builder()
+                                        .viewerType(viewer.getViewerType())
+                                        .refId(viewer.getRefId())
+                                        .viewerName(viewer.getViewerName())
+                                        .build())
+                                .collect(Collectors.toList()))
                 .build();
     }
 }
