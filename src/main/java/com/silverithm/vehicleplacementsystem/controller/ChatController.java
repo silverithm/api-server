@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
@@ -443,9 +444,12 @@ public class ChatController {
             @PathVariable Long messageId) {
 
         try {
-            log.info("[Chat API] 메시지 삭제: roomId={}, messageId={}", roomId, messageId);
+            // '나'는 요청이 아니라 토큰에서 정한다 — 삭제 권한이 여기에 걸려 있어서
+            // 클라이언트가 보낸 값을 믿으면 남의 메시지를 지울 수 있다 ([[ChatCallerResolver]])
+            String callerId = chatCallerResolver.currentChatUserId();
+            log.info("[Chat API] 메시지 삭제: roomId={}, messageId={}, caller={}", roomId, messageId, callerId);
 
-            chatService.deleteMessage(roomId, messageId);
+            chatService.deleteMessage(roomId, messageId, callerId);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -454,6 +458,10 @@ public class ChatController {
                             "message", "메시지가 삭제되었습니다."
                     ));
 
+        } catch (CustomException e) {
+            // 권한 없음(403)까지 여기서 삼키면 클라이언트에는 500으로 보인다 —
+            // 상태 코드를 들고 있는 예외는 전역 핸들러가 그대로 내보내게 둔다
+            throw e;
         } catch (Exception e) {
             log.error("[Chat API] 메시지 삭제 오류:", e);
             return ResponseEntity.internalServerError()

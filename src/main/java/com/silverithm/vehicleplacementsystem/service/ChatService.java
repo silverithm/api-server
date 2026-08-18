@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.*;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.*;
 import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
 import com.silverithm.vehicleplacementsystem.util.PersonDisplay;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -559,8 +561,8 @@ public class ChatService {
      * 메시지 삭제
      */
     @Transactional
-    public void deleteMessage(Long roomId, Long messageId) {
-        log.info("[Chat Service] 메시지 삭제: roomId={}, messageId={}", roomId, messageId);
+    public void deleteMessage(Long roomId, Long messageId, String callerChatUserId) {
+        log.info("[Chat Service] 메시지 삭제: roomId={}, messageId={}, caller={}", roomId, messageId, callerChatUserId);
 
         ChatMessage message = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("메시지를 찾을 수 없습니다: " + messageId));
@@ -569,8 +571,50 @@ public class ChatService {
             throw new RuntimeException("해당 채팅방의 메시지가 아닙니다");
         }
 
+        // 다른 기관의 방은 애초에 건드릴 수 없다 (다른 채팅 기능과 같은 규칙)
+        resourceScopeGuard.requireSameCompany(message.getChatRoom().getCompany());
+
+        // 내가 보낸 것만 지운다. 화면이 '삭제'를 내 메시지에만 보여주더라도, 서버가 막지 않으면
+        // messageId만 알면 남의 말을 지울 수 있다.
+        if (!isSentBy(message, callerChatUserId)) {
+            log.warn("[Chat Service] 남의 메시지 삭제 시도 차단: messageId={}, caller={}", messageId, callerChatUserId);
+            throw new CustomException("본인이 보낸 메시지만 삭제할 수 있습니다", HttpStatus.FORBIDDEN);
+        }
+
+        // 이미 지운 메시지를 또 지워도 결과는 같다 — 알림만 다시 보내지 않는다
+        if (Boolean.TRUE.equals(message.getIsDeleted())) {
+            return;
+        }
+
         message.delete();
         chatMessageRepository.save(message);
+
+        // 지운 사실을 방 전체에 알린다. 없으면 상대 화면은 다시 들어올 때까지 옛 내용을 그대로 보여준다.
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + roomId,
+                ChatWebSocketMessage.deleteEvent(roomId, ChatMessageDTO.fromEntity(message)));
+    }
+
+    /**
+     * 이 메시지를 보낸 사람이 호출자인가.
+     *
+     * 참조 칼럼(member_id/app_user_id)을 먼저 본다 — 문자열 senderId는 관리자 접두사 규약이 바뀌기
+     * 전에 저장된 값이 섞여 있어 그것만 비교하면 옛 메시지가 남의 것으로 판정된다.
+     */
+    private boolean isSentBy(ChatMessage message, String callerChatUserId) {
+        if (callerChatUserId == null || callerChatUserId.isBlank()) {
+            return false;
+        }
+
+        ChatPersonRef caller = person(callerChatUserId);
+        ChatPersonRef sender = ChatPersonRef.of(message.getSenderMemberId(), message.getSenderAppUserId());
+
+        if (sender.refId() != null && caller.refId() != null) {
+            return sender.refId().equals(caller.refId()) && Objects.equals(sender.type(), caller.type());
+        }
+
+        // 참조가 비어 있는 옛 행은 저장된 문자열로 비교한다
+        return callerChatUserId.equals(message.getSenderId());
     }
 
     // ==================== 읽음 처리 ====================
