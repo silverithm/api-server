@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.dto.Location;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -30,7 +31,14 @@ import org.xml.sax.helpers.LocatorImpl;
 public class Employee extends Node {
 
 
+    /** 암호화 저장(AES-GCM). 평문 200자 → 암호문 약 841자 */
+    @Convert(converter = EncryptedPiiConverter.class)
+    @Column(length = 1024)
     private String homeAddressName;
+
+    /** 암호화 저장. 평문 50자 → 암호문 약 243자 */
+    @Convert(converter = EncryptedPiiConverter.class)
+    @Column(length = 512)
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)

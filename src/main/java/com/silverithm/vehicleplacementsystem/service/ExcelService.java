@@ -206,6 +206,9 @@ public class ExcelService {
         headerRow.createCell(4).setCellValue("최대인원");
 
         List<Employee> employees = employeeRepository.findAllInCompanyScope(companyId);
+        // 이름은 암호화 컬럼이라 DB 정렬이 안 된다 — 복호화된 값으로 정렬한다
+        employees.sort(java.util.Comparator.comparing(Employee::getName,
+                java.util.Comparator.nullsLast(String::compareTo)));
 
         for (Employee employee : employees) {
 

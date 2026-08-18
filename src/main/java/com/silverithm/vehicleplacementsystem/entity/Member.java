@@ -30,12 +30,16 @@ public class Member {
     @Column(nullable = false)
     private String password;
     
-    @Column(nullable = false)
+    /** 암호화 저장(AES-GCM). 평문 50자 → 암호문 약 243자 */
+    @Convert(converter = EncryptedPiiConverter.class)
+    @Column(nullable = false, length = 512)
     private String name;
     
     @Column(nullable = false)
     private String email;
     
+    /** 암호화 저장. 전화번호는 짧아 기존 255자 안에 들어간다 */
+    @Convert(converter = EncryptedPiiConverter.class)
     @Column
     private String phoneNumber;
     

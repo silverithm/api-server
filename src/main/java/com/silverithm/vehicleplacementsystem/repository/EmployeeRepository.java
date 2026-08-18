@@ -18,8 +18,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             + "LEFT JOIN e.company c "
             + "LEFT JOIN e.user u "
             + "LEFT JOIN u.company uc "
-            + "WHERE c.id = :companyId OR uc.id = :companyId "
-            + "ORDER BY e.name ASC")
+            + "WHERE c.id = :companyId OR uc.id = :companyId")
     List<Employee> findAllInCompanyScope(@Param("companyId") Long companyId);
 
     /** 해당 직원이 기관 범위에 속하는지 (레거시 user 연결 포함) */

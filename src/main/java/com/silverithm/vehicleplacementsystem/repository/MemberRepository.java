@@ -34,14 +34,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     List<Member> findByCompanyAndRoleAndStatus(Company company, Member.Role role, Member.MemberStatus status);
 
-    @Query("SELECT m FROM Member m WHERE m.company = :company AND m.name LIKE %:name% ORDER BY m.createdAt DESC")
-    List<Member> findByCompanyAndNameContaining(@Param("company") Company company, @Param("name") String name);
 
     @Query("SELECT m FROM Member m WHERE m.company = :company AND m.department = :department ORDER BY m.createdAt DESC")
     List<Member> findByCompanyAndDepartment(@Param("company") Company company, @Param("department") String department);
 
-    @Query("SELECT m FROM Member m WHERE m.name LIKE %:name% ORDER BY m.createdAt DESC")
-    List<Member> findByNameContaining(@Param("name") String name);
 
     @Query("SELECT m FROM Member m WHERE m.department = :department ORDER BY m.createdAt DESC")
     List<Member> findByDepartment(@Param("department") String department);

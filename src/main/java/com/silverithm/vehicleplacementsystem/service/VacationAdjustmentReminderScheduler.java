@@ -143,7 +143,8 @@ public class VacationAdjustmentReminderScheduler {
                 // userId가 숫자가 아닌 레거시 데이터 — 이름으로 폴백
             }
         }
-        return memberRepository.findByCompanyAndNameContaining(request.getCompany(), request.getUserName())
+        // 이름은 암호화 컬럼이라 DB LIKE가 안 된다 — 회사 회원을 불러 복호화된 이름으로 맞춘다
+        return memberRepository.findByCompanyOrderByCreatedAtDesc(request.getCompany())
                 .stream()
                 .filter(m -> request.getUserName().equals(m.getName()))
                 .findFirst().orElse(null);
