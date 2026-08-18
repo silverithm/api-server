@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 
 
+import java.util.Collection;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
@@ -108,31 +109,39 @@ public class SystemMonitoringService implements HealthIndicator {
      */
     private void checkErrorRate() {
         try {
-            // 최근 5분간 총 요청 수
-            long totalRequests = meterRegistry.get("http.server.requests")
-                    .timer()
-                    .count();
-            
-            // 최근 5분간 5xx 에러 수
-            long errorRequests = meterRegistry.get("http.server.requests")
-                    .tags("status", "500")
-                    .timer()
-                    .count();
-            
+            // http.server.requests는 (uri, method, status ...) 조합마다 타이머가 따로 있다.
+            // .timer()는 그중 하나만 집어오므로, 분모를 그걸로 잡으면 '전체 요청'이 아니라
+            // '어쩌다 걸린 한 조합'이 되어 에러율이 100%로 튄다(실제로 오탐이 왔다).
+            // 조합을 모두 더해야 진짜 비율이 된다.
+            Collection<Timer> timers = meterRegistry.get("http.server.requests").timers();
+
+            long totalRequests = 0;
+            long errorRequests = 0;
+            for (Timer timer : timers) {
+                long count = timer.count();
+                totalRequests += count;
+                String status = timer.getId().getTag("status");
+                // 5xx만 서버 잘못이다. 401·403·404는 잘못된 요청이지 장애가 아니다.
+                if (status != null && status.startsWith("5")) {
+                    errorRequests += count;
+                }
+            }
+
+            // 누적값이라 재시작 이후 전체 평균이다 — '최근 5분'이라 부르지 않는다
             if (totalRequests > 0) {
                 double errorRate = ((double) errorRequests / totalRequests) * 100;
-                
+
                 if (errorRate > errorRateThreshold) {
                     if (!lastErrorRateAlertSent) {
-                        slackService.sendHighErrorRateAlert(errorRate, "최근 5분간");
+                        slackService.sendHighErrorRateAlert(errorRate, "기동 후 누적");
                         lastErrorRateAlertSent = true;
                     }
                 } else if (errorRate < errorRateThreshold - 2) {
                     // 에러율이 정상으로 돌아왔을 때 플래그 리셋
                     lastErrorRateAlertSent = false;
                 }
-                
-                log.debug("에러율: {:.2f}%", errorRate);
+
+                log.debug("에러율: {}% ({}/{})", String.format("%.2f", errorRate), errorRequests, totalRequests);
             }
         } catch (Exception e) {
             log.debug("에러율 체크 중 메트릭을 찾을 수 없음: {}", e.getMessage());

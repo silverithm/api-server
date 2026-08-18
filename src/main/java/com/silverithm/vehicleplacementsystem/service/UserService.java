@@ -468,8 +468,14 @@ public class UserService {
     public void deleteUser(String userEmail) {
         AppUser findUser = userRepository.findActiveByEmail(userEmail)
                 .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND));
-        findUser.getSubscription().updateStatus(SubscriptionStatus.INACTIVE);
-        findUser.getCompany().updateExpose(false);
+        // 구독을 한 번도 시작하지 않은 계정은 구독이 없다 — 그 때문에 탈퇴 자체가 500으로
+        // 깨지면 안 된다. 정리할 구독이 있을 때만 내린다.
+        if (findUser.getSubscription() != null) {
+            findUser.getSubscription().updateStatus(SubscriptionStatus.INACTIVE);
+        }
+        if (findUser.getCompany() != null) {
+            findUser.getCompany().updateExpose(false);
+        }
         findUser.softDelete();
 
     }
