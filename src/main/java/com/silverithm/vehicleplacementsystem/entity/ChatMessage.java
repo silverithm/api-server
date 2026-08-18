@@ -89,9 +89,11 @@ public class ChatMessage {
         createdAt = LocalDateTime.now();
         if (isDeleted == null) {
             isDeleted = false;
-        // 문자열 식별자와 참조 칼럼이 어긋나지 않게 함께 채운다 (V1.66, ChatPersonRef 참고)
-        syncPersonRef();
         }
+        // 문자열 식별자와 참조 칼럼이 어긋나지 않게 함께 채운다 (V1.66, ChatPersonRef 참고).
+        // 이 호출이 위 if 안에 들어가면 안 된다 — isDeleted는 @Builder.Default로 항상 값이 있어
+        // 그 블록이 돌지 않고, 발신자 참조가 NULL로 저장돼 내 메시지가 남의 것처럼 보인다(실제 사고).
+        syncPersonRef();
     }
 
     public void delete() {
