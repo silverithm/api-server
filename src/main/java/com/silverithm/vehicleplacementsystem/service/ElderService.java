@@ -144,6 +144,42 @@ public class ElderService {
         }
     }
 
+    /**
+     * 어르신 대량 등록 (엑셀 업로드). 전체가 한 트랜잭션이다 —
+     * 도중에 실패하면 아무도 등록되지 않아, 몇 명까지 들어갔는지 세어볼 필요가 없다.
+     */
+    @Transactional
+    public int bulkAddEldersToCompany(Long companyId, List<CompanyElderRequestDTO> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return 0;
+        }
+        if (requests.size() > 500) {
+            throw new CustomException("한 번에 500명까지 등록할 수 있습니다.", HttpStatus.BAD_REQUEST);
+        }
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+
+        List<Elderly> elders = requests.stream().map(request -> {
+            if (request.name() == null || request.name().isBlank()) {
+                throw new CustomException("이름이 비어 있는 행이 있어 등록을 중단했습니다.", HttpStatus.BAD_REQUEST);
+            }
+            String name = request.name().trim();
+            if (name.length() > 50) {
+                throw new CustomException("이름이 50자를 넘는 행이 있어 등록을 중단했습니다: " + name, HttpStatus.BAD_REQUEST);
+            }
+            if (request.homeAddress() != null && request.homeAddress().length() > 200) {
+                throw new CustomException("주소가 200자를 넘는 행이 있어 등록을 중단했습니다: " + name, HttpStatus.BAD_REQUEST);
+            }
+            if (request.homeAddress() != null && !request.homeAddress().isBlank()) {
+                return new Elderly(name, request.homeAddress().trim(), null, request.requiredFrontSeat(), company);
+            }
+            return new Elderly(name, request.requiredFrontSeat(), company);
+        }).collect(Collectors.toList());
+
+        elderRepository.saveAll(elders);
+        return elders.size();
+    }
+
     @Transactional
     public void updateCompanyElder(Long id, CompanyElderRequestDTO request) throws Exception {
         Elderly elderly = elderRepository.findById(id)

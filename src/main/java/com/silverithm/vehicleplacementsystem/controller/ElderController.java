@@ -87,6 +87,13 @@ public class ElderController {
         return ResponseEntity.ok("Success");
     }
 
+    @PostMapping("/api/v1/elders/company/{companyId}/bulk")
+    public ResponseEntity<Map<String, Object>> bulkAddEldersToCompany(@PathVariable("companyId") Long companyId,
+                                                                      @RequestBody List<CompanyElderRequestDTO> requests) {
+        int created = elderService.bulkAddEldersToCompany(companyId, requests);
+        return ResponseEntity.ok(Map.of("created", created));
+    }
+
     @PutMapping("/api/v1/elders/company/elder/{id}")
     public ResponseEntity<String> updateCompanyElder(@PathVariable("id") Long id,
                                                       @RequestBody CompanyElderRequestDTO request) throws Exception {
