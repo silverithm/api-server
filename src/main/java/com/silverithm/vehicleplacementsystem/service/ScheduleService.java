@@ -60,9 +60,17 @@ public class ScheduleService {
                 .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
 
         ScheduleLabel label = null;
+        String color = request.getColor();
         if (request.getLabelId() != null) {
             label = scheduleLabelRepository.findById(request.getLabelId())
                     .orElse(null);
+            // 구버전 웹 호환: labelId만 보내고 color 필드가 아예 없는(=null) 요청에 한해
+            // schedule.color에 라벨 색을 복사해 둔다. color가 명시적으로 왔으면(빈 문자열 포함)
+            // 그 값이 우선이다 — labelId와 color를 함께 보내는 클라이언트가 고른 색을 라벨 색으로
+            // 조용히 덮어쓰면 안 된다.
+            if (label != null && request.getColor() == null) {
+                color = label.getColor();
+            }
         }
 
         Schedule schedule = Schedule.builder()
@@ -71,6 +79,7 @@ public class ScheduleService {
                 .content(request.getContent())
                 .category(parseCategory(request.getCategory()))
                 .label(label)
+                .color(normalizeColor(color))
                 .location(request.getLocation())
                 .startDate(request.getStartDate())
                 .startTime(request.getStartTime())
@@ -130,9 +139,17 @@ public class ScheduleService {
         resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
         ScheduleLabel label = null;
+        String color = request.getColor();
         if (request.getLabelId() != null) {
             label = scheduleLabelRepository.findById(request.getLabelId())
                     .orElse(null);
+            // 구버전 웹 호환: labelId만 보내고 color 필드가 아예 없는(=null) 요청에 한해
+            // schedule.color에 라벨 색을 복사해 둔다. color가 명시적으로 왔으면(빈 문자열 포함)
+            // 그 값이 우선이다 — labelId와 color를 함께 보내는 클라이언트가 고른 색을 라벨 색으로
+            // 조용히 덮어쓰면 안 된다.
+            if (label != null && request.getColor() == null) {
+                color = label.getColor();
+            }
         }
 
         schedule.update(
@@ -146,7 +163,8 @@ public class ScheduleService {
                 request.getEndDate(),
                 request.getEndTime(),
                 request.getIsAllDay(),
-                request.getSendNotification()
+                request.getSendNotification(),
+                color
         );
 
         applyManager(schedule, request.getManagerId());
@@ -548,10 +566,32 @@ public class ScheduleService {
             throw new RuntimeException("이미 존재하는 라벨 이름입니다: " + request.getName());
         }
 
+        String previousColor = label.getColor();
         label.update(request.getName(), request.getColor());
 
         ScheduleLabel saved = scheduleLabelRepository.save(label);
         log.info("[Schedule Service] 라벨 수정 완료: id={}", saved.getId());
+
+        // 백필(V1.74) 이후로는 schedule.color가 실제 표시 색이다.
+        // 라벨 색이 바뀔 때 "라벨 색을 그대로 따르던" 일정들의 color를 같이 맞추지 않으면
+        // 라벨 색을 바꿔도 화면(일정 자체 색)에는 예전 색이 그대로 남는다.
+        // 단, 이미 라벨 색과 다른 색으로 개별 지정된 일정(schedule.color != previousColor)은
+        // 사용자가 일부러 라벨과 다르게 고른 것이므로 건드리지 않는다 — 그렇지 않으면
+        // 라벨 색을 바꿀 때마다 개별 지정한 색이 조용히 사라진다.
+        if (request.getColor() != null && !request.getColor().equals(previousColor)) {
+            List<Schedule> using = scheduleRepository.findByLabelId(labelId);
+            List<Schedule> following = using.stream()
+                    .filter(schedule -> previousColor.equals(schedule.getColor()))
+                    .collect(Collectors.toList());
+            if (!following.isEmpty()) {
+                for (Schedule schedule : following) {
+                    schedule.setColor(saved.getColor());
+                }
+                scheduleRepository.saveAll(following);
+                log.info("[Schedule Service] 라벨 색 변경에 따라 일정 {}건 색 동기화(개별 지정 {}건 제외): labelId={}",
+                        following.size(), using.size() - following.size(), labelId);
+            }
+        }
 
         return ScheduleLabelDTO.fromEntity(saved);
     }
@@ -601,6 +641,11 @@ public class ScheduleService {
     }
 
     // ==================== Helper Methods ====================
+
+    /** 빈 문자열/null을 색 없음(null)으로 통일한다. schedule.color는 "값 있음" 아니면 null만 갖는다. */
+    private String normalizeColor(String color) {
+        return (color == null || color.isBlank()) ? null : color;
+    }
 
     private ScheduleCategory parseCategory(String category) {
         if (category == null) {

@@ -46,6 +46,13 @@ public class Schedule {
     @JoinColumn(name = "label_id")
     private ScheduleLabel label;
 
+    /**
+     * 일정 자체의 색상 ("#RRGGBB"). null이면 카테고리 기본색으로 폴백한다.
+     * label과 별개 필드다 — label은 구버전 클라이언트 호환을 위해 남아 있고,
+     * 색은 이제 이 필드가 진실 소스다 (ScheduleDTO의 label shim이 이 값을 label.color에도 실어준다).
+     */
+    private String color;
+
     private String location;
 
     @Column(nullable = false)
@@ -133,7 +140,7 @@ public class Schedule {
     public void update(String title, String content, ScheduleCategory category,
                       ScheduleLabel label, String location, LocalDate startDate,
                       LocalTime startTime, LocalDate endDate, LocalTime endTime,
-                      Boolean isAllDay, Boolean sendNotification) {
+                      Boolean isAllDay, Boolean sendNotification, String color) {
         if (title != null) {
             this.title = title;
         }
@@ -144,6 +151,12 @@ public class Schedule {
             this.category = category;
         }
         this.label = label; // can be null to remove label
+        // label과 다른 시맨틱: 필드 자체가 없으면(null) 기존 색을 유지한다.
+        // 색을 안 보내는 클라이언트가 저장할 때마다 색을 지워버리는 사고를 막기 위함이다.
+        // 빈 문자열이면 명시적으로 지우는 것("" → 카테고리 기본색 폴백)이다.
+        if (color != null) {
+            this.color = color.isBlank() ? null : color;
+        }
         if (location != null) {
             this.location = location;
         }
