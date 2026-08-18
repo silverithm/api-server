@@ -38,9 +38,9 @@ public class Member {
     @Column(nullable = false)
     private String email;
     
-    /** 암호화 저장. 전화번호는 짧아 기존 255자 안에 들어간다 */
+    /** 암호화 저장. 암호문 길이만큼 넓힌 컬럼(V1.77) */
     @Convert(converter = EncryptedPiiConverter.class)
-    @Column
+    @Column(length = 512)
     private String phoneNumber;
     
     @Enumerated(EnumType.STRING)
