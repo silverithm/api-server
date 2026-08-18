@@ -174,6 +174,9 @@ public class ExcelService {
         headerRow.createCell(3).setCellValue("앞자리여부");
 
         List<Elderly> elderlys = elderRepository.findAllInCompanyScope(companyId);
+        // 이름은 암호화 컬럼이라 DB 정렬이 안 된다 — 복호화된 값으로 정렬한다
+        elderlys.sort(java.util.Comparator.comparing(Elderly::getName,
+                java.util.Comparator.nullsLast(String::compareTo)));
 
         for (Elderly elderly : elderlys) {
             Row elderlyRow = elderlySheet.createRow(rowNo++);

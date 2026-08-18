@@ -1,6 +1,8 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
 import com.silverithm.vehicleplacementsystem.dto.Location;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -21,8 +23,14 @@ import org.springframework.data.annotation.LastModifiedDate;
 public class Elderly extends Node {
 
 
+    /** 암호화 저장(AES-GCM). 컬럼 길이는 암호문 기준 — 평문 50자(UTF-8 150B)가 base64로 약 243자 */
+    @Convert(converter = EncryptedPiiConverter.class)
+    @Column(length = 512)
     private String name;
 
+    /** 암호화 저장. 평문 200자(600B) → 암호문 약 841자 */
+    @Convert(converter = EncryptedPiiConverter.class)
+    @Column(length = 1024)
     private String homeAddressName;
     @Embedded
     private Location homeAddress;

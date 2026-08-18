@@ -119,9 +119,11 @@ public class ElderService {
     // ==================== Company 기반 어르신 관리 ====================
 
     public List<ElderlyDTO> getEldersByCompany(Long companyId) {
-        return elderRepository.findByCompanyIdOrderByNameAsc(companyId)
+        // 이름은 암호화 컬럼이라 DB 정렬이 안 된다 — 복호화된 값으로 여기서 정렬한다
+        return elderRepository.findByCompanyId(companyId)
                 .stream()
                 .map(ElderlyDTO::from)
+                .sorted(Comparator.comparing(ElderlyDTO::name))
                 .collect(Collectors.toList());
     }
 
