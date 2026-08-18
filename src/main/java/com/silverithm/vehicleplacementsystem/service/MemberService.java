@@ -338,6 +338,10 @@ public class MemberService {
         joinRequest.setProcessedAt(LocalDateTime.now());
         memberJoinRequestRepository.save(joinRequest);
 
+        // 같은 사람이 낸 다른 신청도 함께 닫는다 — 승인했는데도 대기 목록에 그 사람이 남아 있으면
+        // 관리자는 승인이 안 된 줄 알고 다시 누르게 된다.
+        closeSiblingRequests(joinRequest, adminId);
+
         log.info("[Member Service] 가입 승인 완료: memberId={}, requestId={}", savedMember.getId(), requestId);
 
         // 슬랙 알림 전송
@@ -378,6 +382,33 @@ public class MemberService {
     }
 
     @Transactional
+    /**
+     * 방금 승인한 사람이 낸 다른 대기 신청을 함께 닫는다.
+     *
+     * 같은 사람이 두 번 신청했는데 하나만 승인하면, 이미 회원이 된 사람이 대기 목록에 계속 남아
+     * 관리자가 승인이 안 된 줄 알고 다시 누르게 된다(실제 문의가 있었다). 그 사람은 이미 가입됐으니
+     * 남은 신청은 처리할 일이 없다.
+     *
+     * 거절은 이렇게 하지 않는다 — 거절당한 사람은 다시 신청할 수 있어야 한다.
+     */
+    private void closeSiblingRequests(MemberJoinRequest approved, Long adminId) {
+        List<MemberJoinRequest> siblings = memberJoinRequestRepository.findDuplicatesByStatus(
+                approved.getCompany(), MemberJoinRequest.RequestStatus.PENDING,
+                approved.getUsername(), approved.getEmail());
+
+        for (MemberJoinRequest sibling : siblings) {
+            if (sibling.getId().equals(approved.getId())) {
+                continue;
+            }
+            sibling.setStatus(MemberJoinRequest.RequestStatus.APPROVED);
+            sibling.setApprovedBy(adminId);
+            sibling.setProcessedAt(LocalDateTime.now());
+            memberJoinRequestRepository.save(sibling);
+            log.info("[Member Service] 중복 가입 신청 함께 처리: requestId={} (승인된 요청 {})",
+                    sibling.getId(), approved.getId());
+        }
+    }
+
     public void rejectJoinRequest(Long requestId, Long adminId, MemberJoinRequestProcessDTO processDTO) {
         log.info("[Member Service] 가입 요청 거부: requestId={}, adminId={}", requestId, adminId);
 
