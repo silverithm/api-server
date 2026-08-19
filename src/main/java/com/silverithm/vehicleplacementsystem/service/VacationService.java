@@ -214,6 +214,10 @@ public class VacationService {
         String role = resolveRoleForNewRequest(company, requestDTO.getUserId(), requestDTO.getUserName(),
                 requestDTO.getRole());
 
+        // 관리자가 설정한 날짜별 휴무 제한 인원을 서버에서도 확인한다 — 화면이 못 막아도
+        // (구버전 앱 포함) 초과 신청이 조용히 쌓이지 않게 즉시 사유를 돌려준다.
+        validateDailyVacationLimit(company, requestDTO.getDate(), role);
+
         // userId 생성 (없으면 자동 생성)
         String userId = requestDTO.getUserId();
         if (userId == null || userId.trim().isEmpty()) {
@@ -247,6 +251,39 @@ public class VacationService {
         }
 
         return VacationRequestDTO.fromEntity(saved);
+    }
+
+    /**
+     * 날짜별 휴무 제한 인원 검증. 관리자가 그 날짜·역할에 제한을 명시했을 때만 막는다 —
+     * 화면의 기본값 3명은 표시용이라, 제한을 안 쓰는 기관까지 갑자기 차단하면 안 된다.
+     * 집계는 달력 표시와 같은 규칙(거부 제외, 현재 배정 역할 기준)을 쓴다.
+     */
+    private void validateDailyVacationLimit(Company company, LocalDate date, String role) {
+        String normalizedRole = normalizeRequestedRole(role);
+
+        List<VacationLimit> dailyLimits = vacationLimitRepository.findByCompanyAndDate(company, date);
+        Integer maxPeople = dailyLimits.stream()
+                .filter(limit -> matchesExactRole(limit.getRole(), normalizedRole))
+                .map(VacationLimit::getMaxPeople)
+                .findFirst()
+                .orElse(null);
+        if (maxPeople == null) {
+            return; // 이 날짜·역할에 설정된 제한 없음
+        }
+
+        MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
+        long active = vacationRequestRepository.findByCompanyAndDate(company, date).stream()
+                .filter(v -> v.getStatus() != VacationRequest.VacationStatus.REJECTED)
+                .filter(v -> matchesExactRole(roleResolver.resolve(v), normalizedRole))
+                .count();
+
+        if (active >= maxPeople) {
+            throw new CustomException(
+                    String.format("%d월 %d일은 휴무 가능 인원(%d명)이 가득 찼습니다. 현재 %d명이 신청되어 있어요. "
+                                    + "다른 날짜를 선택하시거나 관리자에게 문의해주세요.",
+                            date.getMonthValue(), date.getDayOfMonth(), maxPeople, active),
+                    HttpStatus.CONFLICT);
+        }
     }
 
     @Transactional
