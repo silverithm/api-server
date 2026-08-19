@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.VacationRequest;
@@ -136,6 +137,12 @@ public class VacationController {
                             "data", result
                     ));
                     
+        } catch (CustomException e) {
+            // 제한 인원 초과 같은 규칙 위반 — 사유와 상태를 그대로 전달해야 화면이 알림창을 띄운다
+            log.info("[Vacation API] 신청 거절: {}", e.getMessage());
+            return ResponseEntity.status(e.getHttpStatus())
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", false, "error", e.getMessage()));
         } catch (IllegalArgumentException e) {
             log.error("[Vacation API] 유효성 검증 오류: {}", e.getMessage());
             return ResponseEntity.badRequest()
