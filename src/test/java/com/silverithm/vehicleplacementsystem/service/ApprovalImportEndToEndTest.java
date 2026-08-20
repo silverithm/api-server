@@ -150,9 +150,9 @@ class ApprovalImportEndToEndTest {
     }
 
     @Test
-    @DisplayName("양식을 채워 300건을 올리면 그대로 등록된다")
+    @DisplayName("양식을 채워 1000건을 올리면 그대로 등록된다")
     void bulkImportsFilledTemplate() throws Exception {
-        int count = 300;
+        int count = 1000;
         var file = filledTemplate(count);
 
         Map<String, ApprovalImportRequestDTO.UploadedFile> files = new HashMap<>();

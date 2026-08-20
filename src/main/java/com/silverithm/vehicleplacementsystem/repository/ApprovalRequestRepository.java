@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -128,8 +129,15 @@ public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest
             @Param("callerPositionId") Long callerPositionId
     );
 
-    /** 같은 원본 문서번호가 이미 이관됐는지 — 두 번 올려도 중복으로 쌓이지 않게 */
-    boolean existsByCompanyIdAndExternalDocNumber(Long companyId, String externalDocNumber);
+    /**
+     * 이미 이관된 원본 문서번호들 — 두 번 올려도 중복으로 쌓이지 않게.
+     * 수천 건짜리 색인을 줄마다 exists로 물으면 그 수만큼 쿼리가 나가므로 한 번에 걷어온다.
+     */
+    @Query("SELECT a.externalDocNumber FROM ApprovalRequest a "
+           + "WHERE a.company.id = :companyId AND a.externalDocNumber IN :docNumbers")
+    List<String> findExistingExternalDocNumbers(
+            @Param("companyId") Long companyId,
+            @Param("docNumbers") Collection<String> docNumbers);
 
     Long countByCompanyIdAndStatus(Long companyId, ApprovalStatus status);
 

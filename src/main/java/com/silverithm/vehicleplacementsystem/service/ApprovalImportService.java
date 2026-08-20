@@ -81,12 +81,13 @@ public class ApprovalImportService {
         }
 
         PersonIndex people = buildPersonIndex(company);
+        Set<String> existingDocNumbers = loadExistingDocNumbers(companyId, parsed.rows());
         Set<String> seenDocNumbers = new HashSet<>();
         Set<String> missingFiles = new LinkedHashSet<>();
         int errorCount = 0;
 
         for (ApprovalImportRowDTO row : parsed.rows()) {
-            validate(companyId, row, people, seenDocNumbers, uploadedFileNames, missingFiles);
+            validate(row, people, existingDocNumbers, seenDocNumbers, uploadedFileNames, missingFiles);
             if (!row.getErrors().isEmpty()) {
                 errorCount++;
             }
@@ -114,6 +115,7 @@ public class ApprovalImportService {
         Map<String, ApprovalImportRequestDTO.UploadedFile> files =
                 request.getFiles() != null ? request.getFiles() : Map.of();
 
+        Set<String> existingDocNumbers = loadExistingDocNumbers(companyId, request.getRows());
         Set<String> seenDocNumbers = new HashSet<>();
         Set<String> missingFiles = new LinkedHashSet<>();
         List<ApprovalImportRowDTO> results = new ArrayList<>();
@@ -123,7 +125,7 @@ public class ApprovalImportService {
         for (ApprovalImportRowDTO row : request.getRows()) {
             row.getErrors().clear();
             row.getWarnings().clear();
-            validate(companyId, row, people, seenDocNumbers, files.keySet(), missingFiles);
+            validate(row, people, existingDocNumbers, seenDocNumbers, files.keySet(), missingFiles);
 
             if (!row.getErrors().isEmpty()) {
                 errorCount++;
@@ -263,9 +265,21 @@ public class ApprovalImportService {
         }
     }
 
-    private void validate(Long companyId, ApprovalImportRowDTO row, PersonIndex people,
-                          Set<String> seenDocNumbers, Set<String> uploadedFileNames,
-                          Set<String> missingFiles) {
+    /** 색인에 등장하는 문서번호 중 이미 이관된 것들을 한 번의 쿼리로 걷어온다 */
+    private Set<String> loadExistingDocNumbers(Long companyId, List<ApprovalImportRowDTO> rows) {
+        List<String> docNumbers = rows.stream()
+                .map(row -> blankToNull(row.getExternalDocNumber()))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        if (docNumbers.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(requestRepository.findExistingExternalDocNumbers(companyId, docNumbers));
+    }
+
+    private void validate(ApprovalImportRowDTO row, PersonIndex people,
+                          Set<String> existingDocNumbers, Set<String> seenDocNumbers,
+                          Set<String> uploadedFileNames, Set<String> missingFiles) {
 
         if (row.getTitle() == null || row.getTitle().isBlank()) {
             row.getErrors().add("제목이 비어 있습니다");
@@ -286,7 +300,7 @@ public class ApprovalImportService {
         if (docNumber != null) {
             if (!seenDocNumbers.add(docNumber)) {
                 row.getErrors().add("같은 파일 안에 문서번호가 중복됩니다: " + docNumber);
-            } else if (requestRepository.existsByCompanyIdAndExternalDocNumber(companyId, docNumber)) {
+            } else if (existingDocNumbers.contains(docNumber)) {
                 row.getErrors().add("이미 옮겨진 문서번호입니다: " + docNumber);
             }
         }

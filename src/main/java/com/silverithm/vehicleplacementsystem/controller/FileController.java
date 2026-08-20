@@ -51,11 +51,13 @@ public class FileController {
             log.info("[File API] 파일 업로드 요청: fileName={}, size={}, category={}",
                     file.getOriginalFilename(), file.getSize(), category);
 
-            // 파일 크기 제한 (10MB)
-            if (file.getSize() > 10 * 1024 * 1024) {
+            // 파일 크기 제한 — 결재 문서(approvals)는 스캔 PDF가 커서 서버 멀티파트 한도(50MB)까지 허용
+            long maxSize = ("approvals".equals(category) ? 50L : 10L) * 1024 * 1024;
+            if (file.getSize() > maxSize) {
                 return ResponseEntity.badRequest()
                         .headers(getCorsHeaders())
-                        .body(Map.of("error", "파일 크기는 10MB를 초과할 수 없습니다."));
+                        .body(Map.of("error",
+                                "파일 크기는 " + (maxSize / 1024 / 1024) + "MB를 초과할 수 없습니다."));
             }
 
             // 허용된 파일 확장자 검사
