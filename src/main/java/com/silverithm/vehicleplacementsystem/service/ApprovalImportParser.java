@@ -133,8 +133,9 @@ public class ApprovalImportParser {
                     continue;
                 }
                 ApprovalImportRowDTO parsed = readRow(row, r - headerRowIndex, columnFields, columnSequence);
-                // 우리가 나눠준 양식의 예시 줄 — 지우지 않고 그대로 올려도 등록되지 않게 건너뛴다
-                if (parsed.getExternalDocNumber() != null && parsed.getExternalDocNumber().startsWith("예시")) {
+                // 우리가 나눠준 양식의 예시 줄 — 지우지 않고 그대로 올려도 등록되지 않게 건너뛴다.
+                // "(예시)"를 명시적으로 붙인 줄만 거르므로 진짜 문서가 잘못 걸러질 일은 없다.
+                if (isSampleRow(parsed)) {
                     continue;
                 }
                 rows.add(parsed);
@@ -393,6 +394,15 @@ public class ApprovalImportParser {
             }
         }
         return null;
+    }
+
+    /** 문서번호나 제목이 "(예시)"로 시작하는 줄 — 배포 양식의 예시 데이터 */
+    private boolean isSampleRow(ApprovalImportRowDTO row) {
+        return startsWithSampleMarker(row.getExternalDocNumber()) || startsWithSampleMarker(row.getTitle());
+    }
+
+    private boolean startsWithSampleMarker(String value) {
+        return value != null && value.trim().startsWith("(예시)");
     }
 
     private boolean isBlankRow(Row row) {

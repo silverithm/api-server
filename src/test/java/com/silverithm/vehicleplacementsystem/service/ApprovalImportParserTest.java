@@ -144,7 +144,7 @@ class ApprovalImportParserTest {
         // (필수 표시 * 가 붙은 헤더도 그대로 인식되어야 한다)
         assertThat(parsed.unmappedColumns()).isEmpty();
 
-        // 예시 줄(문서번호 '예시-')은 기관이 지우지 않고 올려도 등록 대상이 아니다
+        // 예시 줄(문서번호·제목이 "(예시)"로 시작)은 기관이 지우지 않고 올려도 등록 대상이 아니다
         assertThat(parsed.rows()).isEmpty();
     }
 
@@ -153,7 +153,8 @@ class ApprovalImportParserTest {
     void skipsSampleRowsButKeepsRealOnes() throws Exception {
         var file = excel(new String[][]{
                 {"문서번호", "제목*", "기안자", "기안일*", "결재상태*", "첨부파일"},
-                {"예시-001", "예시 회의록", "홍길동", "2025-01-03", "완료", "회의록.pdf"},
+                {"(예시) 2025-001", "(예시) 회의록", "홍길동", "2025-01-03", "완료", "회의록.pdf"},
+                {"", "(예시) 문서번호 없는 예시", "홍길동", "2025-01-04", "완료", ""},
                 {"2025-010", "진짜 회의록", "이영희", "2025-03-05", "완료", "진짜.pdf"},
         });
 
