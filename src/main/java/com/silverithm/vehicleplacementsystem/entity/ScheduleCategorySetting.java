@@ -35,8 +35,10 @@ public class ScheduleCategorySetting {
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
+    // columnDefinition이 없으면 Hibernate 6 스키마 검증이 MySQL 네이티브 enum 타입을
+    // 기대해 varchar 컬럼에서 기동이 실패한다 (ApprovalStep 등과 같은 패턴)
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "varchar(20)")
     private ScheduleCategory category;
 
     /** 기관이 바꾼 이름. null이면 기본 이름(회의 등)을 쓴다. */
