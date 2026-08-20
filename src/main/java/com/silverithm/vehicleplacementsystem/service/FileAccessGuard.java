@@ -153,6 +153,7 @@ public class FileAccessGuard {
         Set<String> candidates = referenceCandidates(path);
 
         return fileOwnershipRepository.existsApprovalAttachment(companyId, candidates)
+                || fileOwnershipRepository.existsApprovalExtraAttachment(companyId, candidates)
                 || fileOwnershipRepository.existsTemplateFile(companyId, candidates)
                 || fileOwnershipRepository.existsChatFile(companyId, candidates)
                 || fileOwnershipRepository.existsApprovalStepSignature(companyId, candidates)

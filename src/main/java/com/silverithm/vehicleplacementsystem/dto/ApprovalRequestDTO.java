@@ -46,6 +46,13 @@ public class ApprovalRequestDTO {
     private DocumentFooterDTO documentFooter;  // 공문 하단 발신부 (기관 주소·연락처)
     private List<ApprovalViewerDTO> viewers;   // 열람 대상 (직책/개인)
 
+    /** 다른 시스템에서 옮겨온 완료 문서인지 — 참이면 결재를 다시 진행하지 않는다 */
+    private Boolean isImported;
+    private String importedSource;
+    private String externalDocNumber;
+    /** 대표 첨부(attachmentUrl) 외의 딸린 파일들 */
+    private List<ApprovalAttachmentDTO> extraAttachments;
+
     public static ApprovalRequestDTO from(ApprovalRequest request) {
         return ApprovalRequestDTO.builder()
                 .id(request.getId())
@@ -76,6 +83,17 @@ public class ApprovalRequestDTO {
                                         .viewerType(viewer.getViewerType())
                                         .refId(viewer.getRefId())
                                         .viewerName(viewer.getViewerName())
+                                        .build())
+                                .collect(Collectors.toList()))
+                .isImported(Boolean.TRUE.equals(request.getIsImported()))
+                .importedSource(request.getImportedSource())
+                .externalDocNumber(request.getExternalDocNumber())
+                .extraAttachments(request.getExtraAttachments() == null ? List.of()
+                        : request.getExtraAttachments().stream()
+                                .map(attachment -> ApprovalAttachmentDTO.builder()
+                                        .fileUrl(attachment.getFileUrl())
+                                        .fileName(attachment.getFileName())
+                                        .fileSize(attachment.getFileSize())
                                         .build())
                                 .collect(Collectors.toList()))
                 .docNumber(request.getDocNumber())

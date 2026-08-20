@@ -87,6 +87,7 @@ public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest
            + "     OR LOWER(a.requesterName) LIKE LOWER(CONCAT('%', :searchQuery, '%')) "
            + "     OR LOWER(t.name) LIKE LOWER(CONCAT('%', :searchQuery, '%')) "
            + "     OR LOWER(a.docNumberDisplay) LIKE LOWER(CONCAT('%', :searchQuery, '%')) "
+           + "     OR LOWER(a.externalDocNumber) LIKE LOWER(CONCAT('%', :searchQuery, '%')) "
            + "     OR LOWER(a.attachmentFileName) LIKE LOWER(CONCAT('%', :searchQuery, '%')) "
            + "     OR LOWER(a.formData) LIKE LOWER(CONCAT('%', :searchQuery, '%')) "
            + "     OR EXISTS (SELECT 1 FROM ApprovalStep s2 WHERE s2.approvalRequest = a "
@@ -126,6 +127,9 @@ public interface ApprovalRequestRepository extends JpaRepository<ApprovalRequest
             @Param("callerRefId") Long callerRefId,
             @Param("callerPositionId") Long callerPositionId
     );
+
+    /** 같은 원본 문서번호가 이미 이관됐는지 — 두 번 올려도 중복으로 쌓이지 않게 */
+    boolean existsByCompanyIdAndExternalDocNumber(Long companyId, String externalDocNumber);
 
     Long countByCompanyIdAndStatus(Long companyId, ApprovalStatus status);
 

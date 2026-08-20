@@ -24,6 +24,12 @@ public interface FileOwnershipRepository extends Repository<Company, Long> {
     boolean existsApprovalAttachment(@Param("companyId") Long companyId,
                                      @Param("paths") Collection<String> paths);
 
+    /** 결재 문서의 추가 첨부파일 (이관 문서처럼 파일이 여럿인 경우) */
+    @Query("SELECT COUNT(f) > 0 FROM ApprovalRequestAttachment f "
+            + "WHERE f.approvalRequest.company.id = :companyId AND f.fileUrl IN :paths")
+    boolean existsApprovalExtraAttachment(@Param("companyId") Long companyId,
+                                          @Param("paths") Collection<String> paths);
+
     /** 결재 양식 파일 */
     @Query("SELECT COUNT(t) > 0 FROM ApprovalTemplate t "
             + "WHERE t.company.id = :companyId AND t.fileUrl IN :paths")

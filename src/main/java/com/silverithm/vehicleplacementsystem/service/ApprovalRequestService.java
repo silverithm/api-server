@@ -990,6 +990,12 @@ public class ApprovalRequestService {
             }
         }
 
+        // 추가 첨부도 상대경로로 저장되므로 같은 규칙으로 변환한다
+        if (dto.getExtraAttachments() != null) {
+            dto.getExtraAttachments().forEach(attachment ->
+                    attachment.setFileUrl(toAbsoluteFileUrl(attachment.getFileUrl())));
+        }
+
         // 최종 승인된 결재선 문서에는 기관 직인 노출 (시행 문서)
         if (request.getStatus() == ApprovalStatus.APPROVED && Boolean.TRUE.equals(dto.getHasApprovalLine())) {
             String sealUrl = request.getCompany() != null ? request.getCompany().getSealUrl() : null;

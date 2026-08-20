@@ -39,11 +39,12 @@ public class ApprovalStep {
     @Column(name = "approver_type", nullable = false, columnDefinition = "varchar(10)")
     private ApproverType approverType;
 
-    @Column(name = "approver_ref_id", nullable = false)
+    /** 결재자 PK. 이관 문서에서 옛 결재자의 계정을 못 찾으면 null이고, 이름만 남는다 */
+    @Column(name = "approver_ref_id")
     private Long approverRefId;
 
     // 프론트 호환용 문자열 (admin_<id> 또는 memberId) — 표시/응답 전용, 인가 매칭은 (type, refId) 사용
-    @Column(name = "approver_id_legacy", nullable = false)
+    @Column(name = "approver_id_legacy")
     private String approverIdLegacy;
 
     @Column(name = "approver_name", nullable = false)

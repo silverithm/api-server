@@ -83,6 +83,27 @@ public class ApprovalRequest {
     @Builder.Default
     private List<ApprovalRequestViewer> viewers = new ArrayList<>();
 
+    // 첨부가 여럿인 문서(주로 이관 문서)의 나머지 파일 — 대표 파일은 attachmentUrl에 그대로 둔다
+    @OneToMany(mappedBy = "approvalRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<ApprovalRequestAttachment> extraAttachments = new ArrayList<>();
+
+    /** 다른 시스템에서 옮겨온 완료 문서인지 — 참이면 결재를 다시 진행할 수 없다 */
+    @Column(name = "is_imported", nullable = false)
+    @Builder.Default
+    private Boolean isImported = false;
+
+    @Column(name = "imported_source", length = 50)
+    private String importedSource;
+
+    /** 원본 시스템의 문서번호. 우리 채번(docNumber)과 충돌하지 않게 따로 둔다 */
+    @Column(name = "external_doc_number", length = 100)
+    private String externalDocNumber;
+
+    @Column(name = "imported_at")
+    private LocalDateTime importedAt;
+
     @Column(name = "doc_number", length = 50)
     private String docNumber;
 
@@ -104,7 +125,11 @@ public class ApprovalRequest {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        // 이관 문서는 원본 기안일을 그대로 써야 결재함 기간 필터에 제자리로 잡힌다.
+        // 새 문서는 언제나 null로 들어오므로 기존 동작은 그대로다.
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
         updatedAt = LocalDateTime.now();
         if (status == null) {
             status = ApprovalStatus.PENDING;

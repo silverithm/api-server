@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.silverithm.vehicleplacementsystem.config.BillingKeyEncryptionConfig;
 import com.silverithm.vehicleplacementsystem.config.querydsl.QuerydslConfiguration;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalRequest.ApprovalStatus;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalStep;
@@ -21,10 +22,13 @@ import org.springframework.test.context.TestPropertySource;
  * 열람 조건(EXISTS 서브쿼리 2개)과 확장 검색 조건은 JPQL이라 컴파일로 걸러지지 않는다.
  */
 @DataJpaTest
-@Import(QuerydslConfiguration.class)
+// 엔티티에 걸린 PII 컨버터가 암호화 빈을 요구하므로 슬라이스 테스트에도 함께 올린다
+@Import({QuerydslConfiguration.class, BillingKeyEncryptionConfig.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @TestPropertySource(properties = {
         "spring.profiles.active=test",
+        // 테스트 전용 키 — 컨버터 빈을 만들기 위한 값일 뿐 실제 데이터를 다루지 않는다
+        "billing.encryption.key=dGVzdC1vbmx5LWtleS1mb3ItamVwYS1zbGljZS10ZXN0cw==",
         "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",

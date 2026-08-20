@@ -2,10 +2,14 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApproveRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalImportPreviewDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalImportRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalViewerCandidatesDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApproverCandidateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateApprovalAttachmentRequestDTO;
+import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService;
+import com.silverithm.vehicleplacementsystem.service.ApprovalImportService;
 import com.silverithm.vehicleplacementsystem.service.ApprovalRequestService;
 import com.silverithm.vehicleplacementsystem.service.FileAccessGuard;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
@@ -13,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,8 +26,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -35,6 +42,8 @@ public class ApprovalRequestController {
     private final ApprovalRequestService approvalService;
     private final FileStorageService fileStorageService;
     private final FileAccessGuard fileAccessGuard;
+    private final ApprovalImportService importService;
+    private final ApprovalAccessService accessService;
 
     /**
      * 결재 요청 목록 조회 (관리자)
@@ -514,6 +523,86 @@ public class ApprovalRequestController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "열람 대상 후보 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 이관 색인(엑셀) 읽어보기 — 저장하지 않고 무엇이 들어갈지 돌려준다.
+     */
+    @PostMapping(value = "/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> previewImport(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long companyId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "uploadedFileNames", required = false) List<String> uploadedFileNames) {
+
+        try {
+            requireImportPermission(userDetails, companyId);
+
+            ApprovalImportPreviewDTO preview = importService.preview(companyId, file,
+                    uploadedFileNames != null ? new HashSet<>(uploadedFileNames) : Set.of());
+
+            return ResponseEntity.ok().headers(getCorsHeaders()).body(Map.of("preview", preview));
+
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 이관 미리보기 권한 거부: companyId={}, {}", companyId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Approval API] 이관 미리보기 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "색인 파일을 읽는 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 이관 확정 등록 — 문제가 있는 줄은 건너뛰고 결과를 줄 단위로 돌려준다.
+     */
+    @PostMapping("/import")
+    public ResponseEntity<Map<String, Object>> importApprovals(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long companyId,
+            @RequestBody ApprovalImportRequestDTO request) {
+
+        try {
+            requireImportPermission(userDetails, companyId);
+
+            ApprovalImportPreviewDTO result = importService.importRows(companyId, request);
+
+            return ResponseEntity.ok().headers(getCorsHeaders()).body(Map.of(
+                    "success", true,
+                    "result", result,
+                    "message", (result.getTotalCount() - result.getErrorCount()) + "건이 등록되었습니다."
+            ));
+
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 이관 등록 권한 거부: companyId={}, {}", companyId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[Approval API] 이관 등록 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "문서 이관 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /** 과거 문서 이관은 기관 관리자만 — 남의 이름으로 완료 문서를 만들어내는 일이라 권한을 좁게 둔다 */
+    private void requireImportPermission(UserDetails userDetails, Long companyId) {
+        var caller = accessService.resolveCaller(userDetails);
+        if (!accessService.isCompanyAdmin(caller, companyId)) {
+            throw new SecurityException("과거 문서 이관은 기관 관리자만 할 수 있습니다");
         }
     }
 
