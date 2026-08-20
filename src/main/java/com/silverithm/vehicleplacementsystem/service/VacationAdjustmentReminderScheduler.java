@@ -99,11 +99,19 @@ public class VacationAdjustmentReminderScheduler {
         // (날짜, 정규화 직종) → 신청 목록
         Map<String, List<VacationRequest>> byDateRole = requests.stream()
                 .collect(Collectors.groupingBy(r -> r.getDate() + "|" + r.getNormalizedRole()));
+        // 날짜 → 전체 신청 목록 ('전체(all)' 제한은 직종 무관 그 날짜 총인원 기준)
+        Map<LocalDate, List<VacationRequest>> byDate = requests.stream()
+                .collect(Collectors.groupingBy(VacationRequest::getDate));
 
         int notified = 0;
         for (VacationLimit limit : limits) {
+            // all 제한은 직종 매칭 키에 절대 안 걸리므로 날짜 전체 그룹으로 판정한다
+            // (예전엔 이 분기가 없어 전체 제한 초과가 리마인드되지 않았다)
+            boolean isAllLimit = "all".equals(VacationRequest.normalizeRole(limit.getRole()));
             String key = limit.getDate() + "|" + VacationRequest.normalizeRole(limit.getRole());
-            List<VacationRequest> dayRequests = byDateRole.getOrDefault(key, List.of());
+            List<VacationRequest> dayRequests = isAllLimit
+                    ? byDate.getOrDefault(limit.getDate(), List.of())
+                    : byDateRole.getOrDefault(key, List.of());
             if (limit.getMaxPeople() == null || dayRequests.size() <= limit.getMaxPeople()) {
                 continue;
             }

@@ -130,6 +130,18 @@ public class VacationService {
             }
         });
 
+        // 관리자가 '전체(all)' 한도를 직접 건 날짜는 직종별 최댓값 누적 대신 그 값이 정답 —
+        // 마지막에 덮어써서 순서 의존 없이 확정한다 (직종 필터 시엔 all 행이 걸러져 무영향)
+        limits.stream()
+                .filter(l -> matchesExactRole(l.getRole(), ALL_ROLE))
+                .forEach(limit -> {
+                    String dateKey = limit.getDate().toString();
+                    VacationCalendarResponseDTO.VacationDateInfo dateInfo = dateMap.get(dateKey);
+                    if (dateInfo != null) {
+                        dateInfo.setMaxPeople(limit.getMaxPeople());
+                    }
+                });
+
         log.info("[Vacation Service] 응답 완료: 회사 {}, 날짜 수={}", company.getName(), dateMap.size());
 
         return VacationCalendarResponseDTO.builder()
@@ -176,10 +188,16 @@ public class VacationService {
         List<VacationLimit> dailyLimits = vacationLimitRepository.findByCompanyAndDate(company, date);
         Integer maxPeople;
         if (ALL_ROLE.equals(normalizedRole)) {
+            // '전체' 보기의 한도: 관리자가 전체(all) 한도를 직접 걸었으면 그 값이 정답,
+            // 아니면 직종별 한도 중 최댓값(대략치)으로 보여준다
             maxPeople = dailyLimits.stream()
+                    .filter(limit -> matchesExactRole(limit.getRole(), ALL_ROLE))
                     .map(VacationLimit::getMaxPeople)
-                    .max(Integer::compareTo)
-                    .orElse(3);
+                    .findFirst()
+                    .orElseGet(() -> dailyLimits.stream()
+                            .map(VacationLimit::getMaxPeople)
+                            .max(Integer::compareTo)
+                            .orElse(3));
         } else {
             maxPeople = dailyLimits.stream()
                     .filter(limit -> matchesExactRole(limit.getRole(), normalizedRole))
@@ -267,22 +285,45 @@ public class VacationService {
                 .map(VacationLimit::getMaxPeople)
                 .findFirst()
                 .orElse(null);
-        if (maxPeople == null) {
-            return; // 이 날짜·역할에 설정된 제한 없음
+        // 직종과 무관하게 그 날짜 전체 인원을 막는 '전체(all)' 제한 —
+        // 직종별 제한과 별개 축이라 항상 함께 검사한다 (예전엔 조용히 무시돼
+        // 전체 제한을 걸어도 무제한으로 뚫렸다)
+        Integer maxPeopleAll = dailyLimits.stream()
+                .filter(limit -> matchesExactRole(limit.getRole(), "all"))
+                .map(VacationLimit::getMaxPeople)
+                .findFirst()
+                .orElse(null);
+        if (maxPeople == null && maxPeopleAll == null) {
+            return; // 이 날짜에 설정된 제한 없음
         }
 
         MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
-        long active = vacationRequestRepository.findByCompanyAndDate(company, date).stream()
+        List<VacationRequest> dayRequests = vacationRequestRepository.findByCompanyAndDate(company, date).stream()
                 .filter(v -> v.getStatus() != VacationRequest.VacationStatus.REJECTED)
-                .filter(v -> matchesExactRole(roleResolver.resolve(v), normalizedRole))
-                .count();
+                .toList();
 
-        if (active >= maxPeople) {
-            throw new CustomException(
-                    String.format("%d월 %d일은 휴무 가능 인원(%d명)이 가득 찼습니다. 현재 %d명이 신청되어 있어요. "
-                                    + "다른 날짜를 선택하시거나 관리자에게 문의해주세요.",
-                            date.getMonthValue(), date.getDayOfMonth(), maxPeople, active),
-                    HttpStatus.CONFLICT);
+        if (maxPeople != null) {
+            long active = dayRequests.stream()
+                    .filter(v -> matchesExactRole(roleResolver.resolve(v), normalizedRole))
+                    .count();
+            if (active >= maxPeople) {
+                throw new CustomException(
+                        String.format("%d월 %d일은 휴무 가능 인원(%d명)이 가득 찼습니다. 현재 %d명이 신청되어 있어요. "
+                                        + "다른 날짜를 선택하시거나 관리자에게 문의해주세요.",
+                                date.getMonthValue(), date.getDayOfMonth(), maxPeople, active),
+                        HttpStatus.CONFLICT);
+            }
+        }
+
+        if (maxPeopleAll != null) {
+            long activeAll = dayRequests.size();
+            if (activeAll >= maxPeopleAll) {
+                throw new CustomException(
+                        String.format("%d월 %d일은 전체 휴무 가능 인원(%d명)이 가득 찼습니다. 현재 %d명이 신청되어 있어요. "
+                                        + "다른 날짜를 선택하시거나 관리자에게 문의해주세요.",
+                                date.getMonthValue(), date.getDayOfMonth(), maxPeopleAll, activeAll),
+                        HttpStatus.CONFLICT);
+            }
         }
     }
 
