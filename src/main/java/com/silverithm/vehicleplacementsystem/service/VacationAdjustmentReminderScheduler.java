@@ -14,8 +14,10 @@ import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepositor
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -104,6 +106,9 @@ public class VacationAdjustmentReminderScheduler {
                 .collect(Collectors.groupingBy(VacationRequest::getDate));
 
         int notified = 0;
+        // 같은 날 직종 한도와 전체(all) 한도가 동시에 초과되면 한 사람이 두 그룹에
+        // 모두 걸린다 — 같은 (사람, 날짜)에는 하루 한 번만 보낸다
+        Set<String> sentKeys = new HashSet<>();
         for (VacationLimit limit : limits) {
             // all 제한은 직종 매칭 키에 절대 안 걸리므로 날짜 전체 그룹으로 판정한다
             // (예전엔 이 분기가 없어 전체 제한 초과가 리마인드되지 않았다)
@@ -124,6 +129,9 @@ public class VacationAdjustmentReminderScheduler {
                 Member member = findMember(request);
                 if (member == null || member.getFcmToken() == null || member.getFcmToken().isEmpty()) {
                     continue;
+                }
+                if (!sentKeys.add(member.getId() + "|" + limit.getDate())) {
+                    continue; // 이미 이 날짜로 알림을 보낸 사람
                 }
                 try {
                     fcmService.sendNotification(member.getFcmToken(), title, body,
