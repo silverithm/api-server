@@ -224,6 +224,12 @@ public class ScheduleService {
             }
         }
 
+        // 할 일이 딸린 일정의 완료는 할 일 진행에서만 자동 결정된다(syncScheduleCompletion).
+        // 웹은 이 규칙대로 버튼을 숨기지만 서버가 막지 않으면 앱 등 다른 경로로 우회된다.
+        if (schedule.getTasks() != null && !schedule.getTasks().isEmpty()) {
+            throw new IllegalStateException("할 일이 있는 일정은 할 일을 완료하면 자동으로 수행완료됩니다.");
+        }
+
         schedule.updateCompletion(completed, userId, userName);
         Schedule saved = scheduleRepository.save(schedule);
 
