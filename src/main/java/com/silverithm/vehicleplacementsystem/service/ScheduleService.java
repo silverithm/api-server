@@ -1,5 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.ScheduleCategorySettingDTO;
+import com.silverithm.vehicleplacementsystem.dto.ScheduleCategorySettingRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelRequestDTO;
@@ -10,11 +12,13 @@ import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleCategory;
+import com.silverithm.vehicleplacementsystem.entity.ScheduleCategorySetting;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleLabel;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleParticipant;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleTask;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.ScheduleCategorySettingRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleLabelRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleParticipantRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
@@ -38,6 +42,7 @@ import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleCategorySettingRepository scheduleCategorySettingRepository;
     private final ScheduleLabelRepository scheduleLabelRepository;
     private final ScheduleParticipantRepository scheduleParticipantRepository;
     private final ScheduleTaskRepository scheduleTaskRepository;
@@ -110,7 +115,8 @@ public class ScheduleService {
             }
         }
 
-        return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved));
+        return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved),
+                categorySettingsFor(saved.getCompany().getId()));
     }
 
     /** 담당자 지정/해제 — memberId가 유효하면 이름을 조회해 함께 저장, null이면 해제 */
@@ -189,7 +195,8 @@ public class ScheduleService {
             }
         }
 
-        return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved));
+        return ScheduleDTO.fromEntity(scheduleRepository.findById(saved.getId()).orElse(saved),
+                categorySettingsFor(saved.getCompany().getId()));
     }
 
     /**
@@ -220,7 +227,7 @@ public class ScheduleService {
         schedule.updateCompletion(completed, userId, userName);
         Schedule saved = scheduleRepository.save(schedule);
 
-        return ScheduleDTO.fromEntity(saved);
+        return ScheduleDTO.fromEntity(saved, categorySettingsFor(saved.getCompany().getId()));
     }
 
     // ==================== 할 일(ScheduleTask) ====================
@@ -465,7 +472,7 @@ public class ScheduleService {
                 .orElseThrow(() -> new RuntimeException("일정을 찾을 수 없습니다: " + scheduleId));
         resourceScopeGuard.requireSameCompany(schedule.getCompany());
 
-        return ScheduleDTO.fromEntity(schedule);
+        return ScheduleDTO.fromEntity(schedule, categorySettingsFor(schedule.getCompany().getId()));
     }
 
     /**
@@ -494,8 +501,9 @@ public class ScheduleService {
             schedules = scheduleRepository.findByCompanyIdOrderByStartDateAscStartTimeAsc(companyId);
         }
 
+        Map<ScheduleCategory, ScheduleCategorySetting> categorySettings = categorySettingsFor(companyId);
         return schedules.stream()
-                .map(ScheduleDTO::fromEntity)
+                .map(schedule -> ScheduleDTO.fromEntity(schedule, categorySettings))
                 .collect(Collectors.toList());
     }
 
@@ -517,6 +525,80 @@ public class ScheduleService {
                 "training", training,
                 "other", other
         );
+    }
+
+    // ==================== 기본 구분 설정 (기관별 이름·색·숨김) ====================
+
+    /** 기관의 기본 구분 설정을 카테고리별 맵으로. ScheduleDTO 변환 시 이름·기본색 덮어쓰기에 쓴다. */
+    private Map<ScheduleCategory, ScheduleCategorySetting> categorySettingsFor(Long companyId) {
+        return scheduleCategorySettingRepository.findByCompanyId(companyId).stream()
+                .collect(Collectors.toMap(ScheduleCategorySetting::getCategory, s -> s, (a, b) -> a));
+    }
+
+    /**
+     * 기본 구분 4종의 기관별 최종 상태(설정 머지) 목록.
+     */
+    @Transactional(readOnly = true)
+    public List<ScheduleCategorySettingDTO> getCategorySettings(Long companyId) {
+        Map<ScheduleCategory, ScheduleCategorySetting> settings = categorySettingsFor(companyId);
+        List<ScheduleCategorySettingDTO> result = new ArrayList<>();
+        for (ScheduleCategory category : ScheduleCategory.values()) {
+            result.add(ScheduleCategorySettingDTO.of(category, settings.get(category)));
+        }
+        return result;
+    }
+
+    /**
+     * 기본 구분의 이름·색·숨김을 기관별로 바꾼다. null 필드는 유지(부분 수정).
+     * 기본값과 같은 이름·색은 "커스텀 없음"(null)으로 저장해, 나중에 enum 기본값이
+     * 바뀌어도 커스텀하지 않은 기관은 자연히 따라가게 한다.
+     */
+    @Transactional
+    public ScheduleCategorySettingDTO upsertCategorySetting(Long companyId, String categoryName,
+            ScheduleCategorySettingRequestDTO request) {
+        log.info("[Schedule Service] 기본 구분 설정: companyId={}, category={}", companyId, categoryName);
+
+        ScheduleCategory category = parseCategory(categoryName);
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
+        resourceScopeGuard.requireSameCompany(company);
+
+        ScheduleCategorySetting setting = scheduleCategorySettingRepository
+                .findByCompanyIdAndCategory(companyId, category)
+                .orElseGet(() -> ScheduleCategorySetting.builder()
+                        .company(company)
+                        .category(category)
+                        .hidden(false)
+                        .build());
+
+        if (request.getName() != null) {
+            String trimmed = request.getName().trim();
+            if (trimmed.isEmpty()) {
+                throw new RuntimeException("구분 이름은 비울 수 없습니다");
+            }
+            setting.setDisplayName(trimmed.equals(category.getDisplayName()) ? null : trimmed);
+        }
+        if (request.getColor() != null) {
+            setting.setColor(request.getColor().equals(category.getDefaultColor()) ? null : request.getColor());
+        }
+        if (request.getHidden() != null) {
+            setting.setHidden(request.getHidden());
+        }
+
+        ScheduleCategorySetting saved = scheduleCategorySettingRepository.save(setting);
+        return ScheduleCategorySettingDTO.of(category, saved);
+    }
+
+    /** 기본 구분 설정을 기본값으로 되돌린다(행 삭제). */
+    @Transactional
+    public void resetCategorySetting(Long companyId, String categoryName) {
+        log.info("[Schedule Service] 기본 구분 설정 초기화: companyId={}, category={}", companyId, categoryName);
+        ScheduleCategory category = parseCategory(categoryName);
+        scheduleCategorySettingRepository.findByCompanyIdAndCategory(companyId, category)
+                .ifPresent(setting -> {
+                    resourceScopeGuard.requireSameCompany(setting.getCompany());
+                    scheduleCategorySettingRepository.delete(setting);
+                });
     }
 
     // ==================== ScheduleLabel CRUD ====================

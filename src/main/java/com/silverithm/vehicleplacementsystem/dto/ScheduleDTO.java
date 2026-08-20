@@ -1,6 +1,8 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
+import com.silverithm.vehicleplacementsystem.entity.ScheduleCategory;
+import com.silverithm.vehicleplacementsystem.entity.ScheduleCategorySetting;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Getter
@@ -59,12 +62,29 @@ public class ScheduleDTO {
     private LocalDateTime updatedAt;
 
     public static ScheduleDTO fromEntity(Schedule schedule) {
+        return fromEntity(schedule, Map.of());
+    }
+
+    /**
+     * 기관별 기본 구분 설정(이름·색 덮어쓰기)을 반영해 변환한다.
+     * 설정이 없는 카테고리는 enum 기본값 그대로다.
+     */
+    public static ScheduleDTO fromEntity(Schedule schedule,
+            Map<ScheduleCategory, ScheduleCategorySetting> categorySettings) {
+        ScheduleCategorySetting setting = categorySettings.get(schedule.getCategory());
+        String categoryName = setting != null
+                ? setting.effectiveName()
+                : schedule.getCategory().getDisplayName();
+        String categoryDefaultColor = setting != null
+                ? setting.effectiveColor()
+                : schedule.getCategory().getDefaultColor();
+
         ScheduleDTOBuilder builder = ScheduleDTO.builder()
                 .id(schedule.getId())
                 .title(schedule.getTitle())
                 .content(schedule.getContent())
                 .category(schedule.getCategory().name())
-                .categoryDisplayName(schedule.getCategory().getDisplayName())
+                .categoryDisplayName(categoryName)
                 .color(schedule.getColor())
                 .location(schedule.getLocation())
                 .startDate(schedule.getStartDate())
@@ -91,7 +111,7 @@ public class ScheduleDTO {
                 ? schedule.getColor()
                 : (schedule.getLabel() != null
                         ? schedule.getLabel().getColor()
-                        : schedule.getCategory().getDefaultColor());
+                        : categoryDefaultColor);
 
         if (schedule.getLabel() != null) {
             ScheduleLabelDTO labelShim = ScheduleLabelDTO.fromEntity(schedule.getLabel());
