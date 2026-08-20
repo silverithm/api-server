@@ -10,6 +10,7 @@ import com.silverithm.vehicleplacementsystem.dto.CreateApprovalRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.UpdateApprovalAttachmentRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService;
 import com.silverithm.vehicleplacementsystem.service.ApprovalImportService;
+import com.silverithm.vehicleplacementsystem.service.ApprovalImportTemplateWriter;
 import com.silverithm.vehicleplacementsystem.service.ApprovalRequestService;
 import com.silverithm.vehicleplacementsystem.service.FileAccessGuard;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
@@ -26,6 +27,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +46,7 @@ public class ApprovalRequestController {
     private final FileStorageService fileStorageService;
     private final FileAccessGuard fileAccessGuard;
     private final ApprovalImportService importService;
+    private final ApprovalImportTemplateWriter importTemplateWriter;
     private final ApprovalAccessService accessService;
 
     /**
@@ -523,6 +527,36 @@ public class ApprovalRequestController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "열람 대상 후보 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 이관 색인 양식(엑셀) 내려받기 — 기관이 이 양식을 채워 오면 된다.
+     */
+    @GetMapping("/import/template")
+    public ResponseEntity<byte[]> downloadImportTemplate(@AuthenticationPrincipal UserDetails userDetails,
+                                                         @RequestParam Long companyId) {
+        try {
+            requireImportPermission(userDetails, companyId);
+
+            byte[] body = importTemplateWriter.write();
+            String encodedName = URLEncoder.encode(ApprovalImportTemplateWriter.FILE_NAME, StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .header(HttpHeaders.CONTENT_TYPE,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename*=UTF-8''" + encodedName)
+                    .body(body);
+
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 이관 양식 권한 거부: companyId={}, {}", companyId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).headers(getCorsHeaders()).build();
+        } catch (Exception e) {
+            log.error("[Approval API] 이관 양식 생성 오류:", e);
+            return ResponseEntity.internalServerError().headers(getCorsHeaders()).build();
         }
     }
 
