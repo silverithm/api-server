@@ -113,23 +113,21 @@ class ApprovalImportEndToEndTest {
         return member;
     }
 
-    /** 기관이 내려받은 양식을 채우는 상황 — 헤더는 우리가 준 그대로 쓰고 데이터만 채운다 */
+    /**
+     * 기관이 내려받은 양식을 채우는 상황 — 헤더는 우리가 준 그대로 쓰고 데이터만 채운다.
+     * 예시 줄은 일부러 지우지 않는다: 실제로 자주 그럴 것이고, 예시가 진짜 문서로
+     * 등록되면 안 되기 때문이다(파서가 '예시-' 문서번호를 건너뛴다).
+     */
     private MockMultipartFile filledTemplate(int count) throws Exception {
         byte[] blank = templateWriter.write();
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new java.io.ByteArrayInputStream(blank));
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.getSheet("결재문서");
-
-            // 예시 3줄을 지우고 (기관이 그러듯) 실제 데이터를 채운다
-            for (int r = sheet.getLastRowNum(); r >= 1; r--) {
-                if (sheet.getRow(r) != null) {
-                    sheet.removeRow(sheet.getRow(r));
-                }
-            }
+            int offset = sheet.getLastRowNum();   // 예시 줄 다음부터 이어서 채운다
 
             for (int i = 0; i < count; i++) {
-                Row row = sheet.createRow(i + 1);
+                Row row = sheet.createRow(offset + i + 1);
                 row.createCell(0).setCellValue("2025-" + String.format("%04d", i + 1));
                 row.createCell(1).setCellValue((i + 1) + "월차 사례회의록");
                 row.createCell(2).setCellValue(i % 2 == 0 ? "이영희" : "없는사람");
@@ -232,30 +230,26 @@ class ApprovalImportEndToEndTest {
         try (XSSFWorkbook workbook = new XSSFWorkbook(new java.io.ByteArrayInputStream(blank));
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.getSheet("결재문서");
-            for (int r = sheet.getLastRowNum(); r >= 1; r--) {
-                if (sheet.getRow(r) != null) {
-                    sheet.removeRow(sheet.getRow(r));
-                }
-            }
+            int offset = sheet.getLastRowNum();   // 예시 줄은 그대로 둔다 — 자동으로 걸러져야 한다
 
-            Row ok = sheet.createRow(1);
+            Row ok = sheet.createRow(offset + 1);
             ok.createCell(0).setCellValue("2025-100");
             ok.createCell(1).setCellValue("정상 문서");
             ok.createCell(3).setCellValue("2025-01-05");
             ok.createCell(4).setCellValue("완료");
 
-            Row noTitle = sheet.createRow(2);
+            Row noTitle = sheet.createRow(offset + 2);
             noTitle.createCell(0).setCellValue("2025-101");
             noTitle.createCell(3).setCellValue("2025-01-06");
             noTitle.createCell(4).setCellValue("완료");
 
-            Row inProgress = sheet.createRow(3);
+            Row inProgress = sheet.createRow(offset + 3);
             inProgress.createCell(0).setCellValue("2025-102");
             inProgress.createCell(1).setCellValue("진행중 문서");
             inProgress.createCell(3).setCellValue("2025-01-07");
             inProgress.createCell(4).setCellValue("진행중");
 
-            Row noDate = sheet.createRow(4);
+            Row noDate = sheet.createRow(offset + 4);
             noDate.createCell(0).setCellValue("2025-103");
             noDate.createCell(1).setCellValue("기안일 없음");
             noDate.createCell(4).setCellValue("완료");

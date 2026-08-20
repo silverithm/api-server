@@ -132,7 +132,7 @@ class ApprovalImportParserTest {
     }
 
     @Test
-    @DisplayName("우리가 나눠주는 양식을 우리 파서가 그대로 읽는다")
+    @DisplayName("우리가 나눠주는 양식 — 모든 열이 인식되고 예시 줄은 등록 대상에서 빠진다")
     void parsesOwnDistributedTemplate() throws Exception {
         byte[] bytes = new ApprovalImportTemplateWriter().write();
         var file = new MockMultipartFile("file", "template.xlsx",
@@ -141,29 +141,31 @@ class ApprovalImportParserTest {
         var parsed = parser.parse(file);
 
         // 양식의 모든 열을 알아봐야 한다 — 하나라도 모르면 기관에 "모르는 열"이라고 안내하게 된다
+        // (필수 표시 * 가 붙은 헤더도 그대로 인식되어야 한다)
         assertThat(parsed.unmappedColumns()).isEmpty();
 
-        // 예시 3줄(승인 2건, 반려 1건)이 그대로 읽힌다
-        assertThat(parsed.rows()).hasSize(3);
+        // 예시 줄(문서번호 '예시-')은 기관이 지우지 않고 올려도 등록 대상이 아니다
+        assertThat(parsed.rows()).isEmpty();
+    }
 
-        ApprovalImportRowDTO first = parsed.rows().get(0);
-        assertThat(first.getExternalDocNumber()).isEqualTo("2025-001");
-        assertThat(first.getTitle()).isEqualTo("1월 정기 사례회의록");
-        assertThat(first.getRequesterName()).isEqualTo("홍길동");
-        assertThat(first.getDraftedAt()).isEqualTo(LocalDate.of(2025, 1, 3));
-        assertThat(first.getStatus()).isEqualTo("APPROVED");
-        assertThat(first.getCategory()).isEqualTo("회의록");
-        assertThat(first.getApprovers()).extracting(ApprovalImportRowDTO.Approver::getName)
-                .containsExactly("김검토", "박원장");
-        assertThat(first.getApprovers().get(1).getApprovedAt()).isEqualTo(LocalDate.of(2025, 1, 5));
-        assertThat(first.getFileNames()).containsExactly("2025-001_회의록.pdf");
+    @Test
+    @DisplayName("예시 줄을 지우지 않고 아래에 실데이터를 채워도 실데이터만 읽힌다")
+    void skipsSampleRowsButKeepsRealOnes() throws Exception {
+        var file = excel(new String[][]{
+                {"문서번호", "제목*", "기안자", "기안일*", "결재상태*", "첨부파일"},
+                {"예시-001", "예시 회의록", "홍길동", "2025-01-03", "완료", "회의록.pdf"},
+                {"2025-010", "진짜 회의록", "이영희", "2025-03-05", "완료", "진짜.pdf"},
+        });
 
-        // 첨부가 여럿인 줄은 쉼표로 갈린다
-        assertThat(parsed.rows().get(1).getFileNames())
-                .containsExactly("2025-002_지출품의.pdf", "견적서.pdf");
+        var parsed = parser.parse(file);
+        assertThat(parsed.unmappedColumns()).isEmpty();
+        assertThat(parsed.rows()).hasSize(1);
 
-        // 반려 줄
-        assertThat(parsed.rows().get(2).getStatus()).isEqualTo("REJECTED");
+        ApprovalImportRowDTO row = parsed.rows().get(0);
+        assertThat(row.getExternalDocNumber()).isEqualTo("2025-010");
+        assertThat(row.getTitle()).isEqualTo("진짜 회의록");
+        assertThat(row.getDraftedAt()).isEqualTo(LocalDate.of(2025, 3, 5));
+        assertThat(row.getFileNames()).containsExactly("진짜.pdf");
     }
 
     @Test

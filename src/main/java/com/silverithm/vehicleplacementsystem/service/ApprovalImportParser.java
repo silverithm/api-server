@@ -132,7 +132,12 @@ public class ApprovalImportParser {
                 if (row == null || isBlankRow(row)) {
                     continue;
                 }
-                rows.add(readRow(row, r - headerRowIndex, columnFields, columnSequence));
+                ApprovalImportRowDTO parsed = readRow(row, r - headerRowIndex, columnFields, columnSequence);
+                // 우리가 나눠준 양식의 예시 줄 — 지우지 않고 그대로 올려도 등록되지 않게 건너뛴다
+                if (parsed.getExternalDocNumber() != null && parsed.getExternalDocNumber().startsWith("예시")) {
+                    continue;
+                }
+                rows.add(parsed);
             }
 
             return new ParsedSheet(mappings, unmapped, rows);
@@ -329,9 +334,9 @@ public class ApprovalImportParser {
         return null;
     }
 
-    /** 공백·괄호·밑줄을 지우고 소문자로 — "문서 번호", "문서번호(No)"를 같은 것으로 본다 */
+    /** 공백·괄호·밑줄·별표를 지우고 소문자로 — "문서 번호", "제목*"을 같은 것으로 본다 */
     private String normalize(String value) {
-        return value == null ? "" : value.replaceAll("[\\s()\\[\\]_·]", "").toLowerCase(Locale.ROOT);
+        return value == null ? "" : value.replaceAll("[\\s()\\[\\]_·*]", "").toLowerCase(Locale.ROOT);
     }
 
     private String readString(Cell cell) {
