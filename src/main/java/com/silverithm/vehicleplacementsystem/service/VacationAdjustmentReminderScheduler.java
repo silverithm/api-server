@@ -14,6 +14,7 @@ import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepositor
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -98,9 +99,15 @@ public class VacationAdjustmentReminderScheduler {
                                 || r.getStatus() == VacationRequest.VacationStatus.APPROVED)
                         .collect(Collectors.toList());
 
-        // (날짜, 정규화 직종) → 신청 목록
+        // 관리자 화면(VacationService.getVacationForDate/getVacationCalendar)과 같은 기준으로 세기 위해
+        // 신청 당시 저장된 역할이 아니라 회원에게 현재 배정된 역할로 그룹핑한다. 직책이 신청 후 바뀌면
+        // 저장된 역할 기준 판정은 관리자 화면과 어긋나 초과가 누락되거나 엉뚱한 사람에게 알림이 간다.
+        MemberRoleResolver roleResolver = buildMemberRoleResolver(company);
+
+        // (날짜, 현재 배정된 정규화 직종) → 신청 목록
         Map<String, List<VacationRequest>> byDateRole = requests.stream()
-                .collect(Collectors.groupingBy(r -> r.getDate() + "|" + r.getNormalizedRole()));
+                .collect(Collectors.groupingBy(
+                        r -> r.getDate() + "|" + VacationRequest.normalizeRole(roleResolver.resolve(r))));
         // 날짜 → 전체 신청 목록 ('전체(all)' 제한은 직종 무관 그 날짜 총인원 기준)
         Map<LocalDate, List<VacationRequest>> byDate = requests.stream()
                 .collect(Collectors.groupingBy(VacationRequest::getDate));
@@ -164,5 +171,65 @@ public class VacationAdjustmentReminderScheduler {
                 .stream()
                 .filter(m -> request.getUserName().equals(m.getName()))
                 .findFirst().orElse(null);
+    }
+
+    /**
+     * 휴가 신청에 저장된 역할 대신 회원에게 현재 배정된 역할(position)을 우선 사용하기 위한 해석기.
+     * VacationService.MemberRoleResolver와 같은 방식(관리자 화면의 초과 판정 기준)을 그대로 따른다.
+     */
+    private record MemberRoleResolver(Map<String, String> roleByMemberId, Map<String, String> roleByMemberName) {
+
+        String resolve(String userId, String userName, String storedRole) {
+            if (userId != null && !userId.isBlank()) {
+                String roleById = roleByMemberId.get(userId.trim());
+                if (roleById != null) {
+                    return roleById;
+                }
+            }
+
+            if (userName != null && !userName.isBlank()) {
+                String roleByName = roleByMemberName.get(userName.trim());
+                if (roleByName != null) {
+                    return roleByName;
+                }
+            }
+
+            return VacationRequest.normalizeRole(storedRole);
+        }
+
+        String resolve(VacationRequest vacation) {
+            return resolve(vacation.getUserId(), vacation.getUserName(), vacation.getRole());
+        }
+    }
+
+    /** 회사 회원을 한 번에 조회해 맵으로 만든다 — 신청마다 조회하면 N+1이 난다 */
+    private MemberRoleResolver buildMemberRoleResolver(Company company) {
+        Map<String, String> roleByMemberId = new HashMap<>();
+        Map<String, String> roleByMemberName = new HashMap<>();
+        Set<String> ambiguousNames = new HashSet<>();
+
+        for (Member member : memberRepository.findByCompanyOrderByCreatedAtDesc(company)) {
+            String position = member.getPosition() == null ? "" : member.getPosition().trim();
+            if (position.isEmpty()) {
+                continue;
+            }
+
+            roleByMemberId.put(member.getId().toString(), position);
+
+            String name = member.getName() == null ? "" : member.getName().trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+
+            String previousPosition = roleByMemberName.put(name, position);
+            if (previousPosition != null && !previousPosition.equals(position)) {
+                // 동명이인이 서로 다른 역할이면 이름만으로는 판단할 수 없다
+                ambiguousNames.add(name);
+            }
+        }
+
+        ambiguousNames.forEach(roleByMemberName::remove);
+
+        return new MemberRoleResolver(roleByMemberId, roleByMemberName);
     }
 }
