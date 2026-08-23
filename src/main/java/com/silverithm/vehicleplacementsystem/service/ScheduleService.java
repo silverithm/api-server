@@ -25,8 +25,12 @@ import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleTaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -47,6 +51,7 @@ public class ScheduleService {
     private final ScheduleParticipantRepository scheduleParticipantRepository;
     private final ScheduleTaskRepository scheduleTaskRepository;
     private final CompanyRepository companyRepository;
+    private final PlatformTransactionManager transactionManager;
     private final MemberRepository memberRepository;
     private final FCMService fcmService;
     private final ResourceScopeGuard resourceScopeGuard;
@@ -559,24 +564,54 @@ public class ScheduleService {
      * 기본값과 같은 이름·색은 "커스텀 없음"(null)으로 저장해, 나중에 enum 기본값이
      * 바뀌어도 커스텀하지 않은 기관은 자연히 따라가게 한다.
      */
-    @Transactional
     public ScheduleCategorySettingDTO upsertCategorySetting(Long companyId, String categoryName,
             ScheduleCategorySettingRequestDTO request) {
         log.info("[Schedule Service] 기본 구분 설정: companyId={}, category={}", companyId, categoryName);
 
         ScheduleCategory category = parseCategory(categoryName);
-        Company company = companyRepository.findById(companyId)
-                .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
-        resourceScopeGuard.requireSameCompany(company);
+        try {
+            return upsertCategorySettingOnce(companyId, category, request);
+        } catch (DataIntegrityViolationException e) {
+            // 조회와 INSERT 사이에 동시 요청이 같은 행을 먼저 만든 경우다. 조용히 삼키면
+            // 이번 요청의 변경이 사라지므로 한 번 더 시도한다 — 이번엔 행이 있으니 UPDATE가 된다.
+            // 반드시 새 트랜잭션이어야 한다: 실패한 트랜잭션 안에서 재조회하면 REPEATABLE READ
+            // 스냅샷 때문에 방금 커밋된 행이 안 보이고, 그 트랜잭션은 이미 rollback-only다.
+            log.warn("[Schedule Service] 기본 구분 설정 upsert 충돌 — 새 트랜잭션으로 재시도: companyId={}, category={}",
+                    companyId, category);
+            return upsertCategorySettingOnce(companyId, category, request);
+        }
+    }
 
-        ScheduleCategorySetting setting = scheduleCategorySettingRepository
-                .findByCompanyIdAndCategory(companyId, category)
-                .orElseGet(() -> ScheduleCategorySetting.builder()
-                        .company(company)
-                        .category(category)
-                        .hidden(false)
-                        .build());
+    /** 조회→적용→저장 한 판을 독립 트랜잭션으로 돈다. 충돌 재시도가 신선한 스냅샷을 얻기 위한 분리다. */
+    private ScheduleCategorySettingDTO upsertCategorySettingOnce(Long companyId, ScheduleCategory category,
+            ScheduleCategorySettingRequestDTO request) {
+        TransactionTemplate upsertTx = new TransactionTemplate(transactionManager);
+        upsertTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return upsertTx.execute(status -> {
+            Company company = companyRepository.findById(companyId)
+                    .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
+            resourceScopeGuard.requireSameCompany(company);
 
+            ScheduleCategorySetting setting = scheduleCategorySettingRepository
+                    .findByCompanyIdAndCategory(companyId, category)
+                    .orElseGet(() -> ScheduleCategorySetting.builder()
+                            .company(company)
+                            .category(category)
+                            .hidden(false)
+                            .build());
+
+            applyCategorySettingRequest(setting, category, request);
+
+            // saveAndFlush로 즉시 INSERT해 (company_id, category) 유니크 제약 위반을
+            // 이 트랜잭션 안에서 확정한다. save()만 쓰면 커밋 시점에야 터져 재시도할 수 없다.
+            return ScheduleCategorySettingDTO.of(category,
+                    scheduleCategorySettingRepository.saveAndFlush(setting));
+        });
+    }
+
+    /** upsertCategorySetting의 요청 반영 로직. 최초 시도와 충돌 재시도가 같은 규칙을 쓰도록 분리했다. */
+    private void applyCategorySettingRequest(ScheduleCategorySetting setting, ScheduleCategory category,
+            ScheduleCategorySettingRequestDTO request) {
         if (request.getName() != null) {
             String trimmed = request.getName().trim();
             if (trimmed.isEmpty()) {
@@ -590,9 +625,6 @@ public class ScheduleService {
         if (request.getHidden() != null) {
             setting.setHidden(request.getHidden());
         }
-
-        ScheduleCategorySetting saved = scheduleCategorySettingRepository.save(setting);
-        return ScheduleCategorySettingDTO.of(category, saved);
     }
 
     /** 기본 구분 설정을 기본값으로 되돌린다(행 삭제). */

@@ -11,8 +11,11 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 알림을 받을 기기 토큰을 관리한다.
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeviceTokenService {
 
     private final UserDeviceRepository userDeviceRepository;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * 기기를 등록하거나 마지막 사용 시각을 갱신한다.
@@ -34,34 +38,40 @@ public class DeviceTokenService {
      * <p>같은 토큰이 다른 계정에 매여 있으면 주인을 갈아끼운다 — 한 기기를 여러 사람이 번갈아
      * 쓰는 경우, 지금 로그인한 사람에게만 알림이 가야 한다.
      */
-    // 독립 트랜잭션 — 아래 중복 키 흡수 시 호출자 트랜잭션이 rollback-only로
-    // 오염되지 않게 한다 (토큰 등록은 본 요청과 운명을 같이할 이유가 없다)
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void register(Long memberId, Long appUserId, String fcmToken) {
         if (fcmToken == null || fcmToken.isBlank()) {
             return;
         }
 
-        Optional<UserDevice> existing = userDeviceRepository.findByFcmToken(fcmToken);
-        if (existing.isPresent()) {
-            UserDevice device = existing.get();
-            device.reassignTo(memberId, appUserId);
-            userDeviceRepository.save(device);
-            return;
-        }
-
+        // 등록은 항상 새 트랜잭션에서 시도한다 — 같은 토큰이 거의 동시에 두 번 등록되는
+        // 레이스(앱이 로그인 직후 여러 경로로 토큰을 올린다)에서 중복 키가 나면 이 작은
+        // 트랜잭션만 버리고, 호출자 트랜잭션(FCM 토큰 갱신 등)은 오염시키지 않는다.
+        // 주의: @Transactional(REQUIRES_NEW) + 메서드 안 catch로 바꾸면 안 된다 —
+        // 리포지토리 프록시가 그 트랜잭션을 rollback-only로 만들어 커밋 시점에
+        // UnexpectedRollbackException이 터진다. catch는 반드시 트랜잭션 경계 밖이어야 한다.
+        TransactionTemplate registerTx = new TransactionTemplate(transactionManager);
+        registerTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         try {
-            userDeviceRepository.saveAndFlush(UserDevice.builder()
-                    .memberId(memberId)
-                    .appUserId(appUserId)
-                    .fcmToken(fcmToken)
-                    .createdAt(LocalDateTime.now())
-                    .lastSeenAt(LocalDateTime.now())
-                    .build());
-            log.info("[Device Token] 기기 등록: memberId={}, appUserId={}", memberId, appUserId);
+            registerTx.executeWithoutResult(status -> {
+                Optional<UserDevice> existing = userDeviceRepository.findByFcmToken(fcmToken);
+                if (existing.isPresent()) {
+                    UserDevice device = existing.get();
+                    device.reassignTo(memberId, appUserId);
+                    userDeviceRepository.save(device);
+                    return;
+                }
+
+                userDeviceRepository.saveAndFlush(UserDevice.builder()
+                        .memberId(memberId)
+                        .appUserId(appUserId)
+                        .fcmToken(fcmToken)
+                        .createdAt(LocalDateTime.now())
+                        .lastSeenAt(LocalDateTime.now())
+                        .build());
+                log.info("[Device Token] 기기 등록: memberId={}, appUserId={}", memberId, appUserId);
+            });
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // 같은 토큰이 거의 동시에 두 번 등록되는 레이스(앱이 로그인 직후 여러 경로로
-            // 토큰을 올린다) — 먼저 들어간 행이 이기게 두고 조용히 넘어간다.
+            // 먼저 들어간 행이 이기게 두고 조용히 넘어간다.
             // 계정이 달랐다면 다음 등록 호출(토큰 갱신·재로그인)에서 reassign된다.
             log.info("[Device Token] 동시 등록 레이스 흡수: memberId={}, appUserId={}", memberId, appUserId);
         }
