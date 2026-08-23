@@ -507,12 +507,23 @@ public class VacationService {
 
         // 3. 업데이트/생성 처리
         List<VacationLimit> toSave = new ArrayList<>();
+        List<VacationLimit> toDelete = new ArrayList<>();
 
         for (Map.Entry<String, VacationLimitRequestDTO.VacationLimitCreateDTO> entry : requestMap.entrySet()) {
             String key = entry.getKey();
             VacationLimitRequestDTO.VacationLimitCreateDTO dto = entry.getValue();
 
             VacationLimit existingLimit = existingMap.get(key);
+
+            if (dto.getMaxPeople() == null) {
+                // maxPeople가 없는 항목은 "이 한도를 없애 달라"는 표식이다 (웹 '전체' 탭의
+                // 지우기). 페이로드에서 빠진 행을 삭제로 해석하면 부분 목록만 보내는
+                // 클라이언트(앱)의 다른 한도까지 쓸어버리므로, 명시적 표식만 삭제한다.
+                if (existingLimit != null) {
+                    toDelete.add(existingLimit);
+                }
+                continue;
+            }
 
             if (existingLimit != null) {
                 // 기존 엔티티 업데이트
@@ -533,10 +544,14 @@ public class VacationService {
             }
         }
 
-        // 4. 한 번에 저장
+        // 4. 한 번에 저장·삭제
         List<VacationLimit> saved = vacationLimitRepository.saveAll(toSave);
+        if (!toDelete.isEmpty()) {
+            vacationLimitRepository.deleteAll(toDelete);
+        }
 
-        log.info("[Vacation Service] 휴가 제한 저장 완료: 회사 {}, {}건", company.getName(), saved.size());
+        log.info("[Vacation Service] 휴가 제한 저장 완료: 회사 {}, 저장 {}건, 삭제 {}건",
+                company.getName(), saved.size(), toDelete.size());
 
         // 5. DTO 변환 (한 번만)
         return saved.stream()
