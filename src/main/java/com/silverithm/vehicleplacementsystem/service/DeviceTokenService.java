@@ -34,7 +34,9 @@ public class DeviceTokenService {
      * <p>같은 토큰이 다른 계정에 매여 있으면 주인을 갈아끼운다 — 한 기기를 여러 사람이 번갈아
      * 쓰는 경우, 지금 로그인한 사람에게만 알림이 가야 한다.
      */
-    @Transactional
+    // 독립 트랜잭션 — 아래 중복 키 흡수 시 호출자 트랜잭션이 rollback-only로
+    // 오염되지 않게 한다 (토큰 등록은 본 요청과 운명을 같이할 이유가 없다)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void register(Long memberId, Long appUserId, String fcmToken) {
         if (fcmToken == null || fcmToken.isBlank()) {
             return;
@@ -48,14 +50,21 @@ public class DeviceTokenService {
             return;
         }
 
-        userDeviceRepository.save(UserDevice.builder()
-                .memberId(memberId)
-                .appUserId(appUserId)
-                .fcmToken(fcmToken)
-                .createdAt(LocalDateTime.now())
-                .lastSeenAt(LocalDateTime.now())
-                .build());
-        log.info("[Device Token] 기기 등록: memberId={}, appUserId={}", memberId, appUserId);
+        try {
+            userDeviceRepository.saveAndFlush(UserDevice.builder()
+                    .memberId(memberId)
+                    .appUserId(appUserId)
+                    .fcmToken(fcmToken)
+                    .createdAt(LocalDateTime.now())
+                    .lastSeenAt(LocalDateTime.now())
+                    .build());
+            log.info("[Device Token] 기기 등록: memberId={}, appUserId={}", memberId, appUserId);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 같은 토큰이 거의 동시에 두 번 등록되는 레이스(앱이 로그인 직후 여러 경로로
+            // 토큰을 올린다) — 먼저 들어간 행이 이기게 두고 조용히 넘어간다.
+            // 계정이 달랐다면 다음 등록 호출(토큰 갱신·재로그인)에서 reassign된다.
+            log.info("[Device Token] 동시 등록 레이스 흡수: memberId={}, appUserId={}", memberId, appUserId);
+        }
     }
 
     /** 이 토큰이 어느 계정의 기기인지. 아직 옮겨지지 않은 토큰이면 비어 있다. */
