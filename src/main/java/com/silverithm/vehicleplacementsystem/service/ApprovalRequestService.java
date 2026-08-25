@@ -188,6 +188,9 @@ public class ApprovalRequestService {
 
         boolean asDraft = dto.isDraft();
 
+        // 반려 건을 고쳐 올리는 경우 — 원본에 잇는다. 원본은 그대로 반려로 남는다.
+        ApprovalRequest revisedFrom = resolveRevisedFrom(dto.getRevisedFromId(), companyId, requesterId);
+
         ApprovalRequest request = ApprovalRequest.builder()
                 .company(company)
                 .template(template)
@@ -199,6 +202,8 @@ public class ApprovalRequestService {
                 .attachmentUrl(dto.getAttachmentUrl())
                 .attachmentFileName(dto.getAttachmentFileName())
                 .attachmentFileSize(dto.getAttachmentFileSize())
+                .revisedFrom(revisedFrom)
+                .revision(revisedFrom != null ? revisedFrom.getRevision() + 1 : 1)
                 .build();
 
         boolean hasLine = dto.getApprovalLine() != null && !dto.getApprovalLine().isEmpty();
@@ -284,6 +289,33 @@ public class ApprovalRequestService {
     }
 
     /** 임시저장 문서를 꺼낼 때의 공통 검사 — 남의 임시저장이나 이미 상신된 문서는 손대지 못한다 */
+    /**
+     * 고쳐 올릴 원본을 확인한다.
+     *
+     * 반려된 것만, 같은 기관 것만, 그리고 본인이 올렸던 것만 이어 쓸 수 있다.
+     * 남의 반려 건을 원본으로 지정할 수 있으면 그 사람의 기안 이력에 남의 문서가 붙는다.
+     */
+    private ApprovalRequest resolveRevisedFrom(Long revisedFromId, Long companyId, String requesterId) {
+        if (revisedFromId == null) {
+            return null;
+        }
+
+        ApprovalRequest origin = requestRepository.findById(revisedFromId)
+                .orElseThrow(() -> new IllegalArgumentException("고쳐 올릴 원본을 찾을 수 없습니다: " + revisedFromId));
+
+        if (origin.getCompany() == null || !origin.getCompany().getId().equals(companyId)) {
+            throw new SecurityException("다른 기관의 문서는 이어 쓸 수 없습니다.");
+        }
+        if (origin.getStatus() != ApprovalStatus.REJECTED) {
+            throw new IllegalArgumentException("반려된 기안만 고쳐 올릴 수 있습니다.");
+        }
+        if (!origin.getRequesterId().equals(requesterId)) {
+            throw new SecurityException("본인이 올렸던 기안만 고쳐 올릴 수 있습니다.");
+        }
+
+        return origin;
+    }
+
     private ApprovalRequest requireOwnDraft(Long id, UserDetails userDetails) {
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("결재 요청을 찾을 수 없습니다: " + id));

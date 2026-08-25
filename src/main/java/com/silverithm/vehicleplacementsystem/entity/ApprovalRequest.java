@@ -104,6 +104,21 @@ public class ApprovalRequest {
     @Column(name = "imported_at")
     private LocalDateTime importedAt;
 
+    /**
+     * 이 기안이 고쳐 올린 원본(반려 건). 없으면 처음 올린 기안이다.
+     *
+     * 반려된 문서를 되살려 다시 상신하지 않는 이유: 반려 사유와 결재자 서명이
+     * approval_step에 붙어 있어, 재상신하며 스텝을 다시 쓰면 그 기록이 지워진다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "revised_from_id")
+    private ApprovalRequest revisedFrom;
+
+    /** 차수. 처음 올린 기안이 1, 고쳐 올릴 때마다 +1 */
+    @Builder.Default
+    @Column(name = "revision", nullable = false)
+    private Integer revision = 1;
+
     @Column(name = "doc_number", length = 50)
     private String docNumber;
 

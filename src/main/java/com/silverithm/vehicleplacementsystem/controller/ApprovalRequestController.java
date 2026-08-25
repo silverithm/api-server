@@ -164,6 +164,18 @@ public class ApprovalRequestController {
                             "message", request.isDraft() ? "임시저장했습니다." : "결재 요청이 제출되었습니다."
                     ));
 
+        } catch (IllegalArgumentException e) {
+            // 잘못 보낸 요청이지 서버 잘못이 아니다 — 500으로 내보내면 클라이언트가
+            // 사용자에게 보여줄지 재시도할지 판단할 수 없다
+            log.warn("[Approval API] 생성 거부: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (SecurityException e) {
+            log.warn("[Approval API] 생성 권한 거부: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("[Approval API] 생성 오류:", e);
             return ResponseEntity.internalServerError()

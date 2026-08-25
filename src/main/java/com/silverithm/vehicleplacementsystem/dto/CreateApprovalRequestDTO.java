@@ -33,6 +33,12 @@ public class CreateApprovalRequestDTO {
     private List<ApprovalLineEntryDTO> approvalLine;
 
     /**
+     * 반려된 기안을 고쳐 올리는 경우 그 원본 id.
+     * 주면 새 기안이 그 문서의 다음 차수로 이어진다 (원본은 반려 상태 그대로 남는다).
+     */
+    private Long revisedFromId;
+
+    /**
      * 열람 대상 (선택).
      *
      * 보내지 않으면(null) 양식에 지정된 기본 열람 대상이 그대로 적용된다.

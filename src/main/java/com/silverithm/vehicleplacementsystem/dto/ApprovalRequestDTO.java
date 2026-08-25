@@ -42,6 +42,13 @@ public class ApprovalRequestDTO {
     private List<ApprovalStepDTO> approvalLine;
     private String docNumber;
     private String docNumberDisplay;
+
+    /** 차수. 처음 올린 기안이 1 */
+    private Integer revision;
+    /** 이 기안이 고쳐 올린 원본(반려 건) id — 화면에서 '이전 차수 보기'로 잇는다 */
+    private Long revisedFromId;
+    /** 원본이 반려된 사유. 다시 조회하지 않고 바로 보여주기 위해 함께 싣는다 */
+    private String revisedFromRejectReason;
     private String companySealUrl;   // 최종 승인된 결재선 문서에만 세팅
     private DocumentFooterDTO documentFooter;  // 공문 하단 발신부 (기관 주소·연락처)
     private List<ApprovalViewerDTO> viewers;   // 열람 대상 (직책/개인)
@@ -98,6 +105,9 @@ public class ApprovalRequestDTO {
                                 .collect(Collectors.toList()))
                 .docNumber(request.getDocNumber())
                 .docNumberDisplay(request.getDocNumberDisplay())
+                .revision(request.getRevision())
+                .revisedFromId(request.getRevisedFrom() != null ? request.getRevisedFrom().getId() : null)
+                .revisedFromRejectReason(request.getRevisedFrom() != null ? request.getRevisedFrom().getRejectReason() : null)
                 .build();
     }
 }
