@@ -30,7 +30,7 @@ public class FileController {
 
     /** 업로드 허용 카테고리 — 임의 경로로 저장 위치를 지정하지 못하게 한다. */
     private static final Set<String> ALLOWED_CATEGORIES =
-            Set.of("templates", "attachments", "approvals", "signatures", "seals", "profiles");
+            Set.of("templates", "attachments", "approvals", "signatures", "seals", "profiles", "meetings");
 
     /**
      * 파일 업로드
@@ -51,8 +51,10 @@ public class FileController {
             log.info("[File API] 파일 업로드 요청: fileName={}, size={}, category={}",
                     file.getOriginalFilename(), file.getSize(), category);
 
-            // 파일 크기 제한 — 결재 문서(approvals)는 스캔 PDF가 커서 서버 멀티파트 한도(50MB)까지 허용
-            long maxSize = ("approvals".equals(category) ? 50L : 10L) * 1024 * 1024;
+            // 파일 크기 제한 — 결재 문서(approvals)는 스캔 PDF, 회의록(meetings)은 녹음 파일이 커서
+            // 서버 멀티파트 한도(50MB)까지 허용
+            long maxSize = ("approvals".equals(category) || "meetings".equals(category) ? 50L : 10L)
+                    * 1024 * 1024;
             if (file.getSize() > maxSize) {
                 return ResponseEntity.badRequest()
                         .headers(getCorsHeaders())
@@ -60,11 +62,13 @@ public class FileController {
                                 "파일 크기는 " + (maxSize / 1024 / 1024) + "MB를 초과할 수 없습니다."));
             }
 
-            // 허용된 파일 확장자 검사
+            // 허용된 파일 확장자 검사 — 회의록(meetings)은 녹음 오디오도 받는다
             String originalFilename = file.getOriginalFilename();
             if (originalFilename != null) {
                 String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
-                if (!isAllowedExtension(extension)) {
+                boolean allowed = isAllowedExtension(extension)
+                        || ("meetings".equals(category) && isAllowedAudioExtension(extension));
+                if (!allowed) {
                     return ResponseEntity.badRequest()
                             .headers(getCorsHeaders())
                             .body(Map.of("error", "허용되지 않는 파일 형식입니다. (허용: hwp, hwpx, doc, docx, pdf, xls, xlsx, ppt, pptx, jpg, jpeg, png, gif)"));
@@ -168,6 +172,11 @@ public class FileController {
 
     private boolean isAllowedExtension(String extension) {
         return extension.matches("hwp|hwpx|doc|docx|pdf|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif");
+    }
+
+    /** 회의 녹음 파일 — meetings 카테고리에서만 허용 */
+    private boolean isAllowedAudioExtension(String extension) {
+        return extension.matches("m4a|mp3|wav|webm|ogg|aac");
     }
 
     private String determineContentType(String path) {

@@ -65,4 +65,22 @@ public interface FileOwnershipRepository extends Repository<Company, Long> {
             + "WHERE c.id = :companyId AND c.sealUrl IN :paths")
     boolean existsCompanySeal(@Param("companyId") Long companyId,
                               @Param("paths") Collection<String> paths);
+
+    /** 회의록 자료 첨부 */
+    @Query("SELECT COUNT(f) > 0 FROM MeetingMinutesAttachment f "
+            + "WHERE f.meetingMinutes.company.id = :companyId AND f.fileUrl IN :paths")
+    boolean existsMeetingMinutesAttachment(@Param("companyId") Long companyId,
+                                           @Param("paths") Collection<String> paths);
+
+    /** 회의록 녹음 조각 */
+    @Query("SELECT COUNT(ch) > 0 FROM MeetingMinutesAudioChunk ch "
+            + "WHERE ch.meetingMinutes.company.id = :companyId AND ch.fileUrl IN :paths")
+    boolean existsMeetingMinutesAudioChunk(@Param("companyId") Long companyId,
+                                           @Param("paths") Collection<String> paths);
+
+    /** 회의록 참석자 서명 (입회 서명 등 — 계정 등록 서명과 별개로 참석자 행에만 붙는 이미지) */
+    @Query("SELECT COUNT(a) > 0 FROM MeetingMinutesAttendee a "
+            + "WHERE a.meetingMinutes.company.id = :companyId AND a.signatureUrl IN :paths")
+    boolean existsMeetingMinutesAttendeeSignature(@Param("companyId") Long companyId,
+                                                  @Param("paths") Collection<String> paths);
 }

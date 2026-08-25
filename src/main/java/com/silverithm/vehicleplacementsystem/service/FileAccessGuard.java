@@ -159,7 +159,10 @@ public class FileAccessGuard {
                 || fileOwnershipRepository.existsApprovalStepSignature(companyId, candidates)
                 || fileOwnershipRepository.existsAdminSignature(companyId, candidates)
                 || fileOwnershipRepository.existsMemberSignature(companyId, candidates)
-                || fileOwnershipRepository.existsCompanySeal(companyId, candidates);
+                || fileOwnershipRepository.existsCompanySeal(companyId, candidates)
+                || fileOwnershipRepository.existsMeetingMinutesAttachment(companyId, candidates)
+                || fileOwnershipRepository.existsMeetingMinutesAudioChunk(companyId, candidates)
+                || fileOwnershipRepository.existsMeetingMinutesAttendeeSignature(companyId, candidates);
     }
 
     /**
