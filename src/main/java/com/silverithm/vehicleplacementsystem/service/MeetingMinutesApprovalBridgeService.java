@@ -65,7 +65,7 @@ public class MeetingMinutesApprovalBridgeService {
                 .requesterId(authorLegacyId(minutes))
                 .requesterName(minutes.getAuthorName())
                 .status(ApprovalRequest.ApprovalStatus.APPROVED)
-                .formData(buildFormData(minutes))
+                .formData(buildFormData(minutes, template))
                 .processedAt(LocalDateTime.now())
                 // 결재함 기간 필터에 회의 날짜로 잡히게 한다 (이관 문서의 기안일 보존과 같은 이유)
                 .createdAt(minutes.getMeetingStartAt())
@@ -231,7 +231,14 @@ public class MeetingMinutesApprovalBridgeService {
         return node;
     }
 
-    private String buildFormData(MeetingMinutes minutes) {
+    /**
+     * 양식 스키마를 읽어 필드별로 값을 채운다.
+     *
+     * <p>기관에는 이미 기본양식 "회의록"(meeting_name/agenda 등)이 시딩돼 있을 수 있어서
+     * 고정 키로만 채우면 그 양식에선 본문이 전부 빈칸("-")이 된다. 필드 id·라벨의 의미를 보고
+     * 매핑하고, 브리지가 직접 만든 양식(고정 4필드)을 위해 그 키들도 함께 담는다.
+     */
+    private String buildFormData(MeetingMinutes minutes, ApprovalTemplate template) {
         StringBuilder when = new StringBuilder(minutes.getMeetingStartAt().format(DATE_FORMAT))
                 .append(" ").append(minutes.getMeetingStartAt().format(TIME_FORMAT));
         if (minutes.getMeetingEndAt() != null) {
@@ -252,12 +259,56 @@ public class MeetingMinutesApprovalBridgeService {
             }
         }
 
+        String location = minutes.getLocation() != null ? minutes.getLocation() : "";
+        String content = formatSections(minutes.getSectionsJson());
+
         ObjectNode formData = objectMapper.createObjectNode();
+        // 브리지 자체 양식(고정 필드)용 키
         formData.put("meetingDate", when.toString());
-        formData.put("location", minutes.getLocation() != null ? minutes.getLocation() : "");
+        formData.put("location", location);
         formData.put("attendees", attendees.toString());
-        formData.put("content", formatSections(minutes.getSectionsJson()));
+        formData.put("content", content);
+
+        // 양식 스키마 기반 매핑 — 시딩된 회의록 양식 등 어떤 필드 구성이라도 의미로 맞춰 채운다
+        try {
+            JsonNode schema = objectMapper.readTree(template.getFormSchema());
+            for (JsonNode field : schema.path("fields")) {
+                String id = field.path("id").asText("");
+                String label = field.path("label").asText("");
+                String type = field.path("type").asText("");
+                if (id.isBlank() || formData.has(id)) {
+                    continue;
+                }
+
+                if (matches(id, label, "meeting_name", "회의명", "제목")) {
+                    formData.put(id, minutes.getTitle());
+                } else if (matches(id, label, "meeting_date", "일시", "회의 일시", "날짜")) {
+                    // date 타입 필드는 날짜만 받는다 — 시간까지 넣으면 렌더가 어긋난다
+                    formData.put(id, "date".equals(type)
+                            ? minutes.getMeetingStartAt().format(DATE_FORMAT)
+                            : when.toString());
+                } else if (matches(id, label, "meeting_place", "장소")) {
+                    formData.put(id, location);
+                } else if (matches(id, label, "attendee", "참석자")) {
+                    formData.put(id, attendees.toString());
+                } else if (matches(id, label, "agenda", "안건", "회의 내용", "논의")) {
+                    formData.put(id, content);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[MeetingMinutes] 양식 스키마 매핑 건너뜀: {}", e.getMessage());
+        }
+
         return formData.toString();
+    }
+
+    private boolean matches(String id, String label, String... keys) {
+        for (String key : keys) {
+            if (id.equalsIgnoreCase(key) || label.contains(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** [{"key","label","content"}] → "[전체]\n…\n\n[팀별 전달사항]\n…" */
