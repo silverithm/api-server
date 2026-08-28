@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -32,19 +33,19 @@ public class ApprovalTemplateService {
     private final ResourceScopeGuard resourceScopeGuard;
     private final ApprovalViewerResolver viewerResolver;
 
-    // 전체 양식 조회 (관리자용)
+    // 전체 양식 조회 (관리자용) — 관리자가 정한 순서(sortOrder) 우선, 그다음 최신 등록순
     @Transactional(readOnly = true)
     public List<ApprovalTemplateDTO> getAllTemplates(Long companyId) {
-        return templateRepository.findByCompanyIdOrderByCreatedAtDesc(companyId)
+        return templateRepository.findByCompanyIdOrderBySortOrderAscCreatedAtDesc(companyId)
                 .stream()
                 .map(ApprovalTemplateDTO::from)
                 .collect(Collectors.toList());
     }
 
-    // 활성화된 양식만 조회 (직원용)
+    // 활성화된 양식만 조회 (직원용) — 기안 작성 화면의 양식 선택도 이 순서를 그대로 따른다
     @Transactional(readOnly = true)
     public List<ApprovalTemplateDTO> getActiveTemplates(Long companyId) {
-        return templateRepository.findByCompanyIdAndIsActiveTrueOrderByCreatedAtDesc(companyId)
+        return templateRepository.findByCompanyIdAndIsActiveTrueOrderBySortOrderAscCreatedAtDesc(companyId)
                 .stream()
                 .map(ApprovalTemplateDTO::from)
                 .collect(Collectors.toList());
@@ -64,6 +65,11 @@ public class ApprovalTemplateService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new RuntimeException("회사를 찾을 수 없습니다: " + companyId));
 
+        // 새 양식은 목록 맨 끝에 붙인다 (기존 순서를 밀어내지 않음)
+        int nextSortOrder = templateRepository.findFirstByCompanyIdOrderBySortOrderDesc(companyId)
+                .map(t -> t.getSortOrder() + 1)
+                .orElse(0);
+
         ApprovalTemplate template = ApprovalTemplate.builder()
                 .company(company)
                 .name(request.getName())
@@ -76,6 +82,7 @@ public class ApprovalTemplateService {
                 .fileName(request.getFileName())
                 .fileSize(request.getFileSize())
                 .isActive(true)
+                .sortOrder(nextSortOrder)
                 .build();
 
         applyDefaultViewers(template, request.getDefaultViewers());
@@ -142,6 +149,35 @@ public class ApprovalTemplateService {
 
         template.getDefaultViewers().clear();
         template.getDefaultViewers().addAll(resolved);
+    }
+
+    /**
+     * 양식 관리 화면에서 드래그(또는 위/아래 이동)로 정한 새 순서를 저장한다.
+     * 넘어온 순서대로 0부터 sortOrder를 다시 매긴다 — 이 회사 소유가 아닌 id가 섞여 있으면 거부한다.
+     */
+    public List<ApprovalTemplateDTO> reorderTemplates(Long companyId, List<Long> orderedTemplateIds) {
+        List<ApprovalTemplate> templates = templateRepository.findAllById(orderedTemplateIds);
+
+        if (templates.size() != orderedTemplateIds.size()) {
+            throw new RuntimeException("존재하지 않는 양식이 순서 목록에 포함되어 있습니다");
+        }
+        boolean allSameCompany = templates.stream()
+                .allMatch(t -> t.getCompany() != null && t.getCompany().getId().equals(companyId));
+        if (!allSameCompany) {
+            throw new IllegalStateException("다른 기관의 양식은 순서를 바꿀 수 없습니다");
+        }
+
+        Map<Long, ApprovalTemplate> byId = templates.stream()
+                .collect(Collectors.toMap(ApprovalTemplate::getId, t -> t));
+
+        int order = 0;
+        for (Long id : orderedTemplateIds) {
+            byId.get(id).setSortOrder(order++);
+        }
+        templateRepository.saveAll(templates);
+        log.info("[ApprovalTemplate] 양식 순서 변경: companyId={}, count={}", companyId, templates.size());
+
+        return getAllTemplates(companyId);
     }
 
     // 양식 활성화/비활성화 토글

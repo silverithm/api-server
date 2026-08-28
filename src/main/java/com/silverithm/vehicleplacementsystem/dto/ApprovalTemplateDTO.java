@@ -29,6 +29,7 @@ public class ApprovalTemplateDTO {
     private String fileName;
     private Long fileSize;
     private Boolean isActive;
+    private Integer sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<ApprovalViewerDTO> defaultViewers;   // 기본 열람 대상 (직책/개인)
@@ -46,6 +47,7 @@ public class ApprovalTemplateDTO {
                 .fileName(template.getFileName())
                 .fileSize(template.getFileSize())
                 .isActive(template.getIsActive())
+                .sortOrder(template.getSortOrder())
                 .createdAt(template.getCreatedAt())
                 .updatedAt(template.getUpdatedAt())
                 .defaultViewers(template.getDefaultViewers() == null ? List.of()

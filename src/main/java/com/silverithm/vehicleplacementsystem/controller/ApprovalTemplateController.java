@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalTemplateRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.ReorderApprovalTemplatesRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ApprovalTemplateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -144,6 +145,44 @@ public class ApprovalTemplateController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "양식 수정 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 양식 순서 재배치 (관리자) — 양식 관리 화면의 드래그·위/아래 이동 결과를 저장한다.
+     * 넘어온 id 순서 그대로가 새 sortOrder가 되며, 기안 작성 화면 등 목록을 쓰는
+     * 모든 화면이 이 순서를 따른다(목록 API가 sortOrder ASC로 정렬해 내려주므로).
+     */
+    @PutMapping("/reorder")
+    public ResponseEntity<Map<String, Object>> reorderTemplates(
+            @RequestParam Long companyId,
+            @Valid @RequestBody ReorderApprovalTemplatesRequestDTO request) {
+
+        try {
+            log.info("[ApprovalTemplate API] 양식 순서 변경: companyId={}, count={}",
+                    companyId, request.getOrderedTemplateIds().size());
+
+            List<ApprovalTemplateDTO> templates =
+                    templateService.reorderTemplates(companyId, request.getOrderedTemplateIds());
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "templates", templates,
+                            "message", "양식 순서가 변경되었습니다."
+                    ));
+
+        } catch (RuntimeException e) {
+            log.warn("[ApprovalTemplate API] 순서 변경 불가: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[ApprovalTemplate API] 순서 변경 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "양식 순서 변경 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 

@@ -64,6 +64,11 @@ public class ApprovalTemplate {
     @Column(nullable = false)
     private Boolean isActive;
 
+    /** 양식 관리 화면에서의 표시 순서 (오름차순). 기안 작성 등 목록을 쓰는 모든 화면이 이 순서를 따른다 */
+    @Builder.Default
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -76,6 +81,9 @@ public class ApprovalTemplate {
         updatedAt = LocalDateTime.now();
         if (isActive == null) {
             isActive = true;
+        }
+        if (sortOrder == null) {
+            sortOrder = 0;
         }
     }
 

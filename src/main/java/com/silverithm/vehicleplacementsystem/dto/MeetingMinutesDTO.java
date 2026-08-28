@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.entity.MeetingMinutes;
 import com.silverithm.vehicleplacementsystem.entity.MeetingMinutesAttachment;
 import com.silverithm.vehicleplacementsystem.entity.MeetingMinutesAttendee;
 import com.silverithm.vehicleplacementsystem.entity.MeetingMinutesAudioChunk;
+import com.silverithm.vehicleplacementsystem.service.ApprovalAccessService.CallerIdentity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,6 +39,10 @@ public class MeetingMinutesDTO {
     private LocalDateTime createdAt;
     private int signedCount;
     private int attendeeCount;
+    /** 호출자 본인의 참석자 행 id — 직원 화면에서 "내가 서명해야 하는지" 판단용. 참석자가 아니면 null */
+    private Long myAttendeeId;
+    /** 호출자 본인의 서명 시각 — null이면 아직 미서명(참석자가 아니어도 null) */
+    private LocalDateTime mySignedAt;
     private List<AttendeeDTO> attendees;
     private List<AudioChunkDTO> audioChunks;
     private List<AttachmentDTO> attachments;
@@ -83,14 +88,15 @@ public class MeetingMinutesDTO {
         private Long fileSize;
     }
 
-    /** 목록용 — 참석자 명단·본문 없이 요약만 */
-    public static MeetingMinutesDTO summaryOf(MeetingMinutes minutes) {
-        return base(minutes).build();
+    /** 목록용 — 참석자 명단·본문 없이 요약만 (호출자 본인의 서명 여부만 포함) */
+    public static MeetingMinutesDTO summaryOf(MeetingMinutes minutes, CallerIdentity caller) {
+        return base(minutes, caller).build();
     }
 
     /** 상세용 — toAbsoluteUrl은 상대 경로를 S3 절대 URL로 바꾼다 (서명 이미지 표시용) */
-    public static MeetingMinutesDTO detailOf(MeetingMinutes minutes, Function<String, String> toAbsoluteUrl) {
-        return base(minutes)
+    public static MeetingMinutesDTO detailOf(MeetingMinutes minutes, CallerIdentity caller,
+                                             Function<String, String> toAbsoluteUrl) {
+        return base(minutes, caller)
                 .sectionsJson(minutes.getSectionsJson())
                 .rawNotes(minutes.getRawNotes())
                 .transcript(minutes.getTranscript())
@@ -126,8 +132,14 @@ public class MeetingMinutesDTO {
                 .build();
     }
 
-    private static MeetingMinutesDTOBuilder base(MeetingMinutes minutes) {
+    private static MeetingMinutesDTOBuilder base(MeetingMinutes minutes, CallerIdentity caller) {
         List<MeetingMinutesAttendee> attendees = minutes.getAttendees();
+        MeetingMinutesAttendee mine = caller == null ? null : attendees.stream()
+                .filter(attendee -> attendee.getRefId() != null
+                        && attendee.getAttendeeType().name().equals(caller.type().name())
+                        && attendee.getRefId().equals(caller.refId()))
+                .findFirst()
+                .orElse(null);
         return MeetingMinutesDTO.builder()
                 .id(minutes.getId())
                 .title(minutes.getTitle())
@@ -142,6 +154,8 @@ public class MeetingMinutesDTO {
                 .completedAt(minutes.getCompletedAt())
                 .createdAt(minutes.getCreatedAt())
                 .signedCount((int) attendees.stream().filter(MeetingMinutesAttendee::isSigned).count())
-                .attendeeCount(attendees.size());
+                .attendeeCount(attendees.size())
+                .myAttendeeId(mine != null ? mine.getId() : null)
+                .mySignedAt(mine != null ? mine.getSignedAt() : null);
     }
 }

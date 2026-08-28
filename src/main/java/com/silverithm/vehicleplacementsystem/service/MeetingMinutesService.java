@@ -74,7 +74,7 @@ public class MeetingMinutesService {
         boolean isAdmin = accessService.isCompanyAdmin(caller, company.getId());
         return minutesRepository.findByCompanyIdOrderByMeetingStartAtDesc(company.getId()).stream()
                 .filter(minutes -> isAdmin || canView(caller, minutes))
-                .map(MeetingMinutesDTO::summaryOf)
+                .map(minutes -> MeetingMinutesDTO.summaryOf(minutes, caller))
                 .toList();
     }
 
@@ -83,7 +83,7 @@ public class MeetingMinutesService {
         MeetingMinutes minutes = requireMinutes(id);
         CallerIdentity caller = requireCaller(userDetails);
         requireCanView(caller, minutes);
-        return toDetailDTO(minutes);
+        return toDetailDTO(minutes, caller);
     }
 
     public MeetingMinutesDTO create(Long companyId, UserDetails userDetails, CreateMeetingMinutesRequestDTO dto) {
@@ -109,7 +109,7 @@ public class MeetingMinutesService {
         MeetingMinutes saved = minutesRepository.save(minutes);
         log.info("[MeetingMinutes] 생성: id={}, title={}, attendees={}", saved.getId(), saved.getTitle(),
                 saved.getAttendees().size());
-        return toDetailDTO(saved);
+        return toDetailDTO(saved, caller);
     }
 
     /** 완료 전까지 작성자·관리자가 내용을 고칠 수 있다 */
@@ -132,7 +132,7 @@ public class MeetingMinutesService {
         minutes.getAttachments().clear();
         applyAttachments(minutes, dto.getAttachments());
 
-        return toDetailDTO(minutesRepository.save(minutes));
+        return toDetailDTO(minutesRepository.save(minutes), caller);
     }
 
     /** 등록: 참석자에게 푸시가 나가고 서명 수집이 시작된다 */
@@ -151,7 +151,7 @@ public class MeetingMinutesService {
 
         notifyAttendees(saved, false);
         log.info("[MeetingMinutes] 등록: id={}, attendees={}", saved.getId(), saved.getAttendees().size());
-        return toDetailDTO(saved);
+        return toDetailDTO(saved, caller);
     }
 
     /** 미서명 참석자에게만 다시 알린다 */
@@ -165,7 +165,7 @@ public class MeetingMinutesService {
         }
 
         notifyAttendees(minutes, true);
-        return toDetailDTO(minutesRepository.save(minutes));
+        return toDetailDTO(minutesRepository.save(minutes), caller);
     }
 
     /** 참석자 본인 서명. 서명 이미지가 없으면 등록 서명을 쓴다 (결재 승인과 같은 계약) */
@@ -188,7 +188,7 @@ public class MeetingMinutesService {
 
         applySignature(attendee, resolveSignature(caller, signatureBase64));
         log.info("[MeetingMinutes] 본인 서명: minutesId={}, attendee={}", id, attendee.getAttendeeName());
-        return toDetailDTO(minutesRepository.save(minutes));
+        return toDetailDTO(minutesRepository.save(minutes), caller);
     }
 
     /**
@@ -212,7 +212,7 @@ public class MeetingMinutesService {
         applySignature(attendee, storeSignatureImageQuietly(signatureBase64));
         log.info("[MeetingMinutes] 입회 서명: minutesId={}, attendee={}, by={}",
                 id, attendee.getAttendeeName(), caller.name());
-        return toDetailDTO(minutesRepository.save(minutes));
+        return toDetailDTO(minutesRepository.save(minutes), caller);
     }
 
     /** 완료: 결재함에 완결 문서로 등록된다. 미서명자가 있어도(불참 등) 작성자가 완료할 수 있다 */
@@ -222,7 +222,7 @@ public class MeetingMinutesService {
         requireAuthorOrAdmin(caller, minutes);
 
         if (minutes.getStatus() == MeetingMinutes.Status.COMPLETED) {
-            return toDetailDTO(minutes);   // 멱등 — 두 번 눌러도 문서가 두 개 생기지 않는다
+            return toDetailDTO(minutes, caller);   // 멱등 — 두 번 눌러도 문서가 두 개 생기지 않는다
         }
 
         bridgeService.registerToApprovalBox(minutes);
@@ -232,7 +232,7 @@ public class MeetingMinutesService {
         MeetingMinutes saved = minutesRepository.save(minutes);
         log.info("[MeetingMinutes] 완료: id={}, approvalRequestId={}",
                 saved.getId(), saved.getApprovalRequest() != null ? saved.getApprovalRequest().getId() : null);
-        return toDetailDTO(saved);
+        return toDetailDTO(saved, caller);
     }
 
     public void delete(Long id, UserDetails userDetails) {
@@ -602,8 +602,8 @@ public class MeetingMinutesService {
         return caller;
     }
 
-    private MeetingMinutesDTO toDetailDTO(MeetingMinutes minutes) {
-        return MeetingMinutesDTO.detailOf(minutes, fileStorageService::getFileUrl);
+    private MeetingMinutesDTO toDetailDTO(MeetingMinutes minutes, CallerIdentity caller) {
+        return MeetingMinutesDTO.detailOf(minutes, caller, fileStorageService::getFileUrl);
     }
 
     private String blankToNull(String value) {
