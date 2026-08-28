@@ -102,3 +102,15 @@ else
 fi
 
 notify ":white_check_mark: [배포 완료] ${IDLE} 활성 (${COMMIT} ${COMMIT_MSG}) — 구버전(${ACTIVE}) 종료, 무중단 전환 성공"
+
+# ─── 배포 찌꺼기 정리 ───
+# 배포마다 이미지 한 벌(≈470MB)과 빌드 캐시가 쌓인다. 정리하지 않으면 몇 달 만에
+# 디스크가 찬다 — 실제로 2026-08 점검에서 빌드 캐시 15GB, 태그 없는 이미지 101개가
+# 쌓여 있었다(디스크 37% 중 대부분). 방금 띄운 색과 대기 색 이미지는 태그가 있어
+# 남고, 태그 없는 찌꺼기만 지운다.
+PRUNED=$(sudo docker image prune -f 2>/dev/null | tail -1)
+# 빌드 캐시는 docker system df가 실제보다 작게 보고하므로 별도로 비운다.
+# 7일보다 오래된 캐시만 지워 최근 배포의 증분 빌드 속도는 유지한다.
+CACHE_PRUNED=$(sudo docker builder prune -af --filter "until=168h" 2>/dev/null | tail -1)
+DISK_LEFT=$(df -h / | awk 'NR==2 {print $4" 여유 ("$5" 사용)"}')
+notify ":broom: [정리] ${PRUNED:-이미지 정리 완료} / 빌드캐시 ${CACHE_PRUNED:-정리 완료} — 디스크 ${DISK_LEFT}"

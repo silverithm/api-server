@@ -1,8 +1,21 @@
 version: '3.8'
 
+# 컨테이너 로그 상한 (전 서비스 공통)
+#
+# /etc/docker/daemon.json에도 같은 값을 걸어뒀지만 그 설정은 "컨테이너를 새로 만들 때"만
+# 적용된다. 그래서 오래 살아 있는 컨테이너(loki·nginx는 반년 넘게 재생성되지 않았다)는
+# 로테이션을 못 받고 로그를 무한히 쌓았다 — 2026-08 점검에서 loki 한 컨테이너가 3.4GB였다.
+# compose에 명시해두면 서비스가 재생성될 때마다 확실히 걸린다.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 # 블루그린 공통 설정 (app-blue/app-green이 공유)
 x-app-common: &app-common
   build: .
+  logging: *default-logging
   volumes:
     - ./logs:/logs
   deploy:
@@ -49,6 +62,7 @@ x-app-env: &app-env
 services:
   loki:
     image: grafana/loki:2.9.2
+    logging: *default-logging
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -57,6 +71,7 @@ services:
 
   promtail:
     image: grafana/promtail:2.9.2
+    logging: *default-logging
     volumes:
       - ./logs:/logs
       - ./cfg/promtail.yaml:/etc/promtail/config.yml
@@ -66,6 +81,7 @@ services:
 
   prometheus:
     image: prom/prometheus
+    logging: *default-logging
     container_name: prometheus
     volumes:
       - ./cfg/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -75,6 +91,7 @@ services:
       - silverithm_network
   grafana:
     image: grafana/grafana
+    logging: *default-logging
     container_name: grafana
     restart: always
     ports:
@@ -93,6 +110,7 @@ services:
       - silverithm_network
   zipkin:
     image: openzipkin/zipkin
+    logging: *default-logging
     container_name: zipkin
     ports:
       - "9411:9411" # Expose the Zipkin UI port
@@ -101,6 +119,7 @@ services:
   db:
     container_name: silverithm_db
     image: mysql:8.3
+    logging: *default-logging
     environment:
       MYSQL_DATABASE: ${MYSQL_NAME}
       MYSQL_USER: ${MYSQL_USER}
@@ -119,6 +138,7 @@ services:
   redis:
     container_name: silverithm_redis
     image: redis
+    logging: *default-logging
     ports:
       - "6379:6379"
     restart: always
@@ -148,6 +168,7 @@ services:
 
   nginx:
     image: nginx:latest
+    logging: *default-logging
     restart: unless-stopped
     container_name: nginx-proxy
     ports:
@@ -164,6 +185,7 @@ services:
 
   certbot:
     restart: unless-stopped
+    logging: *default-logging
     image: certbot/certbot
     container_name: certbot
     volumes:
