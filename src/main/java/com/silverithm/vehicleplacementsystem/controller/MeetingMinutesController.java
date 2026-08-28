@@ -4,6 +4,7 @@ import com.silverithm.vehicleplacementsystem.dto.CreateMeetingMinutesRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.MeetingMinutesAudioChunkRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.MeetingMinutesDTO;
 import com.silverithm.vehicleplacementsystem.dto.MeetingMinutesSignRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.SaveMeetingMinutesTemplateRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.MeetingMinutesService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -163,7 +164,7 @@ public class MeetingMinutesController {
                 ResponseEntity.ok(minutesService.getTemplate(companyId, userDetails)));
     }
 
-    /** 기관 양식 저장 (관리자만) */
+    /** 기관 양식 저장 (관리자만) — 레거시 단일 양식(기본 양식) 갱신 */
     @PutMapping("/template")
     public ResponseEntity<Map<String, String>> saveTemplate(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -171,6 +172,48 @@ public class MeetingMinutesController {
             @RequestBody Map<String, String> body) {
         return handleTemplate(() ->
                 ResponseEntity.ok(minutesService.saveTemplate(companyId, userDetails, body.get("sections"))));
+    }
+
+    /** 양식 목록 — 이름·섹션·AI 정리 지시를 함께 담은 회사의 모든 회의록 양식 */
+    @GetMapping("/templates")
+    public ResponseEntity<Map<String, Object>> listTemplates(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long companyId) {
+        return handle("양식 목록", () ->
+                ResponseEntity.ok(Map.of("templates", minutesService.listTemplates(companyId, userDetails))));
+    }
+
+    /** 양식 생성 (관리자만) */
+    @PostMapping("/templates")
+    public ResponseEntity<Map<String, Object>> createTemplate(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long companyId,
+            @Valid @RequestBody SaveMeetingMinutesTemplateRequestDTO dto) {
+        return handle("양식 생성", () ->
+                ResponseEntity.ok(Map.of("template", minutesService.createTemplate(companyId, userDetails, dto))));
+    }
+
+    /** 양식 수정 (관리자만) */
+    @PutMapping("/templates/{templateId}")
+    public ResponseEntity<Map<String, Object>> updateTemplate(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long companyId,
+            @PathVariable Long templateId,
+            @Valid @RequestBody SaveMeetingMinutesTemplateRequestDTO dto) {
+        return handle("양식 수정", () -> ResponseEntity.ok(
+                Map.of("template", minutesService.updateTemplate(companyId, templateId, userDetails, dto))));
+    }
+
+    /** 양식 삭제 (관리자만) */
+    @DeleteMapping("/templates/{templateId}")
+    public ResponseEntity<Map<String, Object>> deleteTemplate(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long companyId,
+            @PathVariable Long templateId) {
+        return handle("양식 삭제", () -> {
+            minutesService.deleteTemplate(companyId, templateId, userDetails);
+            return ResponseEntity.ok(Map.of("success", true));
+        });
     }
 
     private ResponseEntity<Map<String, Object>> handle(String action,

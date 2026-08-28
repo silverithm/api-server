@@ -4,6 +4,8 @@ import com.silverithm.vehicleplacementsystem.dto.CreateMeetingMinutesRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.MeetingMinutesAudioChunkRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.MeetingMinutesDTO;
+import com.silverithm.vehicleplacementsystem.dto.MeetingMinutesTemplateDTO;
+import com.silverithm.vehicleplacementsystem.dto.SaveMeetingMinutesTemplateRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalStep;
 import com.silverithm.vehicleplacementsystem.entity.Company;
@@ -271,29 +273,149 @@ public class MeetingMinutesService {
         minutesRepository.save(minutes);
     }
 
-    // ---- 양식 (기관별 섹션 구성) ----
+    // ---- 양식 (기관별 회의록 양식 — 회사당 여러 개, V1.85) ----
 
+    /**
+     * 레거시 단일 양식 조회 — "새 회의록을 시작할 때 쓸 기본 섹션 구성"만 필요한 곳에서 쓴다.
+     * 기본 양식(is_default)이 있으면 그 섹션을, 행이 하나도 없으면 애플리케이션 기본값을 돌려준다.
+     */
     @Transactional(readOnly = true)
     public Map<String, String> getTemplate(Long companyId, UserDetails userDetails) {
         Company company = requireCompany(companyId);
-        String sections = templateRepository.findByCompanyId(company.getId())
+        String sections = templateRepository.findByCompanyIdAndIsDefaultTrue(company.getId())
                 .map(MeetingMinutesTemplate::getSections)
                 .orElse(DEFAULT_SECTIONS_JSON);
         return Map.of("sections", sections);
     }
 
+    /** 레거시 단일 양식 저장 — 기본 양식이 있으면 섹션만 갈아끼우고, 없으면 새로 만들어 기본으로 지정한다 */
     public Map<String, String> saveTemplate(Long companyId, UserDetails userDetails, String sectionsJson) {
         Company company = requireCompany(companyId);
         CallerIdentity caller = requireCaller(userDetails);
-        if (!accessService.isCompanyAdmin(caller, company.getId())) {
-            throw new SecurityException("양식은 관리자만 수정할 수 있습니다");
-        }
+        requireTemplateAdmin(caller, company.getId());
 
-        MeetingMinutesTemplate template = templateRepository.findByCompanyId(company.getId())
-                .orElseGet(() -> MeetingMinutesTemplate.builder().company(company).build());
+        MeetingMinutesTemplate template = templateRepository.findByCompanyIdAndIsDefaultTrue(company.getId())
+                .orElseGet(() -> {
+                    List<MeetingMinutesTemplate> existing =
+                            templateRepository.findByCompanyIdOrderBySortOrderAscIdAsc(company.getId());
+                    if (!existing.isEmpty()) {
+                        // 기본으로 표시된 행이 없는 예외적인 상태 — 첫 번째 행을 기본으로 승격한다
+                        MeetingMinutesTemplate first = existing.get(0);
+                        first.setDefault(true);
+                        return first;
+                    }
+                    return MeetingMinutesTemplate.builder().company(company).name("기본 양식").isDefault(true).build();
+                });
         template.setSections(sectionsJson);
         templateRepository.save(template);
         return Map.of("sections", sectionsJson);
+    }
+
+    /** 양식 목록 — 회사 안 누구나 조회 가능(선택은 회의록 작성 화면 누구나 하니까) */
+    @Transactional(readOnly = true)
+    public List<MeetingMinutesTemplateDTO> listTemplates(Long companyId, UserDetails userDetails) {
+        Company company = requireCompany(companyId);
+        requireCaller(userDetails);
+        List<MeetingMinutesTemplateDTO> templates = templateRepository
+                .findByCompanyIdOrderBySortOrderAscIdAsc(company.getId()).stream()
+                .map(MeetingMinutesTemplateDTO::of)
+                .toList();
+        if (!templates.isEmpty()) {
+            return templates;
+        }
+        // 저장된 양식이 하나도 없으면 애플리케이션 기본값을 가짜 1행으로 보여준다 — 화면이 비지 않게
+        return List.of(MeetingMinutesTemplateDTO.builder()
+                .id(null)
+                .name("기본 양식")
+                .sectionsJson(DEFAULT_SECTIONS_JSON)
+                .isDefault(true)
+                .sortOrder(0)
+                .build());
+    }
+
+    /** 양식 생성 — 관리자만. 회사의 첫 양식이면 무조건 기본으로 지정한다 */
+    public MeetingMinutesTemplateDTO createTemplate(Long companyId, UserDetails userDetails,
+                                                    SaveMeetingMinutesTemplateRequestDTO dto) {
+        Company company = requireCompany(companyId);
+        CallerIdentity caller = requireCaller(userDetails);
+        requireTemplateAdmin(caller, company.getId());
+
+        List<MeetingMinutesTemplate> existing =
+                templateRepository.findByCompanyIdOrderBySortOrderAscIdAsc(company.getId());
+        boolean makeDefault = existing.isEmpty() || Boolean.TRUE.equals(dto.getIsDefault());
+        if (makeDefault) {
+            clearExistingDefault(existing);
+        }
+
+        MeetingMinutesTemplate template = MeetingMinutesTemplate.builder()
+                .company(company)
+                .name(dto.getName().trim())
+                .sections(dto.getSectionsJson())
+                .aiInstruction(blankToNull(dto.getAiInstruction()))
+                .formatExample(blankToNull(dto.getFormatExample()))
+                .isDefault(makeDefault)
+                .sortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : existing.size())
+                .build();
+        MeetingMinutesTemplateDTO result = MeetingMinutesTemplateDTO.of(templateRepository.save(template));
+        log.info("[MeetingMinutes] 양식 생성: companyId={}, name={}", companyId, result.getName());
+        return result;
+    }
+
+    /** 양식 수정 — 관리자만. isDefault를 true로 보내면 이 양식이 기본이 되고 나머지는 자동 해제된다 */
+    public MeetingMinutesTemplateDTO updateTemplate(Long companyId, Long templateId, UserDetails userDetails,
+                                                     SaveMeetingMinutesTemplateRequestDTO dto) {
+        Company company = requireCompany(companyId);
+        CallerIdentity caller = requireCaller(userDetails);
+        requireTemplateAdmin(caller, company.getId());
+
+        MeetingMinutesTemplate template = templateRepository.findByIdAndCompanyId(templateId, company.getId())
+                .orElseThrow(() -> new IllegalArgumentException("양식을 찾을 수 없습니다"));
+
+        if (Boolean.TRUE.equals(dto.getIsDefault()) && !template.isDefault()) {
+            List<MeetingMinutesTemplate> existing =
+                    templateRepository.findByCompanyIdOrderBySortOrderAscIdAsc(company.getId());
+            clearExistingDefault(existing);
+            template.setDefault(true);
+        } else if (Boolean.FALSE.equals(dto.getIsDefault())) {
+            template.setDefault(false);
+        }
+
+        template.setName(dto.getName().trim());
+        template.setSections(dto.getSectionsJson());
+        template.setAiInstruction(blankToNull(dto.getAiInstruction()));
+        template.setFormatExample(blankToNull(dto.getFormatExample()));
+        if (dto.getSortOrder() != null) {
+            template.setSortOrder(dto.getSortOrder());
+        }
+        return MeetingMinutesTemplateDTO.of(templateRepository.save(template));
+    }
+
+    /** 양식 삭제 — 관리자만. 기본 양식을 지워도 나머지는 그대로 두며(새 기본은 지정하지 않는다),
+     *  전부 지우면 다음 조회부터 애플리케이션 기본값으로 자연스럽게 폴백한다. */
+    public void deleteTemplate(Long companyId, Long templateId, UserDetails userDetails) {
+        Company company = requireCompany(companyId);
+        CallerIdentity caller = requireCaller(userDetails);
+        requireTemplateAdmin(caller, company.getId());
+
+        MeetingMinutesTemplate template = templateRepository.findByIdAndCompanyId(templateId, company.getId())
+                .orElseThrow(() -> new IllegalArgumentException("양식을 찾을 수 없습니다"));
+        templateRepository.delete(template);
+        log.info("[MeetingMinutes] 양식 삭제: companyId={}, templateId={}", companyId, templateId);
+    }
+
+    private void requireTemplateAdmin(CallerIdentity caller, Long companyId) {
+        if (!accessService.isCompanyAdmin(caller, companyId)) {
+            throw new SecurityException("양식은 관리자만 수정할 수 있습니다");
+        }
+    }
+
+    private void clearExistingDefault(List<MeetingMinutesTemplate> templates) {
+        for (MeetingMinutesTemplate t : templates) {
+            if (t.isDefault()) {
+                t.setDefault(false);
+                templateRepository.save(t);
+            }
+        }
     }
 
     // ---- 내부 도우미 ----
