@@ -40,6 +40,18 @@ public class ElderAttendance {
     @Column(nullable = false, length = 20)
     private ElderAttendanceStatus status;
 
+    /**
+     * 개인등원 - 보호자가 직접 데려와 등원 차량에 타지 않는다.
+     * 결석(ABSENT)과 달리 출석은 한 것이므로 status와 별개의 플래그로 둔다.
+     * (개인등원 + 차량하원 같은 조합이 실제로 존재한다)
+     */
+    @Column(name = "personal_pickup", nullable = false)
+    private boolean personalPickup = false;
+
+    /** 개인하원 - 보호자가 직접 데려가 하원 차량에 타지 않는다. */
+    @Column(name = "personal_dropoff", nullable = false)
+    private boolean personalDropoff = false;
+
     @Column(length = 500)
     private String note;
 
@@ -62,5 +74,10 @@ public class ElderAttendance {
 
     public void updateNote(String note) {
         this.note = note;
+    }
+
+    public void updatePersonalTransport(boolean personalPickup, boolean personalDropoff) {
+        this.personalPickup = personalPickup;
+        this.personalDropoff = personalDropoff;
     }
 }

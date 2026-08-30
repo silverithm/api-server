@@ -87,12 +87,25 @@ public class AttendanceService {
         long present = elderAttendanceRepository.countByCompanyIdAndDateAndStatus(companyId, date, ElderAttendanceStatus.PRESENT);
         long absent = total - present;
         if (absent < 0) absent = 0;
+        long personalPickup = elderAttendanceRepository.countByCompanyIdAndDateAndPersonalPickupTrue(companyId, date);
+        long personalDropoff = elderAttendanceRepository.countByCompanyIdAndDateAndPersonalDropoffTrue(companyId, date);
 
-        return new ElderAttendanceSummaryDTO(total, present, absent);
+        return new ElderAttendanceSummaryDTO(total, present, absent, personalPickup, personalDropoff);
     }
 
     public List<ElderAttendanceDTO> getElderAttendanceList(Long companyId, LocalDate date) {
         return elderAttendanceRepository.findByCompanyIdAndDate(companyId, date)
+                .stream()
+                .map(ElderAttendanceDTO::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 기간 조회 - 배차 캘린더/리스트가 월 단위로 출결을 읽는다.
+     * 날짜별로 한 건씩 호출하면 30번 왕복하게 되므로 범위로 한 번에 준다.
+     */
+    public List<ElderAttendanceDTO> getElderAttendanceRange(Long companyId, LocalDate startDate, LocalDate endDate) {
+        return elderAttendanceRepository.findByCompanyIdAndDateBetween(companyId, startDate, endDate)
                 .stream()
                 .map(ElderAttendanceDTO::from)
                 .collect(Collectors.toList());
@@ -107,18 +120,20 @@ public class AttendanceService {
         resourceScopeGuard.requireSameCompany(elderly.getCompany(),
                 elderly.getUser() != null ? elderly.getUser().getCompany() : null);
 
-        LocalDate today = LocalDate.now();
+        LocalDate targetDate = request.dateOrToday();
         ElderAttendanceStatus status = ElderAttendanceStatus.valueOf(request.status());
 
         ElderAttendance attendance = elderAttendanceRepository
-                .findByElderlyIdAndDate(request.elderlyId(), today)
+                .findByElderlyIdAndDate(request.elderlyId(), targetDate)
                 .orElse(null);
 
         if (attendance != null) {
             attendance.updateStatus(status);
+            attendance.updatePersonalTransport(request.personalPickupOrFalse(), request.personalDropoffOrFalse());
             if (request.note() != null) attendance.updateNote(request.note());
         } else {
-            attendance = new ElderAttendance(elderly, company, today, status);
+            attendance = new ElderAttendance(elderly, company, targetDate, status);
+            attendance.updatePersonalTransport(request.personalPickupOrFalse(), request.personalDropoffOrFalse());
             if (request.note() != null) attendance.updateNote(request.note());
             elderAttendanceRepository.save(attendance);
         }

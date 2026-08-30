@@ -6,7 +6,10 @@ public record ElderAttendanceDTO(
         Long id,
         Long elderlyId,
         String elderlyName,
+        String date,
         String status,
+        boolean personalPickup,
+        boolean personalDropoff,
         String note
 ) {
     public static ElderAttendanceDTO from(ElderAttendance attendance) {
@@ -14,7 +17,10 @@ public record ElderAttendanceDTO(
                 attendance.getId(),
                 attendance.getElderly().getId(),
                 attendance.getElderly().getName(),
+                attendance.getDate().toString(),
                 attendance.getStatus().name(),
+                attendance.isPersonalPickup(),
+                attendance.isPersonalDropoff(),
                 attendance.getNote()
         );
     }

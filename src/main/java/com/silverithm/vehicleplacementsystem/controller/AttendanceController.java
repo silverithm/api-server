@@ -68,6 +68,15 @@ public class AttendanceController {
         return ResponseEntity.ok(Map.of("attendances", list));
     }
 
+    @GetMapping("/elder/range")
+    public ResponseEntity<Map<String, Object>> getElderAttendanceRange(
+            @RequestParam Long companyId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        List<ElderAttendanceDTO> list = attendanceService.getElderAttendanceRange(companyId, startDate, endDate);
+        return ResponseEntity.ok(Map.of("attendances", list));
+    }
+
     @PostMapping("/elder")
     public ResponseEntity<String> checkElderAttendance(
             @RequestParam Long companyId,
