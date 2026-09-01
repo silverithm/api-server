@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.repository;
 
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
+import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.repository.querydsl.LinkDistanceRepositoryCustom;
 import com.silverithm.vehicleplacementsystem.repository.querydsl.UserRepositoryCustom;
 import java.util.List;
@@ -33,4 +34,7 @@ public interface UserRepository extends JpaRepository<AppUser, Long>, UserReposi
     
     @Query("SELECT u FROM AppUser u WHERE u.email = :email AND u.deletedAt IS NULL")
     Optional<AppUser> findActiveByEmail(@Param("email") String email);
+
+    /** 일정 담당자 후보 등에 회사 소속 관리자(시설장) 계정을 함께 보여줄 때 사용. 탈퇴 계정은 제외. */
+    List<AppUser> findByCompanyAndDeletedAtIsNull(Company company);
 }

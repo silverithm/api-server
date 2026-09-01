@@ -1,11 +1,13 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleParticipant;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleParticipantRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ public class ScheduleStartReminderScheduler {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleParticipantRepository scheduleParticipantRepository;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     private final FCMService fcmService;
 
     @Scheduled(cron = "0 30 8 * * *", zone = "Asia/Seoul")
@@ -63,15 +66,22 @@ public class ScheduleStartReminderScheduler {
     }
 
     private int notifyOne(Schedule schedule) {
-        // 참석자와 담당자는 겹칠 수 있다 — 같은 사람에게 두 번 울리지 않게 모아서 보낸다
-        Set<Long> targets = new LinkedHashSet<>();
+        // 참석자와 담당자는 겹칠 수 있다 — 같은 사람에게 두 번 울리지 않게 모아서 보낸다.
+        // 담당자는 members.id일 수도, app_user.id일 수도 있다(managerType) — 두 id 공간이
+        // 서로 겹칠 수 있으므로 절대 같은 Set에 섞지 않는다.
+        Set<Long> memberTargets = new LinkedHashSet<>();
         for (ScheduleParticipant participant : scheduleParticipantRepository.findByScheduleId(schedule.getId())) {
-            targets.add(participant.getMemberId());
+            memberTargets.add(participant.getMemberId());
         }
+        Set<Long> adminTargets = new LinkedHashSet<>();
         if (schedule.getManagerMemberId() != null) {
-            targets.add(schedule.getManagerMemberId());
+            if (schedule.getManagerType() == Schedule.ManagerType.ADMIN) {
+                adminTargets.add(schedule.getManagerMemberId());
+            } else {
+                memberTargets.add(schedule.getManagerMemberId());
+            }
         }
-        if (targets.isEmpty()) {
+        if (memberTargets.isEmpty() && adminTargets.isEmpty()) {
             return 0;
         }
 
@@ -80,7 +90,7 @@ public class ScheduleStartReminderScheduler {
                 : schedule.getTitle();
 
         int sent = 0;
-        for (Member member : memberRepository.findAllById(targets)) {
+        for (Member member : memberRepository.findAllById(memberTargets)) {
             String token = member.getFcmToken();
             if (token == null || token.isEmpty()) {
                 continue;
@@ -89,6 +99,17 @@ public class ScheduleStartReminderScheduler {
                     ScheduleService.scheduleNotificationData(schedule));
             log.info("[Schedule Start Reminder] 전송: scheduleId={}, member={}",
                     schedule.getId(), PrivacyMask.name(member.getName()));
+            sent++;
+        }
+        for (AppUser admin : userRepository.findAllById(adminTargets)) {
+            String token = admin.getFcmToken();
+            if (token == null || token.isEmpty()) {
+                continue;
+            }
+            fcmService.sendNotification(token, "오늘 일정이 있습니다", body,
+                    ScheduleService.scheduleNotificationData(schedule));
+            log.info("[Schedule Start Reminder] 전송: scheduleId={}, admin={}",
+                    schedule.getId(), PrivacyMask.name(admin.getUsername()));
             sent++;
         }
         return sent;

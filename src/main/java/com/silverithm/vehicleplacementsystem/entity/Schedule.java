@@ -102,6 +102,20 @@ public class Schedule {
 
     private String managerName;
 
+    /**
+     * 담당자 id가 가리키는 테이블. MEMBER(members) | ADMIN(app_user).
+     * members.id와 app_user.id는 서로 다른 시퀀스라 값이 겹칠 수 있어 종류를 함께 저장해야
+     * managerMemberId만으로 엉뚱한 사람을 가리키는 사고(V1.88 이전)가 재발하지 않는다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "manager_type", nullable = false, length = 20)
+    @Builder.Default
+    private ManagerType managerType = ManagerType.MEMBER;
+
+    public enum ManagerType {
+        MEMBER, ADMIN
+    }
+
     @Column(nullable = false)
     private String authorId;
 
@@ -129,6 +143,9 @@ public class Schedule {
         }
         if (isCompleted == null) {
             isCompleted = false;
+        }
+        if (managerType == null) {
+            managerType = ManagerType.MEMBER;
         }
     }
 

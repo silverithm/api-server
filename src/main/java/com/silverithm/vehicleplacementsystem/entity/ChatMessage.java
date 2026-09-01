@@ -76,6 +76,10 @@ public class ChatMessage {
     @Column
     private String mimeType;
 
+    /** 이미지 메시지의 축소 썸네일(긴 변 640px) S3 URL. 생성에 실패했거나 이미지가 아니면 null. */
+    @Column(name = "thumbnail_url", length = 500)
+    private String thumbnailUrl;
+
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ChatMessageRead> readers = new ArrayList<>();

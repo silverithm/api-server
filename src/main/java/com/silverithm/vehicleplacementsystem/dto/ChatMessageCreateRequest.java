@@ -28,6 +28,9 @@ public class ChatMessageCreateRequest {
     private Long fileSize;
     private String mimeType;
 
+    // 이미지 축소 썸네일 URL (생성 실패 시 null)
+    private String thumbnailUrl;
+
     // 답글 대상 메시지 ID
     private Long replyToId;
 }

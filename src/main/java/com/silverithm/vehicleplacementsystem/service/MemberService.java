@@ -476,6 +476,33 @@ public class MemberService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 회사 소속 직원(members) + 관리자(app_user) 계정을 함께 조회.
+     * 일정 등록 화면처럼 시설장도 담당자 후보로 보여줘야 하는 화면에서만 옵트인으로 쓴다
+     * (기본 목록 조회는 기존처럼 직원만 내려줘야 다른 화면이 깨지지 않는다).
+     */
+    public List<MemberDTO> getAllMembersAndAdminsByCompany(Long companyId) {
+        log.info("[Member Service] 회사별 회원+관리자 조회: companyId={}", companyId);
+
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
+
+        List<MemberDTO> members = memberRepository.findByCompanyOrderByCreatedAtDesc(company).stream()
+                .map(MemberDTO::fromEntity)
+                .collect(Collectors.toList());
+
+        List<MemberDTO> admins = userRepository.findByCompanyAndDeletedAtIsNull(company).stream()
+                .map(MemberDTO::fromAppUser)
+                .collect(Collectors.toList());
+
+        log.info("[Member Service] 회사별 회원+관리자 조회 완료: 회사 {}, 직원 {}명, 관리자 {}명",
+                company.getName(), members.size(), admins.size());
+
+        List<MemberDTO> result = new ArrayList<>(members);
+        result.addAll(admins);
+        return result;
+    }
+
     public List<MemberDTO> getMembersByRole(String role) {
         log.info("[Member Service] 역할별 회원 조회: role={}", role);
 

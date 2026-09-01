@@ -306,10 +306,12 @@ public class MemberController {
     public ResponseEntity<Map<String, List<MemberDTO>>> getMembers(
             @RequestParam Long companyId,
             @RequestParam(required = false) String role,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "false") boolean includeAdmins) {
 
         try {
-            log.info("[Member API] 회사별 회원 목록 조회: companyId={}, role={}, status={}", companyId, role, status);
+            log.info("[Member API] 회사별 회원 목록 조회: companyId={}, role={}, status={}, includeAdmins={}",
+                    companyId, role, status, includeAdmins);
 
             List<MemberDTO> members;
 
@@ -317,6 +319,10 @@ public class MemberController {
                 members = memberService.getMembersByCompanyAndRole(companyId, role);
             } else if (status != null) {
                 members = memberService.getMembersByCompanyAndStatus(companyId, status);
+            } else if (includeAdmins) {
+                // 일정 담당자 후보 등 관리자(시설장) 계정도 함께 보여줘야 하는 화면에서 옵트인.
+                // 기존 호출처(직원 관리 화면 등)는 파라미터를 안 보내므로 그대로 직원만 받는다.
+                members = memberService.getAllMembersAndAdminsByCompany(companyId);
             } else {
                 members = memberService.getAllMembersByCompany(companyId);
             }

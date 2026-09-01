@@ -61,6 +61,12 @@ public class ScheduleRequestDTO {
 
     private List<Long> participantIds;
 
-    /** 담당자 member id (미지정 시 null) */
+    /** 담당자 id (미지정 시 null). members.id 또는 app_user.id — managerType으로 구분한다. */
     private Long managerId;
+
+    /**
+     * 담당자 종류. "MEMBER"(직원) | "ADMIN"(관리자/시설장).
+     * 비어 있으면(null/blank) 구버전 클라이언트 호환을 위해 "MEMBER"로 본다.
+     */
+    private String managerType;
 }

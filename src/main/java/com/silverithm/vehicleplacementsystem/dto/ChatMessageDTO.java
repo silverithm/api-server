@@ -38,6 +38,7 @@ public class ChatMessageDTO {
     private String fileName;
     private Long fileSize;
     private String mimeType;
+    private String thumbnailUrl;
     private int readCount;
     private String displayContent;
 
@@ -71,6 +72,7 @@ public class ChatMessageDTO {
                 .fileName(message.getFileName())
                 .fileSize(message.getFileSize())
                 .mimeType(message.getMimeType())
+                .thumbnailUrl(message.getThumbnailUrl())
                 .readCount(message.getReaders() != null ? message.getReaders().size() : 0)
                 .displayContent(message.getDisplayContent());
 

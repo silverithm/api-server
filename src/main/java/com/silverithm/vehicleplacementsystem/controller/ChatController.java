@@ -407,6 +407,52 @@ public class ChatController {
     }
 
     /**
+     * 메시지 주변 조회 — 검색 결과 등에서 현재 화면에 없는 과거 메시지로 바로 이동할 때 쓴다.
+     * messageId를 가운데 두고 앞뒤로 size/2씩 가져온다. 응답 모양은 목록 조회(GET /messages)와 같다.
+     */
+    @GetMapping("/rooms/{roomId}/messages/around")
+    public ResponseEntity<Map<String, Object>> getMessagesAround(
+            @PathVariable Long roomId,
+            @RequestParam Long messageId,
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String userId) {
+
+        try {
+            String callerId = chatCallerResolver.resolveSelf(userId);
+            log.info("[Chat API] 메시지 주변 조회: roomId={}, messageId={}, size={}, userId={}",
+                    roomId, messageId, size, callerId);
+
+            ChatMessagesAroundDTO result = chatService.getMessagesAround(roomId, messageId, size, callerId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "messages", result.getMessages(),
+                            "hasBefore", result.isHasBefore(),
+                            "hasAfter", result.isHasAfter()
+                    ));
+
+        } catch (SecurityException e) {
+            log.error("[Chat API] 메시지 주변 조회 권한 오류: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (IllegalArgumentException e) {
+            log.error("[Chat API] 메시지 주변 조회 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 메시지 주변 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "메시지 주변 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 메시지 전송
      */
     @PostMapping("/rooms/{roomId}/messages")
@@ -717,6 +763,17 @@ public class ChatController {
             }
             log.info("[Chat API] 메시지 타입: {}, contentType: {}", messageType, contentType);
 
+            // 이미지면 채팅 목록에서 빠르게 받을 수 있도록 축소 썸네일을 함께 만든다.
+            // 실패해도(깨진 이미지 등) 업로드 자체는 계속 진행한다 - thumbnailUrl만 null.
+            String thumbnailUrl = null;
+            if (contentType != null && contentType.startsWith("image/")) {
+                String thumbnailPath = fileStorageService.generateAndStoreThumbnail(file, filePath);
+                if (thumbnailPath != null) {
+                    thumbnailUrl = fileStorageService.getFileUrl(thumbnailPath);
+                    log.info("[Chat API] 썸네일 URL 생성: {}", thumbnailUrl);
+                }
+            }
+
             // 메시지 생성 요청
             ChatMessageCreateRequest messageRequest = ChatMessageCreateRequest.builder()
                     .senderId(senderId)
@@ -727,6 +784,7 @@ public class ChatController {
                     .fileName(file.getOriginalFilename())
                     .fileSize(file.getSize())
                     .mimeType(contentType)
+                    .thumbnailUrl(thumbnailUrl)
                     .build();
 
             log.info("[Chat API] ChatService.sendMessage 호출");

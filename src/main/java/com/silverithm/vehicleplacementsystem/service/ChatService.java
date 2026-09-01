@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -486,6 +487,71 @@ public class ChatService {
     }
 
     /**
+     * 특정 메시지를 가운데 두고 앞뒤로 불러오는 조회.
+     *
+     * 검색 결과 등 현재 화면에 없는 과거 메시지로 바로 이동할 때 쓴다 — 기존 목록 조회는
+     * page/size 기반 최신순뿐이라 "이 메시지 주변"을 가져올 방법이 없었다.
+     * 응답 모양(ChatMessageDTO, 최신순 정렬)은 {@link #getMessages}와 동일하게 맞춰
+     * 프론트가 같은 렌더링 경로를 그대로 쓸 수 있게 한다.
+     *
+     * @param size 앞뒤로 각각 가져올 개수의 총합 기준값. 절반씩(size/2) 나눠 가져온다.
+     */
+    @Transactional(readOnly = true)
+    public ChatMessagesAroundDTO getMessagesAround(Long roomId, Long messageId, int size, String currentUserId) {
+        log.info("[Chat Service] 메시지 주변 조회: roomId={}, messageId={}, size={}", roomId, messageId, size);
+
+        // 참가자만 조회 가능 — 다른 목록/전송 API와 같은 방식(findActiveByRoomAndPerson)으로 검사한다.
+        chatParticipantRepository
+                .findActiveByRoomAndPerson(roomId, person(currentUserId).memberId(), person(currentUserId).appUserId())
+                .orElseThrow(() -> new SecurityException("채팅방 참가자가 아닙니다"));
+
+        ChatMessage center = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("메시지를 찾을 수 없습니다: " + messageId));
+        if (center.getChatRoom() == null || !center.getChatRoom().getId().equals(roomId)) {
+            // 존재는 하지만 다른 방의 메시지 id를 넣은 경우 — 조회 권한이 있는 다른 방이라도
+            // 이 방의 참가자라는 사실이 그 메시지를 볼 권한이 되지는 않는다.
+            throw new IllegalArgumentException("이 채팅방의 메시지가 아닙니다: " + messageId);
+        }
+
+        int half = Math.max(1, size / 2);
+
+        Page<ChatMessage> beforePage = chatMessageRepository.findMessagesBefore(
+                roomId, messageId, PageRequest.of(0, half));
+        Page<ChatMessage> afterPage = chatMessageRepository.findMessagesAfter(
+                roomId, messageId, PageRequest.of(0, half));
+
+        List<ChatMessage> beforeDesc = beforePage.getContent(); // 이미 최신순(중심에 가까운 것부터)
+        List<ChatMessage> afterAsc = new ArrayList<>(afterPage.getContent()); // 오름차순(중심에 가까운 것부터)
+        Collections.reverse(afterAsc); // 최신순으로 뒤집는다 — 결합 시 맨 위(가장 최신)가 되도록
+
+        List<ChatMessage> combined = new ArrayList<>(afterAsc.size() + 1 + beforeDesc.size());
+        combined.addAll(afterAsc);
+        combined.add(center);
+        combined.addAll(beforeDesc);
+
+        List<Long> messageIds = combined.stream().map(ChatMessage::getId).collect(Collectors.toList());
+        List<ChatMessageReaction> allReactions = chatMessageReactionRepository.findByMessageIdIn(messageIds);
+        Map<Long, List<ChatMessageReaction>> reactionsByMessage = allReactions.stream()
+                .collect(Collectors.groupingBy(r -> r.getMessage().getId()));
+
+        List<ChatMessageDTO> messages = combined.stream()
+                .map(msg -> {
+                    int readCount = (int) chatMessageReadRepository.countByMessageId(msg.getId());
+                    ChatMessageDTO dto = ChatMessageDTO.fromEntityWithReadCount(msg, readCount);
+                    List<ChatMessageReaction> msgReactions = reactionsByMessage.getOrDefault(msg.getId(), List.of());
+                    dto.setReactions(buildReactionSummaries(msgReactions, currentUserId));
+                    return dto;
+                })
+                .collect(Collectors.toList());
+
+        // 기존 목록 조회의 hasMore와 같은 방식(요청한 만큼 꽉 찼으면 더 있다고 본다)의 근사치다.
+        boolean hasBefore = beforeDesc.size() == half;
+        boolean hasAfter = afterAsc.size() == half;
+
+        return new ChatMessagesAroundDTO(messages, hasBefore, hasAfter);
+    }
+
+    /**
      * 메시지 전송
      */
     @Transactional
@@ -530,6 +596,7 @@ public class ChatService {
                 .fileName(request.getFileName())
                 .fileSize(request.getFileSize())
                 .mimeType(request.getMimeType())
+                .thumbnailUrl(request.getThumbnailUrl())
                 .replyTo(replyTo)
                 .isDeleted(false)
                 .build();

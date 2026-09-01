@@ -8,6 +8,7 @@ import com.silverithm.vehicleplacementsystem.dto.ScheduleLabelRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleTaskDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleTaskRequestDTO;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
@@ -23,6 +24,7 @@ import com.silverithm.vehicleplacementsystem.repository.ScheduleLabelRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleParticipantRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleTaskRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -53,6 +55,7 @@ public class ScheduleService {
     private final CompanyRepository companyRepository;
     private final PlatformTransactionManager transactionManager;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     private final FCMService fcmService;
     private final ResourceScopeGuard resourceScopeGuard;
 
@@ -101,7 +104,7 @@ public class ScheduleService {
                 .authorName(authorName)
                 .build();
 
-        applyManager(schedule, request.getManagerId());
+        applyManager(schedule, request.getManagerId(), request.getManagerType());
 
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 저장 완료: id={}", saved.getId());
@@ -124,17 +127,62 @@ public class ScheduleService {
                 categorySettingsFor(saved.getCompany().getId()));
     }
 
-    /** 담당자 지정/해제 — memberId가 유효하면 이름을 조회해 함께 저장, null이면 해제 */
-    private void applyManager(Schedule schedule, Long managerId) {
+    /**
+     * 담당자 지정/해제.
+     * managerId가 유효하면 종류(MEMBER/members | ADMIN/app_user)에 맞는 테이블에서 조회해 이름과 함께 저장하고,
+     * null이면 해제한다. managerType이 비어 있으면(구버전 클라이언트) MEMBER로 본다.
+     * 조회된 담당자가 이 일정의 회사 소속이 아니면 저장하지 않는다 — 다른 회사 id를 넣는 시도를 막기 위함(IDOR 방지).
+     */
+    private void applyManager(Schedule schedule, Long managerId, String managerTypeRaw) {
         if (managerId == null) {
             schedule.setManagerMemberId(null);
             schedule.setManagerName(null);
+            schedule.setManagerType(Schedule.ManagerType.MEMBER);
             return;
         }
-        Member manager = memberRepository.findById(managerId).orElse(null);
-        if (manager != null) {
+
+        Schedule.ManagerType managerType;
+        try {
+            managerType = (managerTypeRaw == null || managerTypeRaw.isBlank())
+                    ? Schedule.ManagerType.MEMBER
+                    : Schedule.ManagerType.valueOf(managerTypeRaw.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("[Schedule Service] 알 수 없는 담당자 종류: {} - MEMBER로 처리", managerTypeRaw);
+            managerType = Schedule.ManagerType.MEMBER;
+        }
+
+        Long scheduleCompanyId = schedule.getCompany() != null ? schedule.getCompany().getId() : null;
+
+        if (managerType == Schedule.ManagerType.ADMIN) {
+            AppUser manager = userRepository.findById(managerId).orElse(null);
+            if (manager == null) {
+                log.warn("[Schedule Service] 존재하지 않는 관리자 담당자 id={} - 담당자 지정 무시", managerId);
+                return;
+            }
+            Long managerCompanyId = manager.getCompany() != null ? manager.getCompany().getId() : null;
+            if (scheduleCompanyId == null || !scheduleCompanyId.equals(managerCompanyId)) {
+                log.warn("[Schedule Service] 담당자(관리자) 회사 불일치: scheduleCompany={}, managerCompany={} - 담당자 지정 무시",
+                        scheduleCompanyId, managerCompanyId);
+                return;
+            }
+            schedule.setManagerMemberId(manager.getId());
+            schedule.setManagerName(manager.getUsername());
+            schedule.setManagerType(Schedule.ManagerType.ADMIN);
+        } else {
+            Member manager = memberRepository.findById(managerId).orElse(null);
+            if (manager == null) {
+                log.warn("[Schedule Service] 존재하지 않는 직원 담당자 id={} - 담당자 지정 무시", managerId);
+                return;
+            }
+            Long managerCompanyId = manager.getCompany() != null ? manager.getCompany().getId() : null;
+            if (scheduleCompanyId == null || !scheduleCompanyId.equals(managerCompanyId)) {
+                log.warn("[Schedule Service] 담당자(직원) 회사 불일치: scheduleCompany={}, managerCompany={} - 담당자 지정 무시",
+                        scheduleCompanyId, managerCompanyId);
+                return;
+            }
             schedule.setManagerMemberId(manager.getId());
             schedule.setManagerName(manager.getName());
+            schedule.setManagerType(Schedule.ManagerType.MEMBER);
         }
     }
 
@@ -178,7 +226,7 @@ public class ScheduleService {
                 color
         );
 
-        applyManager(schedule, request.getManagerId());
+        applyManager(schedule, request.getManagerId(), request.getManagerType());
 
         Schedule saved = scheduleRepository.save(schedule);
         log.info("[Schedule Service] 일정 수정 완료: id={}", saved.getId());
@@ -219,7 +267,15 @@ public class ScheduleService {
 
         Long managerMemberId = schedule.getManagerMemberId();
         if (managerMemberId != null) {
-            if (!managerMemberId.equals(memberId) && !isAdmin) {
+            // managerMemberId는 managerType이 MEMBER일 때만 members.id 공간이다. ADMIN이면
+            // app_user.id라 memberId(항상 members.id, 관리자 계정이면 null)와 우연히 같은 값이
+            // 나올 수 있어 — 그 값만 비교하면 남의 회사도 아닌 남의 계정을 "본인"으로 오인해
+            // 엉뚱한 직원이 관리자 담당 일정을 완료 처리할 수 있었다(V1.88과 같은 사고 유형).
+            // ADMIN 담당자의 "본인" 여부는 여기서 판정하지 않는다 — 관리자 계정은 이미
+            // isAdmin=true로 항상 대행 권한이 있어 이 필드로 개인을 식별할 필요가 없다.
+            boolean isSelfManager = schedule.getManagerType() == Schedule.ManagerType.MEMBER
+                    && managerMemberId.equals(memberId);
+            if (!isSelfManager && !isAdmin) {
                 throw new IllegalStateException("담당자 또는 관리자만 수행완료 처리할 수 있습니다.");
             }
         } else {

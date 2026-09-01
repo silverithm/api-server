@@ -49,6 +49,8 @@ public class ScheduleDTO {
     /** 담당자 (미지정 시 null) */
     private Long managerId;
     private String managerName;
+    /** 담당자 종류. "MEMBER" | "ADMIN" */
+    private String managerType;
     private List<ScheduleParticipantDTO> participants;
     private List<ScheduleTaskDTO> tasks;
     /** 할 일 총 개수 */
@@ -99,6 +101,7 @@ public class ScheduleDTO {
                 .completedByName(schedule.getCompletedByName())
                 .managerId(schedule.getManagerMemberId())
                 .managerName(schedule.getManagerName())
+                .managerType(schedule.getManagerType() != null ? schedule.getManagerType().name() : null)
                 .authorId(schedule.getAuthorId())
                 .authorName(schedule.getAuthorName())
                 .companyId(schedule.getCompany().getId())

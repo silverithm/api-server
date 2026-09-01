@@ -30,6 +30,18 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             @Param("beforeId") Long beforeId,
             Pageable pageable);
 
+    // 특정 메시지 ID 이후 메시지 조회 (오름차순 — 중심 메시지에 가장 가까운 것부터)
+    // "주변 조회"(around)에서 이후 구간을 가져올 때만 쓴다. 목록 조회는 항상 최신순(DESC)이라
+    // 이 순서가 필요한 다른 곳은 없다.
+    @Query("SELECT m FROM ChatMessage m " +
+           "WHERE m.chatRoom.id = :chatRoomId " +
+           "AND m.id > :afterId " +
+           "ORDER BY m.createdAt ASC")
+    Page<ChatMessage> findMessagesAfter(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("afterId") Long afterId,
+            Pageable pageable);
+
     // 채팅방의 최신 메시지
     Optional<ChatMessage> findFirstByChatRoomIdOrderByCreatedAtDesc(Long chatRoomId);
 

@@ -1,11 +1,13 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleTask;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleTaskRepository;
+import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,6 +29,7 @@ public class ScheduleTaskReminderScheduler {
     private final ScheduleTaskRepository scheduleTaskRepository;
     private final ScheduleRepository scheduleRepository;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     private final FCMService fcmService;
 
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
@@ -85,13 +88,22 @@ public class ScheduleTaskReminderScheduler {
         int sent = 0;
         for (Schedule schedule : incomplete) {
             try {
-                Member manager = memberRepository.findById(schedule.getManagerMemberId()).orElse(null);
-                if (manager == null || manager.getFcmToken() == null || manager.getFcmToken().isEmpty()) {
+                // 담당자는 members.id일 수도, app_user.id일 수도 있다(managerType) — 종류에 맞는 테이블에서 조회해야
+                // id가 우연히 겹치는 엉뚱한 사람에게 알림이 가거나 아예 못 찾는 것을 막는다.
+                String fcmToken;
+                if (schedule.getManagerType() == Schedule.ManagerType.ADMIN) {
+                    AppUser manager = userRepository.findById(schedule.getManagerMemberId()).orElse(null);
+                    fcmToken = manager != null ? manager.getFcmToken() : null;
+                } else {
+                    Member manager = memberRepository.findById(schedule.getManagerMemberId()).orElse(null);
+                    fcmToken = manager != null ? manager.getFcmToken() : null;
+                }
+                if (fcmToken == null || fcmToken.isEmpty()) {
                     continue;
                 }
 
                 fcmService.sendNotification(
-                        manager.getFcmToken(),
+                        fcmToken,
                         "오늘 일정이 아직 완료되지 않았습니다",
                         schedule.getTitle(),
                         ScheduleService.scheduleNotificationData(schedule));
