@@ -746,27 +746,29 @@ public class ChatController {
                         .body(Map.of("error", "파일이 비어있습니다."));
             }
 
-            // 파일 저장
+            // 파일 저장 — 파일 타입은 클라이언트가 보낸 Content-Type이 아니라 실제 내용으로 정한다
+            // (구버전 앱은 HEIC를 application/octet-stream으로 보낸다).
+            // HEIC/HEIF면 여기서 JPEG 사본이 함께 만들어지고 메시지는 그 사본을 가리킨다.
+            // 크롬·엣지·파이어폭스가 HEIC를 렌더링하지 못해 웹에서 사진이 안 보였기 때문이다.
             log.info("[Chat API] FileStorageService 호출 시작");
-            String filePath = fileStorageService.storeFile(file, "chat/" + roomId);
-            log.info("[Chat API] 파일 저장 완료: filePath={}", filePath);
+            FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "chat/" + roomId);
+            String filePath = stored.path();
+            log.info("[Chat API] 파일 저장 완료: filePath={}, converted={}", filePath, stored.isConverted());
 
             // S3 URL 직접 사용 (서버 부하 감소, 더 빠른 다운로드)
             String fileUrl = fileStorageService.getFileUrl(filePath);
             log.info("[Chat API] S3 파일 URL 생성: {}", fileUrl);
 
-            // 파일 타입 결정 — 클라이언트가 보낸 Content-Type은 틀릴 때가 많다(HEIC를
-            // application/octet-stream으로 보내는 구버전 앱 등). 파일 실제 내용까지 보고 정한다.
-            String contentType = fileStorageService.probeContentType(file);
-            String messageType = contentType.startsWith("image/") ? "IMAGE" : "FILE";
+            String contentType = stored.contentType();
+            String messageType = stored.isImage() ? "IMAGE" : "FILE";
             log.info("[Chat API] 메시지 타입: {}, contentType: {} (클라이언트 선언: {})",
                     messageType, contentType, file.getContentType());
 
             // 이미지면 채팅 목록에서 빠르게 받을 수 있도록 축소 썸네일을 함께 만든다.
             // 실패해도(깨진 이미지 등) 업로드 자체는 계속 진행한다 - thumbnailUrl만 null.
             String thumbnailUrl = null;
-            if (contentType.startsWith("image/")) {
-                String thumbnailPath = fileStorageService.generateAndStoreThumbnail(file, filePath);
+            if (stored.isImage()) {
+                String thumbnailPath = fileStorageService.generateAndStoreThumbnail(stored.content(), filePath);
                 if (thumbnailPath != null) {
                     thumbnailUrl = fileStorageService.getFileUrl(thumbnailPath);
                     log.info("[Chat API] 썸네일 URL 생성: {}", thumbnailUrl);
@@ -778,10 +780,10 @@ public class ChatController {
                     .senderId(senderId)
                     .senderName(senderName)
                     .type(messageType)
-                    .content(file.getOriginalFilename())
+                    .content(stored.fileName())
                     .fileUrl(fileUrl)
-                    .fileName(file.getOriginalFilename())
-                    .fileSize(file.getSize())
+                    .fileName(stored.fileName())
+                    .fileSize(stored.size())
                     .mimeType(contentType)
                     .thumbnailUrl(thumbnailUrl)
                     .build();

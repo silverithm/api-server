@@ -91,6 +91,18 @@ public final class FileContentTypeResolver {
             Map.entry("csv", "text/csv"),
             Map.entry("zip", "application/zip"),
 
+            // --- 동영상 ---
+            // 매직 넘버(ftyp 상자)만으로도 대부분 잡히지만, 첫 바이트를 못 읽는 경로
+            // (S3 경로만 들고 판정하는 byPathOrDefault 등)에서는 확장자가 유일한 단서다.
+            // webm은 이 프로젝트에서 회의 녹음(오디오)으로만 올라오므로 아래 오디오 쪽에 그대로 둔다.
+            Map.entry("mp4", "video/mp4"),
+            Map.entry("m4v", "video/mp4"),
+            Map.entry("mov", "video/quicktime"),
+            Map.entry("3gp", "video/3gpp"),
+            Map.entry("avi", "video/x-msvideo"),
+            Map.entry("mkv", "video/x-matroska"),
+            Map.entry("wmv", "video/x-ms-wmv"),
+
             // --- 회의 녹음 : FileController.isAllowedAudioExtension()과 짝을 맞춘다 ---
             Map.entry("mp3", "audio/mpeg"),
             Map.entry("m4a", "audio/mp4"),
@@ -104,6 +116,12 @@ public final class FileContentTypeResolver {
     /** 업로드를 허용하는 이미지 확장자 — 위 표에서 image/*로 매핑되는 것들. */
     public static final Set<String> IMAGE_EXTENSIONS = EXTENSION_TO_CONTENT_TYPE.entrySet().stream()
             .filter(e -> e.getValue().startsWith("image/"))
+            .map(Map.Entry::getKey)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /** 우리가 아는 동영상 확장자 — 위 표에서 video/*로 매핑되는 것들. */
+    public static final Set<String> VIDEO_EXTENSIONS = EXTENSION_TO_CONTENT_TYPE.entrySet().stream()
+            .filter(e -> e.getValue().startsWith("video/"))
             .map(Map.Entry::getKey)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -156,6 +174,17 @@ public final class FileContentTypeResolver {
     public static boolean isImageExtension(String extension) {
         String normalized = normalizeExtension(extension);
         return normalized != null && IMAGE_EXTENSIONS.contains(normalized);
+    }
+
+    /** Content-Type이 동영상인지. null·빈 값은 false. */
+    public static boolean isVideoContentType(String contentType) {
+        return contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("video/");
+    }
+
+    /** 파일명·경로의 확장자가 우리가 아는 동영상인지. */
+    public static boolean isVideoFileName(String fileNameOrPath) {
+        String extension = extractExtension(fileNameOrPath);
+        return extension != null && VIDEO_EXTENSIONS.contains(extension);
     }
 
     /** 파일 내용의 매직 넘버가 이미지인지. 내용으로 판정되지 않으면 false. */

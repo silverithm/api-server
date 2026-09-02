@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -37,6 +38,15 @@ public class FileStorageService {
     /** 썸네일 JPEG 압축 품질(0.0~1.0). */
     private static final float THUMBNAIL_QUALITY = 0.8f;
 
+    /**
+     * 이 크기를 넘는 <b>이미지가 아닌</b> 파일은 힙에 통째로 올리지 않고 임시 파일을 거쳐 S3로 흘려보낸다.
+     *
+     * <p>채팅 동영상은 100MB까지 올라온다. 그걸 {@code getBytes()}로 읽으면 업로드 한 건마다
+     * 힙을 100MB씩 쓴다. 운영 서버는 메모리가 3.8GB뿐이고 배포 중에는 blue/green 두 개가
+     * 잠깐 함께 뜬다. 이미지는 썸네일·HEIC 변환에 내용이 필요해 그대로 읽는다(사진은 수 MB다).
+     */
+    private static final long STREAM_THRESHOLD_BYTES = 8L * 1024 * 1024;
+
     @Value("${cloud.aws.s3.bucket:}")
     private String bucketName;
 
@@ -54,6 +64,13 @@ public class FileStorageService {
 
     private S3Client s3Client;
     private boolean s3Enabled = false;
+
+    /**
+     * HEIC → JPEG 변환기. 스프링 컨텍스트가 있으면 빈으로 교체되고, 단위 테스트처럼
+     * new FileStorageService()로 만들 때는 여기 기본 인스턴스가 그대로 쓰인다.
+     */
+    @Autowired(required = false)
+    private HeicToJpegConverter heicToJpegConverter = new HeicToJpegConverter();
 
     @PostConstruct
     public void init() {
@@ -101,67 +118,167 @@ public class FileStorageService {
      * 파일 저장
      * @param file 업로드할 파일
      * @param subDirectory 하위 디렉토리 (예: "templates", "attachments")
-     * @return 저장된 파일 경로 (S3 key, folder prefix 제외)
+     * @return 저장된 파일 경로 (S3 key, folder prefix 제외). HEIC/HEIF였다면 JPEG 사본의 경로
      */
     public String storeFile(MultipartFile file, String subDirectory) throws IOException {
+        // HEIC 사진이면 JPEG 사본이 만들어지고 그쪽 경로가 돌아온다.
+        // 파일명·크기까지 정확히 필요한 호출부는 storeUpload()를 직접 쓴다.
+        return storeUpload(file, subDirectory).path();
+    }
+
+    /**
+     * 업로드 파일을 저장하되, HEIC/HEIF 사진이면 JPEG 사본을 함께 만들어 그쪽을 대표로 돌려준다.
+     *
+     * <p><b>왜 사본인가.</b> 크롬·엣지·파이어폭스는 HEIC를 렌더링하지 못한다. 구버전 앱이 올린
+     * HEIC 원본을 그대로 가리키면 웹에서 사진이 안 보인다. 그렇다고 원본을 지우지는 않는다.
+     * 변환이 잘못됐을 때 되돌릴 것이 남아 있어야 하고, 원본을 지우면 복구할 길이 없다.
+     *
+     * <p>변환에 실패하거나 서버에 변환기가 없으면 예외 없이 원본을 대표로 돌려준다.
+     * 사진이 웹에서 안 보이는 것보다 사진이 아예 안 올라가는 게 나쁘다.
+     *
+     * @param file         업로드 파일
+     * @param subDirectory 하위 디렉터리 (예: "chat/12", "attachments")
+     */
+    public StoredUpload storeUpload(MultipartFile file, String subDirectory) throws IOException {
         checkS3Enabled();
 
-        // 원본 파일명
         String originalFileName = file.getOriginalFilename();
         if (originalFileName == null || originalFileName.isBlank()) {
             throw new IllegalArgumentException("파일명이 유효하지 않습니다.");
         }
 
-        // 파일 확장자 추출
-        String extension = "";
-        int dotIndex = originalFileName.lastIndexOf(".");
-        if (dotIndex > 0) {
-            extension = originalFileName.substring(dotIndex);
+        // Content-Type은 앞부분 64바이트만 봐도 정해진다(매직 넘버). 큰 파일을 힙에 올리기 전에
+        // 먼저 판정해서, 이미지가 아닌 큰 파일은 아예 읽지 않고 흘려보낼 수 있게 한다.
+        long declaredSize = file.getSize();
+        String probedContentType = probeContentType(file);
+        if (!probedContentType.startsWith("image/") && declaredSize > STREAM_THRESHOLD_BYTES) {
+            String streamedPath = putNewObjectStreamed(file, subDirectory,
+                    extensionOf(originalFileName), probedContentType);
+            log.info("[FileStorage] PutObject(스트리밍) 성공: key={}, size={}bytes, contentType={}",
+                    folder + streamedPath, declaredSize, probedContentType);
+            // 내용(content)은 들고 있지 않다. 이미지가 아니므로 썸네일도 만들지 않는다.
+            return new StoredUpload(streamedPath, originalFileName, probedContentType, declaredSize,
+                    streamedPath, probedContentType, null);
         }
 
-        // UUID로 고유 파일명 생성
-        String storedFileName = UUID.randomUUID().toString() + extension;
+        byte[] content = file.getBytes();
 
-        // S3 key 생성 (folder prefix 포함)
-        String relativePath = subDirectory + "/" + storedFileName;
+        // Content-Type 결정 — 확장자만 믿지 않고 파일 실제 내용을 먼저 본다.
+        // 카톡·스캔 앱을 거치면 확장자가 내용과 다른 사진이 흔하고, 그때 확장자를 믿으면
+        // 원본이 S3에서 이미지로 열리지 않는다.
+        String contentType = resolveContentType(content, originalFileName, file.getContentType());
+        String byExtension = determineContentType(extensionOf(originalFileName));
+        if (log.isInfoEnabled() && !contentType.equals(byExtension)) {
+            log.info("[FileStorage] 확장자와 실제 내용이 다릅니다 - 내용을 따릅니다: file={}, 확장자기준={}, 최종={}",
+                    originalFileName, byExtension, contentType);
+        }
+
+        String originalPath = putNewObject(content, subDirectory, extensionOf(originalFileName), contentType);
+        log.info("[FileStorage] PutObject 성공: key={}, size={}bytes, contentType={}, returnPath={}",
+                folder + originalPath, content.length, contentType, originalPath);
+
+        if (!HeicToJpegConverter.isHeic(contentType)) {
+            return new StoredUpload(originalPath, originalFileName, contentType, content.length,
+                    originalPath, contentType, content);
+        }
+
+        byte[] jpeg = heicToJpegConverter.toJpeg(content);
+        if (jpeg == null) {
+            // 변환기가 없거나 실패 - 원본을 그대로 쓴다. 어떤 파일이 걸렸는지는 로그로 남는다.
+            log.warn("[FileStorage] HEIC 변환 실패 - 원본을 그대로 사용합니다: path={}, fileName={}",
+                    originalPath, originalFileName);
+            return new StoredUpload(originalPath, originalFileName, contentType, content.length,
+                    originalPath, contentType, content);
+        }
+
+        // 원본과 짝이 보이도록 같은 UUID에 확장자만 .jpg로 바꿔 올린다.
+        String jpegPath = replaceExtension(originalPath, ".jpg");
+        uploadBytes(jpegPath, jpeg, "image/jpeg");
+        String jpegFileName = HeicToJpegConverter.toJpegFileName(originalFileName);
+        log.info("[FileStorage] HEIC → JPEG 사본 저장: original={}, jpeg={}", originalPath, jpegPath);
+
+        return new StoredUpload(jpegPath, jpegFileName, "image/jpeg", jpeg.length,
+                originalPath, contentType, jpeg);
+    }
+
+    /**
+     * {@link #storeUpload} 결과.
+     *
+     * @param path                대표 파일의 상대 경로(HEIC였다면 JPEG 사본)
+     * @param fileName            사용자에게 보여줄 파일명(HEIC였다면 확장자가 .jpg로 바뀐 이름)
+     * @param contentType         대표 파일의 Content-Type
+     * @param size                대표 파일의 크기(bytes)
+     * @param originalPath        업로드된 원본의 상대 경로. 원본은 지우지 않는다
+     * @param originalContentType 업로드된 원본의 Content-Type
+     * @param content             대표 파일의 내용. 썸네일 생성에 다시 읽지 않으려고 들고 다닌다.
+     *                            큰 동영상처럼 스트리밍으로 올린 파일은 null (힙에 올리지 않는다)
+     */
+    public record StoredUpload(String path, String fileName, String contentType, long size,
+                               String originalPath, String originalContentType, byte[] content) {
+
+        /** HEIC 원본 대신 JPEG 사본을 가리키고 있는지. */
+        public boolean isConverted() {
+            return originalPath != null && !originalPath.equals(path);
+        }
+
+        /** 대표 파일이 이미지인지. */
+        public boolean isImage() {
+            return contentType != null && contentType.startsWith("image/");
+        }
+    }
+
+    /** UUID 파일명을 만들어 S3에 올리고 상대 경로를 돌려준다. */
+    private String putNewObject(byte[] content, String subDirectory, String extension, String contentType)
+            throws IOException {
+        String relativePath = subDirectory + "/" + UUID.randomUUID() + extension;
+        uploadBytes(relativePath, content, contentType);
+        return relativePath;
+    }
+
+    /**
+     * 업로드 스트림을 임시 파일로 옮긴 뒤 그 파일에서 곧장 S3로 올린다.
+     * 100MB 동영상이 힙을 지나가지 않는다.
+     */
+    private String putNewObjectStreamed(MultipartFile file, String subDirectory, String extension,
+                                        String contentType) throws IOException {
+        String relativePath = subDirectory + "/" + UUID.randomUUID() + extension;
         String s3Key = folder + relativePath;
-
-        log.info("[FileStorage] PutObject 요청 시작: bucket={}, key={}, originalFile={}", bucketName, s3Key, originalFileName);
-
+        java.nio.file.Path temp = java.nio.file.Files.createTempFile("carev-upload-", extension);
         try {
-            // 업로드 바이트는 한 번만 읽어 Content-Type 판정과 업로드에 함께 쓴다.
-            byte[] content = file.getBytes();
-
-            // Content-Type 결정 — 확장자만 믿지 않고 파일 실제 내용을 먼저 본다.
-            // 카톡·스캔 앱을 거치면 확장자가 내용과 다른 사진이 흔하고, 그때 확장자를 믿으면
-            // 원본이 S3에서 이미지로 열리지 않는다.
-            String contentType = resolveContentType(content, originalFileName, file.getContentType());
-            if (log.isInfoEnabled() && !contentType.equals(determineContentType(extension))) {
-                log.info("[FileStorage] 확장자와 실제 내용이 다릅니다 - 내용을 따릅니다: file={}, 확장자기준={}, 최종={}",
-                        originalFileName, determineContentType(extension), contentType);
-            }
-
-            // S3에 업로드
+            file.transferTo(temp);
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
                     .contentType(contentType)
                     .build();
-
-            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(content));
-
-            log.info("[FileStorage] PutObject 성공: key={}, size={}bytes, contentType={}, returnPath={}",
-                    s3Key, file.getSize(), contentType, relativePath);
-
-            // folder prefix를 제외한 상대 경로 반환
+            s3Client.putObject(putObjectRequest, RequestBody.fromFile(temp));
             return relativePath;
         } catch (S3Exception e) {
-            log.error("[FileStorage] PutObject 실패: key={}, statusCode={}, errorCode={}, errorMessage={}",
+            log.error("[FileStorage] PutObject(스트리밍) 실패: key={}, statusCode={}, errorMessage={}",
                     s3Key, e.statusCode(),
-                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : "N/A",
                     e.awsErrorDetails() != null ? e.awsErrorDetails().errorMessage() : e.getMessage());
             throw new IOException("S3 파일 업로드에 실패했습니다: " + e.getMessage(), e);
+        } finally {
+            try {
+                java.nio.file.Files.deleteIfExists(temp);
+            } catch (IOException e) {
+                log.warn("[FileStorage] 업로드 임시 파일 삭제 실패: {}", temp);
+            }
         }
+    }
+
+    /** 파일명에서 ".확장자"를 뽑는다. 없으면 빈 문자열. */
+    private String extensionOf(String fileName) {
+        int dotIndex = fileName.lastIndexOf(".");
+        return dotIndex > 0 ? fileName.substring(dotIndex) : "";
+    }
+
+    /** 경로의 확장자를 갈아 끼운다. */
+    private String replaceExtension(String path, String newExtension) {
+        int dotIndex = path.lastIndexOf(".");
+        int slashIndex = path.lastIndexOf("/");
+        String base = (dotIndex > 0 && dotIndex > slashIndex) ? path.substring(0, dotIndex) : path;
+        return base + newExtension;
     }
 
     /**
@@ -216,12 +333,29 @@ public class FileStorageService {
         }
 
         try {
-            BufferedImage original = ImageIO.read(file.getInputStream());
+            return generateAndStoreThumbnail(file.getBytes(), originalRelativePath);
+        } catch (Exception e) {
+            log.error("[FileStorage] 썸네일 생성 실패: path={}, {}", originalRelativePath, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 이미 바이트로 들고 있는 이미지의 썸네일을 만든다.
+     * HEIC를 JPEG로 바꾼 뒤에는 변환 결과 바이트를 그대로 넘겨 다시 읽지 않는다.
+     */
+    public String generateAndStoreThumbnail(byte[] imageBytes, String originalRelativePath) {
+        if (!s3Enabled || imageBytes == null || imageBytes.length == 0) {
+            return null;
+        }
+
+        try {
+            BufferedImage original = ImageIO.read(new java.io.ByteArrayInputStream(imageBytes));
             if (original == null) {
                 // 자바 표준 ImageIO는 heic/heif(아이폰 기본 포맷)와 webp를 읽지 못한다.
                 // 썸네일 없이 원본을 쓰게 두고, 어떤 포맷이 걸렸는지는 로그로 남긴다.
-                log.warn("[FileStorage] 썸네일 생성 스킵 - ImageIO가 디코딩할 수 없는 포맷: path={}, fileName={}, mimeType={}",
-                        originalRelativePath, file.getOriginalFilename(), file.getContentType());
+                log.warn("[FileStorage] 썸네일 생성 스킵 - ImageIO가 디코딩할 수 없는 포맷: path={}",
+                        originalRelativePath);
                 return null;
             }
 
@@ -255,8 +389,8 @@ public class FileStorageService {
             String thumbnailRelativePath = buildThumbnailPath(originalRelativePath);
             uploadBytes(thumbnailRelativePath, thumbnailBytes, "image/jpeg");
 
-            log.info("[FileStorage] 썸네일 생성 완료: original={}x{}, thumb={}x{}, path={}",
-                    width, height, thumbWidth, thumbHeight, thumbnailRelativePath);
+            log.info("[FileStorage] 썸네일 생성 완료: original={}x{}, thumb={}x{}, path={}, size={}bytes",
+                    width, height, thumbWidth, thumbHeight, thumbnailRelativePath, thumbnailBytes.length);
             return thumbnailRelativePath;
         } catch (Exception e) {
             // 썸네일 생성 실패가 채팅 파일 업로드 자체를 막으면 안 된다.
@@ -307,10 +441,12 @@ public class FileStorageService {
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
-            log.info("[FileStorage] PutObject(썸네일) 성공: key={}, size={}bytes", s3Key, bytes.length);
         } catch (S3Exception e) {
-            log.error("[FileStorage] PutObject(썸네일) 실패: key={}, {}", s3Key, e.getMessage());
-            throw new IOException("S3 썸네일 업로드에 실패했습니다: " + e.getMessage(), e);
+            log.error("[FileStorage] PutObject 실패: key={}, statusCode={}, errorCode={}, errorMessage={}",
+                    s3Key, e.statusCode(),
+                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorCode() : "N/A",
+                    e.awsErrorDetails() != null ? e.awsErrorDetails().errorMessage() : e.getMessage());
+            throw new IOException("S3 파일 업로드에 실패했습니다: " + e.getMessage(), e);
         }
     }
 

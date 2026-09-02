@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,6 +41,40 @@ class FileStorageServiceTest {
         ReflectionTestUtils.setField(fileStorageService, "s3Enabled", true);
         ReflectionTestUtils.setField(fileStorageService, "bucketName", "test-bucket");
         ReflectionTestUtils.setField(fileStorageService, "folder", "test/");
+
+        // 변환기는 테스트에서 명시적으로 갈아 끼운다. 기본값은 "이 서버엔 heif-convert가 없다"로 두어
+        // 개발 기계에 heif-convert가 깔려 있든 없든 결과가 같게 한다.
+        ReflectionTestUtils.setField(fileStorageService, "heicToJpegConverter", unavailableConverter());
+    }
+
+    /** heif-convert가 없는 서버를 흉내낸다. */
+    private HeicToJpegConverter unavailableConverter() {
+        return new HeicToJpegConverter() {
+            @Override
+            public boolean isAvailable() {
+                return false;
+            }
+
+            @Override
+            public byte[] toJpeg(byte[] heicContent) {
+                return null;
+            }
+        };
+    }
+
+    /** 변환에 성공하는 서버를 흉내낸다. */
+    private HeicToJpegConverter converterReturning(byte[] jpeg) {
+        return new HeicToJpegConverter() {
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public byte[] toJpeg(byte[] heicContent) {
+                return jpeg;
+            }
+        };
     }
 
     @Test
@@ -176,6 +211,89 @@ class FileStorageServiceTest {
         verifyNoInteractions(s3Client);
     }
 
+    // ---------------------------------------------------------------
+    // HEIC → JPEG 변환 (크롬·엣지·파이어폭스는 HEIC를 렌더링하지 못한다)
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("HEIC 업로드는 JPEG 사본을 만들어 그쪽을 대표로 돌려주고, 원본도 그대로 남긴다")
+    void convertsHeicUploadToJpegCopy() throws Exception {
+        byte[] jpeg = createJpegBytes(4080, 3060);
+        ReflectionTestUtils.setField(fileStorageService, "heicToJpegConverter", converterReturning(jpeg));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "IMG_0001.HEIC", "application/octet-stream", heicBytes());
+        when(s3Client, PutObjectResponse.builder().build());
+
+        FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "chat/1");
+
+        // 대표는 JPEG - 파일명·Content-Type·크기가 모두 JPEG 기준이어야 웹에서 열린다
+        assertTrue(stored.isConverted());
+        assertTrue(stored.path().endsWith(".jpg"));
+        assertEquals("IMG_0001.jpg", stored.fileName());
+        assertEquals("image/jpeg", stored.contentType());
+        assertEquals(jpeg.length, stored.size());
+
+        // 원본은 지우지 않는다 - 되돌릴 것이 남아 있어야 한다
+        assertTrue(stored.originalPath().endsWith(".HEIC"));
+        assertEquals("image/heic", stored.originalContentType());
+
+        // S3에는 원본과 JPEG 두 개가 올라간다
+        java.util.List<PutObjectRequest> puts = capturePutObjects(s3Client, 2);
+        assertEquals("image/heic", puts.get(0).contentType());
+        assertEquals("image/jpeg", puts.get(1).contentType());
+        assertEquals("test/" + stored.originalPath(), puts.get(0).key());
+        assertEquals("test/" + stored.path(), puts.get(1).key());
+    }
+
+    @Test
+    @DisplayName("변환이 실패해도 업로드는 성공한다 - 원본을 그대로 쓴다")
+    void keepsOriginalWhenConversionFails() throws Exception {
+        // 기본 스텁이 "변환기 없음"이다 (운영에서 패키지가 빠졌을 때와 같은 상황)
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "IMG_0002.heic", "image/heic", heicBytes());
+        when(s3Client, PutObjectResponse.builder().build());
+
+        FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "chat/1");
+
+        assertFalse(stored.isConverted());
+        assertTrue(stored.path().endsWith(".heic"));
+        assertEquals("image/heic", stored.contentType());
+        assertEquals("IMG_0002.heic", stored.fileName());
+        assertEquals("image/heic", capturePutObject(s3Client).contentType());
+    }
+
+    @Test
+    @DisplayName("JPEG 사본이 생기면 썸네일도 그 사본에서 만들어진다")
+    void buildsThumbnailFromConvertedJpeg() throws Exception {
+        byte[] jpeg = createJpegBytes(1200, 800);
+        ReflectionTestUtils.setField(fileStorageService, "heicToJpegConverter", converterReturning(jpeg));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "IMG_0003.heic", "image/heic", heicBytes());
+        when(s3Client, PutObjectResponse.builder().build());
+
+        FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "chat/1");
+        String thumbnailPath = fileStorageService.generateAndStoreThumbnail(stored.content(), stored.path());
+
+        // HEIC 원본으로는 만들 수 없던 썸네일이 JPEG 사본에서는 만들어진다
+        assertNotNull(thumbnailPath);
+        assertTrue(thumbnailPath.endsWith("_thumb.jpg"));
+    }
+
+    @Test
+    @DisplayName("HEIC가 아닌 파일은 변환을 거치지 않고 그대로 저장된다")
+    void leavesNonHeicUploadUntouched() throws Exception {
+        byte[] png = createImageBytes(10, 10, "png");
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", png);
+        when(s3Client, PutObjectResponse.builder().build());
+
+        FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "chat/1");
+
+        assertFalse(stored.isConverted());
+        assertEquals("image/png", stored.contentType());
+        assertEquals("photo.png", stored.fileName());
+        assertEquals(png.length, stored.size());
+    }
+
     /** ftyp 상자를 갖춘 최소한의 HEIC 헤더. 자바로는 HEIC를 인코딩할 수 없어 시그니처만 만든다. */
     private byte[] heicBytes() {
         byte[] bytes = new byte[32];
@@ -228,6 +346,15 @@ class FileStorageServiceTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /** PutObject가 여러 번 호출된 경우 호출 순서대로 요청을 돌려준다. */
+    private java.util.List<PutObjectRequest> capturePutObjects(S3Client client, int times) {
+        org.mockito.ArgumentCaptor<PutObjectRequest> requestCaptor =
+                org.mockito.ArgumentCaptor.forClass(PutObjectRequest.class);
+        verify(client, org.mockito.Mockito.times(times))
+                .putObject(requestCaptor.capture(), any(software.amazon.awssdk.core.sync.RequestBody.class));
+        return requestCaptor.getAllValues();
     }
 
     private record ArgumentCaptorHolder(String key, String contentType, byte[] bytes) {

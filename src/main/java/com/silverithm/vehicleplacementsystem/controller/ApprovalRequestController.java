@@ -258,13 +258,19 @@ public class ApprovalRequestController {
             }
 
             // S3에 파일 저장 (approvals 서브디렉토리)
-            String filePath = fileStorageService.storeFile(file, "approvals");
+            // HEIC/HEIF 사진이면 JPEG 사본이 함께 만들어지고 첨부는 그 사본을 가리킨다.
+            FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "approvals");
+            String filePath = stored.path();
             String fileUrl = fileStorageService.getFileUrl(filePath);
 
             // 결재 요청에 연결되기 전까지 업로더 본인만 접근 가능하도록 유예 부여
             fileAccessGuard.grantUploadGrace(userDetails, filePath);
+            if (stored.isConverted()) {
+                fileAccessGuard.grantUploadGrace(userDetails, stored.originalPath());
+            }
 
-            log.info("[Approval API] 파일 업로드 성공: filePath={}, fileUrl={}", filePath, fileUrl);
+            log.info("[Approval API] 파일 업로드 성공: filePath={}, fileUrl={}, converted={}",
+                    filePath, fileUrl, stored.isConverted());
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -272,8 +278,8 @@ public class ApprovalRequestController {
                             "success", true,
                             "filePath", filePath,
                             "fileUrl", fileUrl,
-                            "fileName", file.getOriginalFilename(),
-                            "fileSize", file.getSize()
+                            "fileName", stored.fileName(),
+                            "fileSize", stored.size()
                     ));
 
         } catch (Exception e) {

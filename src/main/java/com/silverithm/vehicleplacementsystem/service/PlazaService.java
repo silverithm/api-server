@@ -342,13 +342,15 @@ public class PlazaService {
     @Transactional
     public Long uploadLibraryItem(String categoryKey, String title, String description, MultipartFile file,
                                   String uploaderId, String uploaderName, String companyName) throws IOException {
-        String storedPath = fileStorageService.storeFile(file, "plaza");
+        // HEIC/HEIF 사진이면 JPEG 사본이 만들어지고 자료는 그 사본을 가리킨다(웹에서 열려야 한다).
+        FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, "plaza");
+        String storedPath = stored.path();
         PlazaLibraryItem item = PlazaLibraryItem.builder()
                 .category(PlazaLibraryItem.Category.fromKey(categoryKey))
                 .title(title)
                 .description(description)
-                .fileName(file.getOriginalFilename() != null ? file.getOriginalFilename() : "file")
-                .fileSize(file.getSize())
+                .fileName(stored.fileName() != null ? stored.fileName() : "file")
+                .fileSize(stored.size())
                 .filePath(storedPath)
                 .uploaderId(uploaderId)
                 .uploaderName(uploaderName)

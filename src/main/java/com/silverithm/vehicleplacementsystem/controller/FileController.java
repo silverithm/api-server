@@ -79,21 +79,27 @@ public class FileController {
                 }
             }
 
-            // 파일 저장
-            String storedPath = fileStorageService.storeFile(file, category);
+            // 파일 저장 — HEIC/HEIF 사진이면 JPEG 사본이 함께 만들어지고 그쪽을 대표로 돌려준다.
+            // (크롬·엣지·파이어폭스는 HEIC를 렌더링하지 못한다. 원본은 지우지 않는다.)
+            FileStorageService.StoredUpload stored = fileStorageService.storeUpload(file, category);
+            String storedPath = stored.path();
 
             // 아직 어떤 레코드에도 연결되지 않은 상태이므로 업로더 본인에게 한시적 접근을 허용
+            // JPEG 사본을 만들었다면 원본에도 같은 유예를 준다(손으로 확인·복구할 때 필요).
             fileAccessGuard.grantUploadGrace(userDetails, storedPath);
+            if (stored.isConverted()) {
+                fileAccessGuard.grantUploadGrace(userDetails, stored.originalPath());
+            }
 
-            log.info("[File API] 파일 업로드 완료: {}", storedPath);
+            log.info("[File API] 파일 업로드 완료: {} (converted={})", storedPath, stored.isConverted());
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
                     .body(Map.of(
                             "success", true,
                             "filePath", storedPath,
-                            "fileName", file.getOriginalFilename(),
-                            "fileSize", file.getSize(),
+                            "fileName", stored.fileName(),
+                            "fileSize", stored.size(),
                             "message", "파일이 업로드되었습니다."
                     ));
 

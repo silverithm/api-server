@@ -40,6 +40,11 @@ public class ChatMessageDTO {
     private Long fileSize;
     private String mimeType;
     private String thumbnailUrl;
+    /**
+     * 화면에서 어떻게 그릴지 알려주는 파생 값 — IMAGE | VIDEO | FILE (첨부가 아니면 null).
+     * 저장된 {@link #type}은 건드리지 않는다. 이유는 {@link ChatMediaType} 주석 참고.
+     */
+    private String mediaType;
     private int readCount;
     private String displayContent;
 
@@ -51,6 +56,8 @@ public class ChatMessageDTO {
     private String replyToSenderName;
     private String replyToContent;
     private String replyToType;
+    /** 답글 미리보기에서도 동영상을 알아볼 수 있게 — IMAGE | VIDEO | FILE. */
+    private String replyToMediaType;
 
     public static ChatMessageDTO fromEntity(ChatMessage message) {
         // 문자열 표기는 이제 저장된 칼럼이 아니라 참조에서 만든다.
@@ -74,6 +81,8 @@ public class ChatMessageDTO {
                 .fileSize(message.getFileSize())
                 .mimeType(message.getMimeType())
                 .thumbnailUrl(message.getThumbnailUrl())
+                .mediaType(ChatMediaType.resolve(message.getType().name(),
+                        message.getMimeType(), message.getFileName()))
                 // 읽은 사람 수는 목록 조회에서 한 번에 세어 덮어쓴다(fromEntityWithReadCount).
                 // 여기서 컬렉션을 건드리면 메시지 한 건마다 SELECT가 하나씩 더 나가므로
                 // (30건 조회에 30번) 아직 로딩되지 않은 컬렉션은 만지지 않는다.
@@ -87,7 +96,9 @@ public class ChatMessageDTO {
             builder.replyToId(replyTo.getId())
                     .replyToSenderName(replyTo.getSenderName())
                     .replyToContent(replyTo.getIsDeleted() ? "삭제된 메시지입니다" : replyTo.getDisplayContent())
-                    .replyToType(replyTo.getType().name());
+                    .replyToType(replyTo.getType().name())
+                    .replyToMediaType(ChatMediaType.resolve(replyTo.getType().name(),
+                            replyTo.getMimeType(), replyTo.getFileName()));
         }
 
         return builder.build();
