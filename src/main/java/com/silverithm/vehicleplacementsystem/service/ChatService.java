@@ -701,6 +701,72 @@ public class ChatService {
     }
 
     /**
+     * 메시지 수정.
+     *
+     * 업무 기록 성격의 채팅이라 시간 제한 없이 허용한다 — 대신 editedAt과 "수정됨" 표시가
+     * 감사 추적을 대신한다. 화면에서 편집 버튼을 내 메시지에만 보여주더라도, 서버가 막지
+     * 않으면 messageId만 알면 남의 말을 바꿀 수 있으므로 삭제와 같은 방식으로 서버에서 막는다.
+     */
+    @Transactional
+    public ChatMessageDTO editMessage(Long roomId, Long messageId, String newContent, String callerChatUserId) {
+        log.info("[Chat Service] 메시지 수정: roomId={}, messageId={}, caller={}", roomId, messageId, callerChatUserId);
+
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("메시지를 찾을 수 없습니다: " + messageId));
+
+        if (!message.getChatRoom().getId().equals(roomId)) {
+            throw new RuntimeException("해당 채팅방의 메시지가 아닙니다");
+        }
+
+        // 다른 기관의 방은 애초에 건드릴 수 없다 (다른 채팅 기능과 같은 규칙)
+        resourceScopeGuard.requireSameCompany(message.getChatRoom().getCompany());
+
+        // 내가 보낸 것만 고친다.
+        if (!isSentBy(message, callerChatUserId)) {
+            log.warn("[Chat Service] 남의 메시지 수정 시도 차단: messageId={}, caller={}", messageId, callerChatUserId);
+            throw new CustomException("본인이 보낸 메시지만 수정할 수 있습니다", HttpStatus.FORBIDDEN);
+        }
+
+        if (Boolean.TRUE.equals(message.getIsDeleted())) {
+            throw new CustomException("삭제된 메시지는 수정할 수 없습니다", HttpStatus.BAD_REQUEST);
+        }
+
+        if (message.getType() != ChatMessage.MessageType.TEXT) {
+            throw new CustomException("텍스트 메시지만 수정할 수 있습니다", HttpStatus.BAD_REQUEST);
+        }
+
+        if (newContent == null || newContent.isBlank()) {
+            throw new CustomException("내용을 입력해주세요", HttpStatus.BAD_REQUEST);
+        }
+
+        // 내용이 그대로면 아무것도 바꾸지 않는다 — editedAt을 찍지 않고 지금 상태를 그대로 반환한다
+        if (newContent.equals(message.getContent())) {
+            return ChatMessageDTO.fromEntity(message);
+        }
+
+        message.edit(newContent);
+        chatMessageRepository.save(message);
+
+        // 이 메시지가 방 공지로 걸려 있으면 배너의 사본도 함께 고친다.
+        // 공지 내용은 방에 스냅샷으로 복사돼 있어서(updateChatRoomNotice), 여기서 안 고치면
+        // 본문만 바뀌고 배너에는 옛 문구가 영원히 남는다.
+        ChatRoom room = message.getChatRoom();
+        if (message.getId().equals(room.getNoticeMessageId())) {
+            String snapshot = newContent.length() > 1000 ? newContent.substring(0, 1000) : newContent;
+            room.setNoticeContent(snapshot);
+            chatRoomRepository.save(room);
+        }
+
+        // 고친 사실을 방 전체에 알린다. 없으면 상대 화면은 다시 들어올 때까지 옛 내용을 그대로 보여준다.
+        ChatMessageDTO dto = ChatMessageDTO.fromEntity(message);
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + roomId,
+                ChatWebSocketMessage.editEvent(roomId, dto));
+
+        return dto;
+    }
+
+    /**
      * 이 메시지를 보낸 사람이 호출자인가.
      *
      * 참조 칼럼(member_id/app_user_id)을 먼저 본다 — 문자열 senderId는 관리자 접두사 규약이 바뀌기

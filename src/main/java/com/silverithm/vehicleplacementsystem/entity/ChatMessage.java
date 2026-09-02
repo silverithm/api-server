@@ -58,6 +58,10 @@ public class ChatMessage {
     @Builder.Default
     private Boolean isDeleted = false;
 
+    /** 마지막으로 고친 시각. 한 번도 안 고쳤으면 null — "수정됨" 표시와 감사 기록을 함께 겸한다. */
+    @Column(name = "edited_at")
+    private LocalDateTime editedAt;
+
     // 답글 관련 필드
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reply_to_id")
@@ -105,6 +109,12 @@ public class ChatMessage {
         this.content = null;
         this.fileUrl = null;
         this.fileName = null;
+    }
+
+    /** 텍스트 내용을 고친다. 새 내용이 기존과 같으면 무동작(editedAt을 찍지 않는다) — 호출자가 판단해 부른다. */
+    public void edit(String newContent) {
+        this.content = newContent;
+        this.editedAt = LocalDateTime.now();
     }
 
     public String getDisplayContent() {

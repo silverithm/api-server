@@ -51,6 +51,23 @@ public class ChatWebSocketMessage {
                 .build();
     }
 
+    /**
+     * 메시지 수정 알림.
+     *
+     * 고친 메시지를 통째로 실어 보낸다 — 삭제 알림과 같은 방식으로, 받는 쪽은 같은 id의
+     * 메시지를 이걸로 갈아끼우면 끝이다. "수정됨" 표시는 message.editedAt으로 판단한다.
+     */
+    public static ChatWebSocketMessage editEvent(Long roomId, ChatMessageDTO message) {
+        return ChatWebSocketMessage.builder()
+                .type("EDIT")
+                .roomId(roomId)
+                .message(message)
+                .senderId(message.getSenderId())
+                .senderName(message.getSenderName())
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
     public static ChatWebSocketMessage typingEvent(Long roomId, String userId, String userName, boolean isTyping) {
         return ChatWebSocketMessage.builder()
                 .type("TYPING")

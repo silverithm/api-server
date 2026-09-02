@@ -34,6 +34,8 @@ public class ChatMessageDTO {
     private String type;
     private String content;
     private LocalDateTime createdAt;
+    /** 마지막으로 고친 시각. 한 번도 안 고쳤으면 null. */
+    private LocalDateTime editedAt;
     private Boolean isDeleted;
     private String fileUrl;
     private String fileName;
@@ -75,6 +77,7 @@ public class ChatMessageDTO {
                 .type(message.getType().name())
                 .content(message.getContent())
                 .createdAt(message.getCreatedAt())
+                .editedAt(message.getEditedAt())
                 .isDeleted(message.getIsDeleted())
                 .fileUrl(message.getFileUrl())
                 .fileName(message.getFileName())

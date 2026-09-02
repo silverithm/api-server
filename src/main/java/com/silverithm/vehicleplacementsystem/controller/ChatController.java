@@ -516,6 +516,42 @@ public class ChatController {
         }
     }
 
+    /**
+     * 메시지 수정
+     */
+    @PutMapping("/rooms/{roomId}/messages/{messageId}")
+    public ResponseEntity<Map<String, Object>> editMessage(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @Valid @RequestBody ChatMessageEditRequest request) {
+
+        try {
+            // '나'는 요청이 아니라 토큰에서 정한다 — 수정 권한이 여기에 걸려 있어서
+            // 클라이언트가 보낸 값을 믿으면 남의 메시지를 고칠 수 있다 ([[ChatCallerResolver]])
+            String callerId = chatCallerResolver.currentChatUserId();
+            log.info("[Chat API] 메시지 수정: roomId={}, messageId={}, caller={}", roomId, messageId, callerId);
+
+            ChatMessageDTO message = chatService.editMessage(roomId, messageId, request.getContent(), callerId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "message", message
+                    ));
+
+        } catch (CustomException e) {
+            // 권한 없음(403)까지 여기서 삼키면 클라이언트에는 500으로 보인다 —
+            // 상태 코드를 들고 있는 예외는 전역 핸들러가 그대로 내보내게 둔다
+            throw e;
+        } catch (Exception e) {
+            log.error("[Chat API] 메시지 수정 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "메시지 수정 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
     // ==================== 리액션 API ====================
 
     /**
