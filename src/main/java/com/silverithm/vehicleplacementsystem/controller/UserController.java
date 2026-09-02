@@ -79,7 +79,7 @@ public class UserController {
     }
 
     @PostMapping("api/v1/signup")
-    public TokenInfo signup(@RequestBody UserDataDTO userDataDTO) throws Exception {
+    public TokenInfo signup(@Valid @RequestBody UserDataDTO userDataDTO) throws Exception {
         return userService.signup(userDataDTO);
     }
 
@@ -99,7 +99,7 @@ public class UserController {
     @PostMapping("api/v1/change/password")
     public ResponseEntity<String> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody PasswordChangeRequest passwordChangeRequest) {
+            @Valid @RequestBody PasswordChangeRequest passwordChangeRequest) {
         userService.changePassword(userDetails.getUsername(), passwordChangeRequest);
         return ResponseEntity.ok().body("success");
     }

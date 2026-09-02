@@ -71,7 +71,8 @@ import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 public class UserService {
 
     // 프로필 사진 규격은 직원(MemberService)과 같아야 한다 — 같은 목록에 나란히 뜬다
-    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    // 허용 목록은 Content-Type 표와 한 몸이다. 따로 나열하면 heic처럼 새 포맷이 빠져 거부된다.
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS = FileContentTypeResolver.IMAGE_EXTENSIONS;
     private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
     @Autowired
@@ -569,7 +570,7 @@ public class UserService {
                 ? originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase()
                 : "";
         if (!ALLOWED_PROFILE_IMAGE_EXTENSIONS.contains(extension)) {
-            throw new CustomException("허용되지 않는 파일 형식입니다. (허용: jpg, jpeg, png, webp)", HttpStatus.BAD_REQUEST);
+            throw new CustomException("허용되지 않는 파일 형식입니다. (허용: jpg, png, gif, heic, heif, webp, avif, bmp, tiff 등 이미지)", HttpStatus.BAD_REQUEST);
         }
 
         String oldRelativePath = toRelativeFileKey(findUser.getProfileImageUrl());

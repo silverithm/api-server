@@ -34,6 +34,18 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
                                                         @Param("memberId") Long memberId,
                                                         @Param("appUserId") Long appUserId);
 
+    /**
+     * 여러 방에서의 내 참가 정보를 한 번에.
+     *
+     * 방 목록이 방마다 findActiveByRoomAndPerson을 부르면 방 개수만큼 쿼리가 나간다.
+     */
+    @Query("SELECT p FROM ChatParticipant p WHERE p.chatRoom.id IN :chatRoomIds AND p.isActive = true "
+            + "AND ((:memberId IS NOT NULL AND p.memberId = :memberId) "
+            + "OR (:appUserId IS NOT NULL AND p.appUserId = :appUserId))")
+    List<ChatParticipant> findActiveByRoomsAndPerson(@Param("chatRoomIds") List<Long> chatRoomIds,
+                                                     @Param("memberId") Long memberId,
+                                                     @Param("appUserId") Long appUserId);
+
     // 채팅방의 활성 참가자 수
     long countByChatRoomIdAndIsActiveTrue(Long chatRoomId);
 

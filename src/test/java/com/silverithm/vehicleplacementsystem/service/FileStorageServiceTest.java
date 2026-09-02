@@ -97,6 +97,106 @@ class FileStorageServiceTest {
         verifyNoInteractions(s3Client);
     }
 
+    // ---------------------------------------------------------------
+    // Content-Type — 확장자별 전체 표는 FileContentTypeResolverTest에 있다.
+    // 여기서는 S3에 실제로 어떤 값이 박히는지(서비스 레벨)를 확인한다.
+    // ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("heic 사진은 image/heic로 S3에 올라간다")
+    void storesHeicWithImageContentType() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "IMG_0001.HEIC", "image/heic", heicBytes());
+        when(s3Client, PutObjectResponse.builder().build());
+
+        String storedPath = fileStorageService.storeFile(file, "chat/1");
+
+        assertTrue(storedPath.startsWith("chat/1/"));
+        assertTrue(storedPath.endsWith(".HEIC"));
+        assertEquals("image/heic", capturePutObject(s3Client).contentType());
+    }
+
+    @Test
+    @DisplayName("확장자가 거짓말해도 실제 내용대로 올라간다 - .jpg로 저장된 PNG")
+    void storesByActualContentNotExtension() throws Exception {
+        byte[] actuallyPng = createImageBytes(10, 10, "png");
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "KakaoTalk_20260902.jpg", "image/jpeg", actuallyPng);
+        when(s3Client, PutObjectResponse.builder().build());
+
+        fileStorageService.storeFile(file, "chat/1");
+
+        assertEquals("image/png", capturePutObject(s3Client).contentType());
+    }
+
+    @Test
+    @DisplayName("구버전 앱이 octet-stream으로 보낸 heic도 이미지로 올라간다")
+    void storesHeicEvenWhenClientSaysOctetStream() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "IMG_0002.heic", "application/octet-stream", heicBytes());
+        when(s3Client, PutObjectResponse.builder().build());
+
+        fileStorageService.storeFile(file, "chat/1");
+
+        assertEquals("image/heic", capturePutObject(s3Client).contentType());
+    }
+
+    @Test
+    @DisplayName("probeContentType은 앞부분만 읽고도 실제 포맷을 알아낸다")
+    void probeReadsOnlyTheHead() {
+        MockMultipartFile heic = new MockMultipartFile(
+                "file", "IMG_0003.jpg", "application/octet-stream", heicBytes());
+        assertEquals("image/heic", fileStorageService.probeContentType(heic));
+
+        MockMultipartFile document = new MockMultipartFile(
+                "file", "계약서.hwp", null, "이건 이미지가 아닙니다".getBytes());
+        assertEquals("application/x-hwp", fileStorageService.probeContentType(document));
+    }
+
+    @Test
+    @DisplayName("서명 base64(png 바이트)는 image/png로 올라간다")
+    void storesSignatureBytesAsPng() throws Exception {
+        when(s3Client, PutObjectResponse.builder().build());
+
+        fileStorageService.storeBytes(createImageBytes(4, 4, "png"), ".png", "signatures");
+
+        assertEquals("image/png", capturePutObject(s3Client).contentType());
+    }
+
+    @Test
+    @DisplayName("heic는 ImageIO가 못 읽으므로 썸네일 없이(null) 조용히 넘어간다")
+    void skipsThumbnailForUndecodableHeic() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "IMG_0001.HEIC", "image/heic", heicBytes());
+
+        String thumbnailPath = fileStorageService.generateAndStoreThumbnail(file, "chat/1/uuid.heic");
+
+        // 썸네일이 없어도 업로드는 성공해야 하고, 원본은 image/heic로 이미 올라가 있다.
+        assertNull(thumbnailPath);
+        verifyNoInteractions(s3Client);
+    }
+
+    /** ftyp 상자를 갖춘 최소한의 HEIC 헤더. 자바로는 HEIC를 인코딩할 수 없어 시그니처만 만든다. */
+    private byte[] heicBytes() {
+        byte[] bytes = new byte[32];
+        bytes[3] = 24;
+        byte[] header = "ftypheic".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        System.arraycopy(header, 0, bytes, 4, header.length);
+        return bytes;
+    }
+
+    private byte[] createImageBytes(int width, int height, String format) throws Exception {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = image.createGraphics();
+        g.setColor(Color.BLUE);
+        g.fillRect(0, 0, width, height);
+        g.dispose();
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, format, out);
+        return out.toByteArray();
+    }
+
     private byte[] createJpegBytes(int width, int height) throws Exception {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();

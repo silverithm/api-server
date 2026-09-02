@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.config.ThreadConfig.ChatNotificationExecutor;
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.entity.*;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
@@ -15,6 +16,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -63,6 +66,7 @@ public class ChatService {
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
     private final ResourceScopeGuard resourceScopeGuard;
+    private final ChatNotificationExecutor chatNotificationExecutor;
 
 
     /**
@@ -83,18 +87,46 @@ public class ChatService {
         log.info("[Chat Service] 채팅방 목록 조회: companyId={}, userId={}", companyId, userId);
 
         List<ChatRoom> rooms = chatRoomRepository.findActiveRoomsByCompanyIdAndPerson(companyId, person(userId).memberId(), person(userId).appUserId());
+        if (rooms.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> roomIds = rooms.stream().map(ChatRoom::getId).collect(Collectors.toList());
+
+        // 방마다 따로 묻지 않는다 — 마지막 메시지, 내 참가 정보, 안 읽은 수를 각각 한 번에 가져온다.
+        // (방마다 물으면 방 개수에 비례해 쿼리가 늘어난다)
+        Map<Long, ChatMessage> lastMessageByRoom = chatMessageRepository.findLastMessagesOfRooms(roomIds).stream()
+                .collect(Collectors.toMap(m -> m.getChatRoom().getId(), m -> m, (a, b) -> a));
+
+        List<ChatParticipant> myParticipations = chatParticipantRepository.findActiveByRoomsAndPerson(
+                roomIds, person(userId).memberId(), person(userId).appUserId());
+
+        Map<Long, Long> unreadByRoom = myParticipations.isEmpty()
+                ? Map.of()
+                : chatMessageRepository.countUnreadByParticipants(
+                        myParticipations.stream().map(ChatParticipant::getId).collect(Collectors.toList()), userId)
+                .stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1], (a, b) -> a));
+
+        // 마지막 메시지의 '읽은 사람 수'도 한 번에 센다
+        Map<Long, Long> readCountByMessage = lastMessageByRoom.isEmpty()
+                ? Map.of()
+                : chatMessageReadRepository.countByMessageIdIn(
+                        lastMessageByRoom.values().stream().map(ChatMessage::getId).collect(Collectors.toList()))
+                .stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1], (a, b) -> a));
 
         return rooms.stream()
                 .map(room -> {
                     ChatRoomDTO dto = ChatRoomDTO.fromEntity(room);
 
-                    // 최신 메시지 설정
-                    chatMessageRepository.findFirstByChatRoomIdOrderByCreatedAtDesc(room.getId())
-                            .ifPresent(lastMsg -> dto.setLastMessage(ChatMessageDTO.fromEntity(lastMsg)));
+                    ChatMessage lastMsg = lastMessageByRoom.get(room.getId());
+                    if (lastMsg != null) {
+                        dto.setLastMessage(ChatMessageDTO.fromEntityWithReadCount(
+                                lastMsg, readCountByMessage.getOrDefault(lastMsg.getId(), 0L).intValue()));
+                    }
 
-                    // 안읽은 메시지 수 계산
-                    int unreadCount = calculateUnreadCount(room.getId(), userId);
-                    dto.setUnreadCount(unreadCount);
+                    dto.setUnreadCount(unreadByRoom.getOrDefault(room.getId(), 0L).intValue());
 
                     return dto;
                 })
@@ -472,9 +504,12 @@ public class ChatService {
         Map<Long, List<ChatMessageReaction>> reactionsByMessage = allReactions.stream()
                 .collect(Collectors.groupingBy(r -> r.getMessage().getId()));
 
+        // 읽은 사람 수도 한 번에 (메시지마다 세면 조회 건수만큼 쿼리가 더 나간다)
+        Map<Long, Long> readCountByMessage = readCounts(messageIds);
+
         return messages.getContent().stream()
                 .map(msg -> {
-                    int readCount = (int) chatMessageReadRepository.countByMessageId(msg.getId());
+                    int readCount = readCountByMessage.getOrDefault(msg.getId(), 0L).intValue();
                     ChatMessageDTO dto = ChatMessageDTO.fromEntityWithReadCount(msg, readCount);
 
                     // 리액션 요약 추가
@@ -534,9 +569,11 @@ public class ChatService {
         Map<Long, List<ChatMessageReaction>> reactionsByMessage = allReactions.stream()
                 .collect(Collectors.groupingBy(r -> r.getMessage().getId()));
 
+        Map<Long, Long> readCountByMessage = readCounts(messageIds);
+
         List<ChatMessageDTO> messages = combined.stream()
                 .map(msg -> {
-                    int readCount = (int) chatMessageReadRepository.countByMessageId(msg.getId());
+                    int readCount = readCountByMessage.getOrDefault(msg.getId(), 0L).intValue();
                     ChatMessageDTO dto = ChatMessageDTO.fromEntityWithReadCount(msg, readCount);
                     List<ChatMessageReaction> msgReactions = reactionsByMessage.getOrDefault(msg.getId(), List.of());
                     dto.setReactions(buildReactionSummaries(msgReactions, currentUserId));
@@ -618,8 +655,9 @@ public class ChatService {
         ChatWebSocketMessage wsMessage = ChatWebSocketMessage.messageEvent(roomId, dto);
         messagingTemplate.convertAndSend("/topic/chat/" + roomId, wsMessage);
 
-        // FCM 푸시 알림 전송 (다른 참가자들에게)
-        sendMessageNotification(room, saved);
+        // FCM 푸시 알림 전송 (다른 참가자들에게).
+        // 보낸 사람을 기다리게 하지 않는다 — 자세한 이유는 dispatchMessageNotification 주석 참고.
+        dispatchMessageNotification(room.getId(), saved.getId());
 
         return dto;
     }
@@ -701,13 +739,19 @@ public class ChatService {
         participant.updateLastRead(lastMessageId);
         chatParticipantRepository.save(participant);
 
-        // 안읽은 메시지들에 대해 읽음 기록 추가
+        // 안읽은 메시지들에 대해 읽음 기록 추가.
+        // 메시지마다 '조회 + 중복 확인 + 저장'으로 세 번씩 나가던 것을, 대상 조회 한 번 + 저장으로 줄인다.
+        // (findUnreadMessageIds가 이미 NOT EXISTS로 걸러 오므로 건별 중복 확인이 필요 없다)
         List<Long> unreadMessageIds = chatMessageReadRepository.findUnreadMessageIds(roomId, lastMessageId, userId);
-        for (Long msgId : unreadMessageIds) {
-            ChatMessage message = chatMessageRepository.findById(msgId).orElse(null);
-            if (message != null) {
-                markMessageAsRead(message, userId, userName);
-            }
+        if (!unreadMessageIds.isEmpty()) {
+            List<ChatMessageRead> reads = chatMessageRepository.findAllById(unreadMessageIds).stream()
+                    .map(message -> ChatMessageRead.builder()
+                            .message(message)
+                            .userId(userId)
+                            .userName(userName)
+                            .build())
+                    .collect(Collectors.toList());
+            chatMessageReadRepository.saveAll(reads);
         }
 
         // WebSocket으로 읽음 상태 알림
@@ -908,21 +952,13 @@ public class ChatService {
         }
     }
 
-    private int calculateUnreadCount(Long roomId, String userId) {
-        ChatParticipant participant = chatParticipantRepository
-                .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
-                .orElse(null);
-
-        if (participant == null) {
-            return 0;
+    /** 메시지 id별 읽은 사람 수. 결과에 없는 메시지는 아무도 읽지 않은 것(0)이다. */
+    private Map<Long, Long> readCounts(List<Long> messageIds) {
+        if (messageIds.isEmpty()) {
+            return Map.of();
         }
-
-        Long lastReadMessageId = participant.getLastReadMessageId();
-        if (lastReadMessageId == null) {
-            return (int) chatMessageRepository.countAllUnreadMessages(roomId, userId);
-        }
-
-        return (int) chatMessageRepository.countUnreadMessages(roomId, lastReadMessageId, userId);
+        return chatMessageReadRepository.countByMessageIdIn(messageIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1], (a, b) -> a));
     }
 
     private String getParticipantName(String userId) {
@@ -1079,6 +1115,42 @@ public class ChatService {
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 푸시 알림을 보낸 사람의 응답 경로에서 떼어낸다.
+     *
+     * 알림 한 건은 구글 FCM으로 나가는 HTTPS 호출이라 100~700ms가 걸리고, 참가자 수만큼 순서대로
+     * 나간다. 운영 로그 실측으로 27명 방은 7.1초, 26명 방은 6.0초였다 — 그동안 메시지 저장 자체는
+     * 3ms에 끝나 있었다. 즉 "채팅이 느리다"의 대부분은 DB가 아니라 이 대기였다.
+     *
+     * 커밋된 뒤에 보낸다 — 트랜잭션이 되돌아갔는데 알림만 나가는 일이 없도록.
+     * 실패해도 메시지는 이미 저장·전달됐으므로 로그만 남기고 넘어간다(원래 동작과 같다).
+     */
+    private void dispatchMessageNotification(Long roomId, Long messageId) {
+        Runnable task = () -> {
+            try {
+                ChatRoom room = chatRoomRepository.findById(roomId).orElse(null);
+                ChatMessage message = chatMessageRepository.findById(messageId).orElse(null);
+                if (room != null && message != null) {
+                    sendMessageNotification(room, message);
+                }
+            } catch (Exception e) {
+                log.error("[Chat Service] 알림 전송 작업 실패: roomId={}, messageId={}, error={}",
+                        roomId, messageId, e.getMessage());
+            }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    chatNotificationExecutor.execute(task);
+                }
+            });
+        } else {
+            chatNotificationExecutor.execute(task);
+        }
     }
 
     private void sendMessageNotification(ChatRoom room, ChatMessage message) {

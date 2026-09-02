@@ -755,18 +755,17 @@ public class ChatController {
             String fileUrl = fileStorageService.getFileUrl(filePath);
             log.info("[Chat API] S3 파일 URL 생성: {}", fileUrl);
 
-            // 파일 타입 결정
-            String contentType = file.getContentType();
-            String messageType = "FILE";
-            if (contentType != null && contentType.startsWith("image/")) {
-                messageType = "IMAGE";
-            }
-            log.info("[Chat API] 메시지 타입: {}, contentType: {}", messageType, contentType);
+            // 파일 타입 결정 — 클라이언트가 보낸 Content-Type은 틀릴 때가 많다(HEIC를
+            // application/octet-stream으로 보내는 구버전 앱 등). 파일 실제 내용까지 보고 정한다.
+            String contentType = fileStorageService.probeContentType(file);
+            String messageType = contentType.startsWith("image/") ? "IMAGE" : "FILE";
+            log.info("[Chat API] 메시지 타입: {}, contentType: {} (클라이언트 선언: {})",
+                    messageType, contentType, file.getContentType());
 
             // 이미지면 채팅 목록에서 빠르게 받을 수 있도록 축소 썸네일을 함께 만든다.
             // 실패해도(깨진 이미지 등) 업로드 자체는 계속 진행한다 - thumbnailUrl만 null.
             String thumbnailUrl = null;
-            if (contentType != null && contentType.startsWith("image/")) {
+            if (contentType.startsWith("image/")) {
                 String thumbnailPath = fileStorageService.generateAndStoreThumbnail(file, filePath);
                 if (thumbnailPath != null) {
                     thumbnailUrl = fileStorageService.getFileUrl(thumbnailPath);

@@ -82,7 +82,8 @@ class ChatServiceGetMessagesAroundTest {
         chatService = new ChatService(
                 chatRoomRepository, chatParticipantRepository, chatMessageRepository,
                 chatMessageReadRepository, chatMessageReactionRepository, companyRepository,
-                memberRepository, userRepository, messagingTemplate, notificationService, resourceScopeGuard);
+                memberRepository, userRepository, messagingTemplate, notificationService, resourceScopeGuard,
+                new com.silverithm.vehicleplacementsystem.config.ThreadConfig().chatNotificationExecutor());
 
         // 참가자 검증은 대부분의 테스트에서 통과해야 한다 — 권한 테스트에서만 다르게 스텁한다.
         lenient().when(chatParticipantRepository.findActiveByRoomAndPerson(eq(ROOM_ID), eq(9L), isNull()))

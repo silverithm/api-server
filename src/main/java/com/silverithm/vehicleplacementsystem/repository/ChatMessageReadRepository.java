@@ -27,6 +27,16 @@ public interface ChatMessageReadRepository extends JpaRepository<ChatMessageRead
     // 메시지를 읽은 사용자 수
     long countByMessageId(Long messageId);
 
+    /**
+     * 여러 메시지의 읽은 사람 수를 한 번에.
+     *
+     * 목록 조회가 메시지마다 countByMessageId를 부르면 30건 조회에 SELECT가 30번 더 나간다.
+     * 아무도 읽지 않은 메시지는 결과에 없으므로 호출 쪽에서 0으로 본다.
+     */
+    @Query("SELECT r.message.id, COUNT(r) FROM ChatMessageRead r "
+            + "WHERE r.message.id IN :messageIds GROUP BY r.message.id")
+    List<Object[]> countByMessageIdIn(@Param("messageIds") List<Long> messageIds);
+
     // 특정 사용자가 특정 메시지를 읽었는지 확인
     @Query("SELECT COUNT(r) > 0 FROM ChatMessageRead r WHERE r.message.id = :messageId "
             + "AND ((:memberId IS NOT NULL AND r.memberId = :memberId) "

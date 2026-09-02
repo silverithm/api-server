@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.service.FileAccessGuard;
+import com.silverithm.vehicleplacementsystem.service.FileContentTypeResolver;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,12 +67,15 @@ public class FileController {
             String originalFilename = file.getOriginalFilename();
             if (originalFilename != null) {
                 String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+                // 확장자가 낯설어도 파일 내용이 이미지면 받아준다. 확장자가 없거나 엉뚱하게
+                // 붙은 사진(카톡·스캔 앱 경유)이 문전에서 거부되지 않게 하려는 것이다.
                 boolean allowed = isAllowedExtension(extension)
-                        || ("meetings".equals(category) && isAllowedAudioExtension(extension));
+                        || ("meetings".equals(category) && isAllowedAudioExtension(extension))
+                        || fileStorageService.probeContentType(file).startsWith("image/");
                 if (!allowed) {
                     return ResponseEntity.badRequest()
                             .headers(getCorsHeaders())
-                            .body(Map.of("error", "허용되지 않는 파일 형식입니다. (허용: hwp, hwpx, doc, docx, pdf, xls, xlsx, ppt, pptx, jpg, jpeg, png, gif)"));
+                            .body(Map.of("error", "허용되지 않는 파일 형식입니다. (문서: hwp, hwpx, doc, docx, pdf, xls, xlsx, ppt, pptx / 이미지: jpg, png, gif, heic, heif, webp, avif, bmp, tiff 등)"));
                 }
             }
 
@@ -126,7 +130,9 @@ public class FileController {
                     : path.substring(path.lastIndexOf("/") + 1);
 
             // Content-Type 결정
-            String contentType = determineContentType(path);
+            // 내려줄 때도 실제 내용을 먼저 본다. 예전에 octet-stream으로 잘못 올라간 파일도
+            // 여기서는 제 타입으로 나간다.
+            String contentType = fileStorageService.resolveContentType(fileContent, path, null);
 
             HttpHeaders headers = getCorsHeaders();
             headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName);
@@ -170,8 +176,21 @@ public class FileController {
         }
     }
 
+    /** 업로드 허용 문서 확장자. 이미지는 아래 isAllowedExtension()에서 따로 판단한다. */
+    private boolean isAllowedDocumentExtension(String extension) {
+        return extension.matches("hwp|hwpx|doc|docx|pdf|xls|xlsx|ppt|pptx");
+    }
+
+    /**
+     * 업로드 허용 확장자.
+     *
+     * <p>이미지는 확장자를 일일이 나열하지 않고 {@link FileContentTypeResolver#isImageExtension}에
+     * 위임한다. 예전에는 jpg/jpeg/png/gif만 받아서 아이폰이 찍은 heic 사진은 첨부 자체가 거부됐다.
+     * 새 포맷이 생길 때마다 두 곳을 고치지 않도록 Content-Type 표와 목록을 하나로 묶었다.
+     * svg는 그 표에서 이미지로 취급하지 않으므로 여기서도 자동으로 걸러진다.
+     */
     private boolean isAllowedExtension(String extension) {
-        return extension.matches("hwp|hwpx|doc|docx|pdf|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif");
+        return isAllowedDocumentExtension(extension) || FileContentTypeResolver.isImageExtension(extension);
     }
 
     /** 회의 녹음 파일 — meetings 카테고리에서만 허용 */
@@ -179,24 +198,6 @@ public class FileController {
         return extension.matches("m4a|mp3|wav|webm|ogg|aac");
     }
 
-    private String determineContentType(String path) {
-        String extension = path.substring(path.lastIndexOf(".") + 1).toLowerCase();
-        return switch (extension) {
-            case "pdf" -> "application/pdf";
-            case "doc" -> "application/msword";
-            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            case "xls" -> "application/vnd.ms-excel";
-            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            case "ppt" -> "application/vnd.ms-powerpoint";
-            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-            case "hwp" -> "application/x-hwp";
-            case "hwpx" -> "application/hwp+zip";
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "png" -> "image/png";
-            case "gif" -> "image/gif";
-            default -> "application/octet-stream";
-        };
-    }
 
     @RequestMapping(method = RequestMethod.OPTIONS)
     public ResponseEntity<Void> handleOptions() {

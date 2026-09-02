@@ -18,6 +18,8 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.UUID;
 import javax.imageio.IIOImage;
@@ -127,8 +129,17 @@ public class FileStorageService {
         log.info("[FileStorage] PutObject 요청 시작: bucket={}, key={}, originalFile={}", bucketName, s3Key, originalFileName);
 
         try {
-            // Content-Type 결정
-            String contentType = determineContentType(extension);
+            // 업로드 바이트는 한 번만 읽어 Content-Type 판정과 업로드에 함께 쓴다.
+            byte[] content = file.getBytes();
+
+            // Content-Type 결정 — 확장자만 믿지 않고 파일 실제 내용을 먼저 본다.
+            // 카톡·스캔 앱을 거치면 확장자가 내용과 다른 사진이 흔하고, 그때 확장자를 믿으면
+            // 원본이 S3에서 이미지로 열리지 않는다.
+            String contentType = resolveContentType(content, originalFileName, file.getContentType());
+            if (log.isInfoEnabled() && !contentType.equals(determineContentType(extension))) {
+                log.info("[FileStorage] 확장자와 실제 내용이 다릅니다 - 내용을 따릅니다: file={}, 확장자기준={}, 최종={}",
+                        originalFileName, determineContentType(extension), contentType);
+            }
 
             // S3에 업로드
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -137,9 +148,10 @@ public class FileStorageService {
                     .contentType(contentType)
                     .build();
 
-            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(content));
 
-            log.info("[FileStorage] PutObject 성공: key={}, size={}bytes, returnPath={}", s3Key, file.getSize(), relativePath);
+            log.info("[FileStorage] PutObject 성공: key={}, size={}bytes, contentType={}, returnPath={}",
+                    s3Key, file.getSize(), contentType, relativePath);
 
             // folder prefix를 제외한 상대 경로 반환
             return relativePath;
@@ -175,7 +187,8 @@ public class FileStorageService {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
-                    .contentType(determineContentType(extension))
+                    // base64로 들어온 서명/직인 등 - 여기서도 내용을 먼저 본다.
+                    .contentType(resolveContentType(bytes, extension, null))
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
@@ -205,7 +218,10 @@ public class FileStorageService {
         try {
             BufferedImage original = ImageIO.read(file.getInputStream());
             if (original == null) {
-                log.warn("[FileStorage] 썸네일 생성 스킵 - 이미지를 디코딩할 수 없음: path={}", originalRelativePath);
+                // 자바 표준 ImageIO는 heic/heif(아이폰 기본 포맷)와 webp를 읽지 못한다.
+                // 썸네일 없이 원본을 쓰게 두고, 어떤 포맷이 걸렸는지는 로그로 남긴다.
+                log.warn("[FileStorage] 썸네일 생성 스킵 - ImageIO가 디코딩할 수 없는 포맷: path={}, fileName={}, mimeType={}",
+                        originalRelativePath, file.getOriginalFilename(), file.getContentType());
                 return null;
             }
 
@@ -403,24 +419,44 @@ public class FileStorageService {
         return s3Enabled;
     }
 
-    private String determineContentType(String extension) {
-        if (extension.startsWith(".")) {
-            extension = extension.substring(1);
+    // ------------------------------------------------------------------
+    // Content-Type 판정 — 실제 규칙은 FileContentTypeResolver에 있다.
+    // ------------------------------------------------------------------
+
+    /**
+     * 파일 내용·이름·클라이언트 선언을 모두 보고 Content-Type을 정한다.
+     * 판정 순서와 근거는 {@link FileContentTypeResolver} 주석 참고.
+     */
+    public String resolveContentType(byte[] content, String fileNameOrPath, String declaredContentType) {
+        return FileContentTypeResolver.resolve(content, fileNameOrPath, declaredContentType);
+    }
+
+    /**
+     * 업로드 파일의 앞부분만 읽어 Content-Type을 미리 알아낸다.
+     *
+     * <p>전체를 다시 읽지 않으므로 "이 파일이 이미지인가"를 저장 전에 싸게 판단할 수 있다.
+     * 여기서 나오는 값은 {@link #storeFile}이 S3에 박는 값과 같은 규칙으로 계산된다.
+     */
+    public String probeContentType(MultipartFile file) {
+        byte[] head = new byte[64];
+        int read = 0;
+        try (InputStream in = file.getInputStream()) {
+            read = in.readNBytes(head, 0, head.length);
+        } catch (IOException e) {
+            log.warn("[FileStorage] Content-Type 판정을 위한 선행 읽기 실패 - 확장자로 판정합니다: file={}, {}",
+                    file.getOriginalFilename(), e.getMessage());
         }
-        return switch (extension.toLowerCase()) {
-            case "pdf" -> "application/pdf";
-            case "doc" -> "application/msword";
-            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            case "xls" -> "application/vnd.ms-excel";
-            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            case "ppt" -> "application/vnd.ms-powerpoint";
-            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-            case "hwp" -> "application/x-hwp";
-            case "hwpx" -> "application/hwp+zip";
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "png" -> "image/png";
-            case "gif" -> "image/gif";
-            default -> "application/octet-stream";
-        };
+        return resolveContentType(read > 0 ? Arrays.copyOf(head, read) : null,
+                file.getOriginalFilename(), file.getContentType());
+    }
+
+    /** 확장자(또는 ".확장자")만으로 Content-Type을 정한다. */
+    public String determineContentType(String extension) {
+        return FileContentTypeResolver.byExtensionOrDefault(extension);
+    }
+
+    /** 파일명이나 S3 경로에서 확장자를 떼어 Content-Type을 정한다. */
+    public String determineContentTypeFromPath(String pathOrFileName) {
+        return FileContentTypeResolver.byPathOrDefault(pathOrFileName);
     }
 }

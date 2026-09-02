@@ -43,7 +43,8 @@ import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 @Slf4j
 public class MemberService {
 
-    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
+    // 허용 목록은 Content-Type 표와 한 몸이다. 따로 나열하면 heic처럼 새 포맷이 빠져 거부된다.
+    private static final Set<String> ALLOWED_PROFILE_IMAGE_EXTENSIONS = FileContentTypeResolver.IMAGE_EXTENSIONS;
     private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
     private final MemberRepository memberRepository;
@@ -1085,7 +1086,7 @@ public class MemberService {
                 ? originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase()
                 : "";
         if (!ALLOWED_PROFILE_IMAGE_EXTENSIONS.contains(extension)) {
-            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. (허용: jpg, jpeg, png, webp)");
+            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. (허용: jpg, png, gif, heic, heif, webp, avif, bmp, tiff 등 이미지)");
         }
 
         String oldRelativePath = toRelativeFileKey(member.getProfileImageUrl());

@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -85,7 +86,12 @@ public class ChatRoom {
     @Column(name = "notice_file_url", length = 1000)
     private String noticeFileUrl;
 
+    /**
+     * 방 목록은 방마다 참가자 수를 세므로, 하나씩 지연 로딩하면 방 개수만큼 SELECT가 나간다.
+     * BatchSize를 두면 화면에 뜬 방들의 참가자를 IN 절 한 번으로 함께 가져온다.
+     */
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 200)
     @Builder.Default
     private List<ChatParticipant> participants = new ArrayList<>();
 

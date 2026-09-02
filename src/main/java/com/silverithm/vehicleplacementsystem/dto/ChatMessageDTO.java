@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.dto;
 import com.silverithm.vehicleplacementsystem.entity.ChatMessage;
 import com.silverithm.vehicleplacementsystem.entity.ChatPersonRef;
 import lombok.*;
+import org.hibernate.Hibernate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -73,7 +74,11 @@ public class ChatMessageDTO {
                 .fileSize(message.getFileSize())
                 .mimeType(message.getMimeType())
                 .thumbnailUrl(message.getThumbnailUrl())
-                .readCount(message.getReaders() != null ? message.getReaders().size() : 0)
+                // 읽은 사람 수는 목록 조회에서 한 번에 세어 덮어쓴다(fromEntityWithReadCount).
+                // 여기서 컬렉션을 건드리면 메시지 한 건마다 SELECT가 하나씩 더 나가므로
+                // (30건 조회에 30번) 아직 로딩되지 않은 컬렉션은 만지지 않는다.
+                .readCount(message.getReaders() != null && Hibernate.isInitialized(message.getReaders())
+                        ? message.getReaders().size() : 0)
                 .displayContent(message.getDisplayContent());
 
         // 답글 정보 포함
