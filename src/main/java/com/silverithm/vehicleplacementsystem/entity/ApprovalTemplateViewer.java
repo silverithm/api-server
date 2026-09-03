@@ -14,7 +14,13 @@ import java.time.LocalDateTime;
  * 이 양식으로 기안하면 여기 지정된 대상이 문서(ApprovalRequestViewer)로 복사된다.
  */
 @Entity
-@Table(name = "approval_template_viewers")
+@Table(name = "approval_template_viewers",
+       // 같은 양식에 같은 대상을 두 번 넣을 수 없다 (V1.72.0 마이그레이션과 같은 제약).
+       // 엔티티에도 적어 두는 이유: 여기 없으면 테스트용 H2 스키마에 제약이 안 생겨서
+       // "같은 열람자를 다시 넣어 터지는" 사고를 테스트가 재현하지 못한다.
+       uniqueConstraints = @UniqueConstraint(
+               name = "uk_approval_template_viewers",
+               columnNames = {"template_id", "viewer_type", "ref_id"}))
 @Getter
 @Setter
 @NoArgsConstructor

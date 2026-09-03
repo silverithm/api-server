@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -131,24 +133,59 @@ public class ApprovalTemplateService {
 
         Long companyId = template.getCompany() != null ? template.getCompany().getId() : null;
 
-        List<ApprovalTemplateViewer> resolved = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
+        // 원하는 최종 상태를 (종류:대상) 키로 모은다. 중복 입력은 여기서 걸러진다.
+        Set<String> wanted = new LinkedHashSet<>();
+        Map<String, ApprovalViewerEntryDTO> wantedEntries = new LinkedHashMap<>();
         for (ApprovalViewerEntryDTO entry : entries) {
             if (entry == null || entry.getViewerType() == null || entry.getRefId() == null) {
                 continue;
             }
-            if (seen.add(entry.getViewerType() + ":" + entry.getRefId())) {
-                resolved.add(ApprovalTemplateViewer.builder()
-                        .template(template)
-                        .viewerType(entry.getViewerType())
-                        .refId(entry.getRefId())
-                        .viewerName(viewerResolver.resolveName(entry.getViewerType(), entry.getRefId(), companyId))
-                        .build());
+            String key = entry.getViewerType() + ":" + entry.getRefId();
+            if (wanted.add(key)) {
+                wantedEntries.put(key, entry);
             }
         }
 
-        template.getDefaultViewers().clear();
-        template.getDefaultViewers().addAll(resolved);
+        /*
+         * 통째로 지우고 다시 넣으면 안 된다.
+         *
+         * clear() + addAll()을 쓰면 한 번의 flush 안에서 Hibernate가 INSERT를 DELETE보다 먼저
+         * 내보낸다. 그대로 유지되는 열람자가 하나라도 있으면 (template_id, viewer_type, ref_id)
+         * 유니크 키에 걸려 "Duplicate entry '217-POSITION-79'"로 저장이 통째로 실패한다.
+         * 사장님이 겪으신 "저장실패, 백엔드서버오류 500"이 이것이다 — 열람 대상이 지정된 양식을
+         * 고치면 내용을 안 바꿔도 무조건 터진다.
+         *
+         * 그래서 지금 있는 것과 대조해서 빠진 것만 지우고 새로 생긴 것만 넣는다.
+         * 안 바뀐 행은 건드리지 않으므로 애초에 중복이 생기지 않는다.
+         */
+        List<ApprovalTemplateViewer> current = template.getDefaultViewers();
+        Set<String> existing = new HashSet<>();
+
+        current.removeIf(viewer -> {
+            String key = viewer.getViewerType() + ":" + viewer.getRefId();
+            if (!wanted.contains(key)) {
+                return true;   // 이번에 빠진 열람자 — orphanRemoval이 지운다
+            }
+            existing.add(key);
+            // 남기되 이름은 새로 고친다 — 직책 이름을 바꾼 뒤 저장하면 여기 이름도 따라와야 한다.
+            // (viewerName은 지정 시점 스냅샷이라, 갱신하지 않으면 옛 이름이 화면에 계속 남는다)
+            viewer.setViewerName(
+                    viewerResolver.resolveName(viewer.getViewerType(), viewer.getRefId(), companyId));
+            return false;      // 그대로 두는 열람자 — 다시 넣지 않는다
+        });
+
+        for (Map.Entry<String, ApprovalViewerEntryDTO> e : wantedEntries.entrySet()) {
+            if (existing.contains(e.getKey())) {
+                continue;
+            }
+            ApprovalViewerEntryDTO entry = e.getValue();
+            current.add(ApprovalTemplateViewer.builder()
+                    .template(template)
+                    .viewerType(entry.getViewerType())
+                    .refId(entry.getRefId())
+                    .viewerName(viewerResolver.resolveName(entry.getViewerType(), entry.getRefId(), companyId))
+                    .build());
+        }
     }
 
     /**
