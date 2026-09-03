@@ -46,6 +46,26 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
                                                      @Param("memberId") Long memberId,
                                                      @Param("appUserId") Long appUserId);
 
+    /**
+     * 여러 방의 참가자와 그 사람의 프로필 사진을 **한 번에** 가져온다.
+     *
+     * 목록에 카톡처럼 얼굴을 겹쳐 보여주려면 참가자와 사진이 필요한데,
+     * 참가자를 따로 묻고 사진을 또 따로 물으면 조회가 두 번 는다.
+     * 사진은 직원(Member)이나 관리자(AppUser) 쪽에 있으므로 여기서 이어 붙인다.
+     * (참가자는 두 표를 번호로만 가리켜서 연관관계가 없다 — 그래서 ON으로 직접 잇는다)
+     *
+     * 돌려주는 각 줄: [방 번호, 사용자 식별자, 이름, 사진 URL]
+     * 들어온 순서(joinedAt)대로 준다.
+     */
+    @Query("SELECT p.chatRoom.id, p.userId, p.userName, "
+            + "COALESCE(m.profileImageUrl, a.profileImageUrl) "
+            + "FROM ChatParticipant p "
+            + "LEFT JOIN Member m ON m.id = p.memberId "
+            + "LEFT JOIN AppUser a ON a.id = p.appUserId "
+            + "WHERE p.chatRoom.id IN :chatRoomIds AND p.isActive = true "
+            + "ORDER BY p.chatRoom.id, p.joinedAt")
+    List<Object[]> findAvatarRowsByRoomIds(@Param("chatRoomIds") List<Long> chatRoomIds);
+
     // 채팅방의 활성 참가자 수
     long countByChatRoomIdAndIsActiveTrue(Long chatRoomId);
 

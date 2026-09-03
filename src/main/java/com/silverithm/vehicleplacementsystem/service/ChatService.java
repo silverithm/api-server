@@ -22,7 +22,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,6 +35,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatService {
+
+    /** 목록 방 아이콘에 겹쳐 그릴 얼굴 수 — 카카오톡과 같이 넷까지 */
+    private static final int AVATAR_PREVIEW_LIMIT = 4;
 
     /**
      * 관리자(AppUser)를 가리키는 채팅 사용자 식별자의 접두사.
@@ -116,9 +121,12 @@ public class ChatService {
                 .stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1], (a, b) -> a));
 
+        Map<Long, List<ChatRoomAvatarDTO>> avatarsByRoom = roomAvatars(roomIds, userId);
+
         return rooms.stream()
                 .map(room -> {
                     ChatRoomDTO dto = ChatRoomDTO.fromEntity(room);
+                    dto.setAvatars(avatarsByRoom.getOrDefault(room.getId(), List.of()));
 
                     ChatMessage lastMsg = lastMessageByRoom.get(room.getId());
                     if (lastMsg != null) {
@@ -834,8 +842,10 @@ public class ChatService {
 
         List<ChatMessageRead> readers = chatMessageReadRepository.findByMessageIdOrderByReadAtDesc(messageId);
 
+        // 사진은 읽음 기록이 아니라 사람 쪽에 있다 — 참가자 목록과 같은 경로로 찾아 넣는다.
         return readers.stream()
-                .map(ChatMessageReaderDTO::fromEntity)
+                .map(read -> ChatMessageReaderDTO.fromEntity(
+                        read, getParticipantProfileImageUrl(read.getUserId())))
                 .collect(Collectors.toList());
     }
 
@@ -1037,6 +1047,52 @@ public class ChatService {
         return findChatUser(userId)
                 .map(ChatUserProfile::position)
                 .orElse(null);
+    }
+
+    /**
+     * 방마다 목록에 겹쳐 그릴 참여자(최대 4명)를 한 번에 만든다.
+     *
+     * 방 개수나 사람 수와 무관하게 조회는 **한 번**이다 — 참가자와 사진을 한 쿼리로 잇는다.
+     * 사람마다 사진을 따로 물으면(findChatUser) 사람 수만큼 쿼리가 나가서 목록이 느려진다.
+     *
+     * 나는 뺀다. 내 얼굴은 이미 알고 있고, 카카오톡도 상대 얼굴만 보여준다.
+     * 다만 나 혼자 있는 방은 뺄 사람이 없으므로 나라도 보여준다.
+     */
+    private Map<Long, List<ChatRoomAvatarDTO>> roomAvatars(List<Long> roomIds, String meUserId) {
+        List<Object[]> rows = chatParticipantRepository.findAvatarRowsByRoomIds(roomIds);
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<ChatRoomAvatarDTO>> byRoom = new LinkedHashMap<>();
+        Map<Long, List<ChatRoomAvatarDTO>> mineOnly = new LinkedHashMap<>();
+
+        for (Object[] row : rows) {
+            Long roomId = (Long) row[0];
+            String userId = (String) row[1];
+            if (roomId == null) {
+                continue;
+            }
+            ChatRoomAvatarDTO avatar = ChatRoomAvatarDTO.builder()
+                    .userId(userId)
+                    .userName((String) row[2])
+                    .profileImageUrl((String) row[3])
+                    .build();
+
+            if (Objects.equals(userId, meUserId)) {
+                mineOnly.computeIfAbsent(roomId, k -> new ArrayList<>()).add(avatar);
+                continue;
+            }
+            List<ChatRoomAvatarDTO> list = byRoom.computeIfAbsent(roomId, k -> new ArrayList<>());
+            if (list.size() < AVATAR_PREVIEW_LIMIT) {
+                list.add(avatar);
+            }
+        }
+
+        // 나 혼자인 방은 비어 버린다 — 그럴 때만 내 얼굴을 넣는다
+        mineOnly.forEach((roomId, mine) -> byRoom.computeIfAbsent(roomId, k -> mine));
+
+        return byRoom;
     }
 
     private String getParticipantProfileImageUrl(String userId) {

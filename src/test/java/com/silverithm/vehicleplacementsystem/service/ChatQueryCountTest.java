@@ -140,7 +140,11 @@ class ChatQueryCountTest {
             });
         });
         System.out.println("### 채팅방 목록(" + ROOMS + "개) 쿼리 수 = " + q);
-        assertThat(q).isLessThanOrEqualTo(6);
+        // 6 → 7: 목록에 참여자 얼굴(카카오톡식 방 아이콘)을 실으면서 한 번 늘었다.
+        // 참가자와 그 사람의 사진을 한 쿼리로 이어 붙였으므로 이게 최소다.
+        // 지키려는 것은 '방 개수에 비례하지 않는다'이고 그건 그대로다 —
+        // 방마다 물었다면 방 6개에서 열몇 번이 나왔을 것이다.
+        assertThat(q).isLessThanOrEqualTo(7);
     }
 
     @Test

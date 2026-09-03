@@ -29,6 +29,12 @@ public class ChatRoomDTO {
     private int unreadCount;
     private List<ChatParticipantDTO> participants;
 
+    /**
+     * 목록에서 방 아이콘 자리에 겹쳐 그릴 참여자들 (최대 4명, 나는 뺀다).
+     * 목록 응답을 가볍게 두려고 참가자 전체가 아니라 이것만 채운다.
+     */
+    private List<ChatRoomAvatarDTO> avatars;
+
     /** 방 상단 고정 공지 (없으면 전부 null) */
     private Long noticeMessageId;
     private String noticeContent;
