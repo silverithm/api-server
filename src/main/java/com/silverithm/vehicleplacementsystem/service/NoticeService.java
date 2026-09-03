@@ -38,6 +38,7 @@ public class NoticeService {
     private final NoticeReaderRepository noticeReaderRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
+    private final ProfilePhotoLookup profilePhotoLookup;
     private final NotificationService notificationService;
     private final ResourceScopeGuard resourceScopeGuard;
 
@@ -247,8 +248,12 @@ public class NoticeService {
 
         List<NoticeComment> comments = noticeCommentRepository.findByNoticeIdOrderByCreatedAtAsc(noticeId);
 
+        // 사진은 댓글이 아니라 사람 쪽에 있다 — 사람마다 묻지 않고 한 번에 모아 온다
+        Map<String, String> photos = profilePhotoLookup.photosOf(
+                comments.stream().map(NoticeComment::getAuthorId).collect(Collectors.toList()));
+
         return comments.stream()
-                .map(NoticeCommentDTO::fromEntity)
+                .map(c -> NoticeCommentDTO.fromEntity(c, photos.get(c.getAuthorId())))
                 .collect(Collectors.toList());
     }
 
@@ -316,8 +321,11 @@ public class NoticeService {
 
         List<NoticeReader> readers = noticeReaderRepository.findByNoticeIdOrderByReadAtDesc(noticeId);
 
+        Map<String, String> photos = profilePhotoLookup.photosOf(
+                readers.stream().map(NoticeReader::getUserId).collect(Collectors.toList()));
+
         return readers.stream()
-                .map(NoticeReaderDTO::fromEntity)
+                .map(r -> NoticeReaderDTO.fromEntity(r, photos.get(r.getUserId())))
                 .collect(Collectors.toList());
     }
 
