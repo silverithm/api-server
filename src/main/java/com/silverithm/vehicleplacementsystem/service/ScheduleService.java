@@ -507,7 +507,10 @@ public class ScheduleService {
                 return;
             }
             String body = String.format("%s - %s", task.getSchedule().getTitle(), task.getContent());
-            fcmService.sendNotification(member.getFcmToken(), title, body);
+            // 데이터가 없으면 알림은 떠도 눌렀을 때 앱이 갈 곳을 모른다 — 그 일정의 달력으로 보낸다
+            // (미완료 업무 리마인더는 이미 같은 데이터를 싣고 있다)
+            fcmService.sendNotification(member.getFcmToken(), title, body,
+                    scheduleNotificationData(task.getSchedule()));
         } catch (Exception e) {
             log.error("[Schedule Service] 할 일 알림 전송 실패: taskId={}", task.getId(), e);
         }
