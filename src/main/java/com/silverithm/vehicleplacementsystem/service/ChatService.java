@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import jakarta.annotation.PreDestroy;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -665,7 +667,9 @@ public class ChatService {
 
         // FCM 푸시 알림 전송 (다른 참가자들에게).
         // 보낸 사람을 기다리게 하지 않는다 — 자세한 이유는 dispatchMessageNotification 주석 참고.
-        dispatchMessageNotification(room.getId(), saved.getId());
+        // 사진을 여러 장 한 번에 보낸 경우에는 마지막 장까지 올라온 뒤 한 번만 나간다.
+        dispatchMessageNotification(room.getId(), saved.getId(),
+                request.getBatchId(), request.getBatchSize());
 
         return dto;
     }
@@ -1249,13 +1253,17 @@ public class ChatService {
      * 커밋된 뒤에 보낸다 — 트랜잭션이 되돌아갔는데 알림만 나가는 일이 없도록.
      * 실패해도 메시지는 이미 저장·전달됐으므로 로그만 남기고 넘어간다(원래 동작과 같다).
      */
-    private void dispatchMessageNotification(Long roomId, Long messageId) {
+    private void dispatchMessageNotification(Long roomId, Long messageId, String batchId, Integer batchSize) {
         Runnable task = () -> {
             try {
+                if (ChatMessageBatchCollector.isBatched(batchId, batchSize)) {
+                    batchCollector.collect(roomId, messageId, batchId, batchSize);
+                    return;
+                }
                 ChatRoom room = chatRoomRepository.findById(roomId).orElse(null);
                 ChatMessage message = chatMessageRepository.findById(messageId).orElse(null);
                 if (room != null && message != null) {
-                    sendMessageNotification(room, message);
+                    sendMessageNotification(room, message, 1);
                 }
             } catch (Exception e) {
                 log.error("[Chat Service] 알림 전송 작업 실패: roomId={}, messageId={}, error={}",
@@ -1275,7 +1283,52 @@ public class ChatService {
         }
     }
 
-    private void sendMessageNotification(ChatRoom room, ChatMessage message) {
+    /**
+     * 한 번에 보낸 묶음의 알림을 모아 한 건으로 보낸다.
+     *
+     * 30초는 마지막 장을 못 기다릴 때의 안전망이다 — 자세한 이유는 ChatMessageBatchCollector 참고.
+     */
+    private final ChatMessageBatchCollector batchCollector =
+            new ChatMessageBatchCollector(this::sendBatchedNotification, 30_000L);
+
+    @PreDestroy
+    void shutdownBatchCollector() {
+        batchCollector.shutdown();
+    }
+
+    /** 묶음이 다 모였다 — FCM 호출은 타이머 스레드가 아니라 알림 실행기에서 한다 */
+    private void sendBatchedNotification(Long roomId, Long lastMessageId, int count) {
+        chatNotificationExecutor.execute(() -> {
+            try {
+                ChatRoom room = chatRoomRepository.findById(roomId).orElse(null);
+                ChatMessage message = chatMessageRepository.findById(lastMessageId).orElse(null);
+                if (room != null && message != null) {
+                    sendMessageNotification(room, message, count);
+                }
+            } catch (Exception e) {
+                log.error("[Chat Service] 묶음 알림 전송 실패: roomId={}, error={}", roomId, e.getMessage());
+            }
+        });
+    }
+
+    /** 묶음 알림의 본문 — "사진 10장"처럼 몇 개인지 한 줄로 알린다 */
+    private String batchBody(ChatMessage message, int batchCount) {
+        if (batchCount <= 1) {
+            return message.getDisplayContent();
+        }
+        if (message.getType() == ChatMessage.MessageType.IMAGE) {
+            return "사진 " + batchCount + "장";
+        }
+        if (message.getType() == ChatMessage.MessageType.FILE) {
+            return "파일 " + batchCount + "개";
+        }
+        return message.getDisplayContent() + " 외 " + (batchCount - 1) + "건";
+    }
+
+    /**
+     * @param batchCount 한 번에 보낸 묶음의 장수. 1이면 평소대로 그 메시지 내용을 본문으로 쓴다.
+     */
+    private void sendMessageNotification(ChatRoom room, ChatMessage message, int batchCount) {
         try {
             List<ChatParticipant> participants =
                     chatParticipantRepository.findByChatRoomIdAndIsActiveTrueOrderByJoinedAtAsc(room.getId());
@@ -1303,7 +1356,7 @@ public class ChatService {
                                 .title(mentioned
                                         ? sender + " — 나를 호출했어요"
                                         : sender)
-                                .message(message.getDisplayContent())
+                                .message(batchBody(message, batchCount))
                                 .recipientUserId(participant.getUserId())
                                 .recipientUserName(participant.getUserName())
                                 .type("CHAT")

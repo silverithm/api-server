@@ -768,7 +768,11 @@ public class ChatController {
             @PathVariable Long roomId,
             @RequestParam("file") MultipartFile file,
             @RequestParam String senderId,
-            @RequestParam String senderName) {
+            @RequestParam String senderName,
+            // 사진 여러 장을 한 번에 보낼 때의 묶음 정보 — 알림을 마지막 장에 한 번만 보내기 위한 것.
+            // 안 보내면(구버전 앱, 한 장짜리 전송) 지금까지처럼 장마다 알림이 나간다.
+            @RequestParam(required = false) String batchId,
+            @RequestParam(required = false) Integer batchSize) {
 
         try {
             senderId = chatCallerResolver.resolveSelf(senderId);
@@ -822,6 +826,8 @@ public class ChatController {
                     .fileSize(stored.size())
                     .mimeType(contentType)
                     .thumbnailUrl(thumbnailUrl)
+                    .batchId(batchId)
+                    .batchSize(batchSize)
                     .build();
 
             log.info("[Chat API] ChatService.sendMessage 호출");
