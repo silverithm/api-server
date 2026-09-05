@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -30,6 +31,7 @@ public class AttendanceService {
      * 직원 오늘 현황. 휴무는 승인된 휴가(근무조정)에서 센다 — 예전엔 employee_attendance 기록을
      * 봤는데, 그 기록을 쓰는 화면이 앱에도 웹에도 없어서 근무 0·휴무 0으로만 나왔다.
      * 반차는 근무로 친다(반나절은 나온다). 결근은 따로 기록되지 않으므로 0이다.
+     * 일요일은 근무하지 않으므로 전원 휴무다.
      */
     public AttendanceSummaryDTO getEmployeeAttendanceSummary(Long companyId, LocalDate date) {
         Company company = companyRepository.findById(companyId)
@@ -37,10 +39,13 @@ public class AttendanceService {
 
         long total = memberRepository.countByCompanyAndStatus(company, Member.MemberStatus.ACTIVE);
         List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDate(company, date);
-        return summarizeEmployees(total, vacations);
+        return summarizeEmployees(total, vacations, date);
     }
 
-    public static AttendanceSummaryDTO summarizeEmployees(long total, List<VacationRequest> vacations) {
+    public static AttendanceSummaryDTO summarizeEmployees(long total, List<VacationRequest> vacations, LocalDate date) {
+        if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return new AttendanceSummaryDTO(total, 0, 0, total);
+        }
         long vacation = vacations.stream()
                 .filter(v -> v.getStatus() == VacationRequest.VacationStatus.APPROVED)
                 .filter(v -> v.getDurationEnum() == VacationRequest.VacationDuration.FULL_DAY)

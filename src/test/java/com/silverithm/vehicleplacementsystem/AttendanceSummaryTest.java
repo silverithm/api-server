@@ -18,6 +18,9 @@ import org.junit.jupiter.api.Test;
  */
 class AttendanceSummaryTest {
 
+    private static final LocalDate SAT = LocalDate.of(2026, 9, 5);
+    private static final LocalDate SUN = LocalDate.of(2026, 9, 6);
+
     private static VacationRequest vacation(String name, VacationRequest.VacationStatus status, String duration) {
         return VacationRequest.builder()
                 .userName(name)
@@ -30,7 +33,7 @@ class AttendanceSummaryTest {
     @Test
     @DisplayName("휴가 신청이 없으면 전원 근무다")
     void noVacationMeansEveryoneWorks() {
-        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(28, List.of());
+        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(28, List.of(), SAT);
         assertEquals(28, s.total());
         assertEquals(28, s.present());
         assertEquals(0, s.vacation());
@@ -45,7 +48,7 @@ class AttendanceSummaryTest {
                 vacation("박민수", VacationRequest.VacationStatus.REJECTED, "FULL_DAY"),
                 vacation("최지우", VacationRequest.VacationStatus.APPROVED, "HALF_DAY_AM"));
 
-        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(10, vacations);
+        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(10, vacations, SAT);
         assertEquals(1, s.vacation());
         assertEquals(9, s.present());
         assertEquals(0, s.absent());
@@ -58,7 +61,7 @@ class AttendanceSummaryTest {
                 vacation("김철수", VacationRequest.VacationStatus.APPROVED, "FULL_DAY"),
                 vacation("김철수", VacationRequest.VacationStatus.APPROVED, "FULL_DAY"));
 
-        assertEquals(1, AttendanceService.summarizeEmployees(5, vacations).vacation());
+        assertEquals(1, AttendanceService.summarizeEmployees(5, vacations, SAT).vacation());
     }
 
     @Test
@@ -67,7 +70,7 @@ class AttendanceSummaryTest {
         List<VacationRequest> vacations = List.of(
                 vacation("김철수", VacationRequest.VacationStatus.APPROVED, "이상한값"));
 
-        assertEquals(1, AttendanceService.summarizeEmployees(5, vacations).vacation());
+        assertEquals(1, AttendanceService.summarizeEmployees(5, vacations, SAT).vacation());
     }
 
     @Test
@@ -77,8 +80,16 @@ class AttendanceSummaryTest {
                 vacation("a", VacationRequest.VacationStatus.APPROVED, "FULL_DAY"),
                 vacation("b", VacationRequest.VacationStatus.APPROVED, "FULL_DAY"));
 
-        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(1, vacations);
+        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(1, vacations, SAT);
         assertEquals(1, s.vacation());
         assertEquals(0, s.present());
+    }
+
+    @Test
+    @DisplayName("일요일은 근무하지 않는다 — 휴가 신청과 무관하게 전원 휴무")
+    void sundayNobodyWorks() {
+        AttendanceSummaryDTO s = AttendanceService.summarizeEmployees(28, List.of(), SUN);
+        assertEquals(0, s.present());
+        assertEquals(28, s.vacation());
     }
 }
