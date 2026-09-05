@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.entity;
 
+import com.silverithm.vehicleplacementsystem.dto.ChatMediaType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -117,6 +118,13 @@ public class ChatMessage {
         this.editedAt = LocalDateTime.now();
     }
 
+    /**
+     * 대화 밖에서 이 메시지를 한 줄로 가리키는 말 — 방 목록 미리보기, 푸시 알림, 알림함이 쓴다.
+     *
+     * <p>동영상은 저장 타입이 FILE이라 예전에는 파일 이름이 그대로 나왔다. 앱이 압축하면서 붙인
+     * {@code compressed_1757….mp4} 같은 임시 이름이 잠금화면과 방 목록에 뜨는 이유였다.
+     * 저장 타입 대신 화면용 종류(ChatMediaType)로 판단해 "동영상"이라고 말한다.
+     */
     public String getDisplayContent() {
         if (isDeleted) {
             return "삭제된 메시지입니다";
@@ -124,8 +132,13 @@ public class ChatMessage {
         if (type == MessageType.SYSTEM) {
             return content;
         }
-        if (type == MessageType.IMAGE) {
+
+        String media = ChatMediaType.resolve(type.name(), mimeType, fileName);
+        if (ChatMediaType.IMAGE.equals(media)) {
             return "사진";
+        }
+        if (ChatMediaType.VIDEO.equals(media)) {
+            return "동영상";
         }
         if (type == MessageType.FILE) {
             return fileName != null ? fileName : "파일";
