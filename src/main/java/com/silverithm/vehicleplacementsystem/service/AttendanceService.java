@@ -22,21 +22,33 @@ public class AttendanceService {
     private final ElderRepository elderRepository;
     private final CompanyRepository companyRepository;
     private final ResourceScopeGuard resourceScopeGuard;
+    private final VacationRequestRepository vacationRequestRepository;
 
     // ==================== 직원 출석 ====================
 
+    /**
+     * 직원 오늘 현황. 휴무는 승인된 휴가(근무조정)에서 센다 — 예전엔 employee_attendance 기록을
+     * 봤는데, 그 기록을 쓰는 화면이 앱에도 웹에도 없어서 근무 0·휴무 0으로만 나왔다.
+     * 반차는 근무로 친다(반나절은 나온다). 결근은 따로 기록되지 않으므로 0이다.
+     */
     public AttendanceSummaryDTO getEmployeeAttendanceSummary(Long companyId, LocalDate date) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
         long total = memberRepository.countByCompanyAndStatus(company, Member.MemberStatus.ACTIVE);
-        long present = employeeAttendanceRepository.countByCompanyIdAndDateAndStatus(companyId, date, AttendanceStatus.PRESENT);
-        long vacation = employeeAttendanceRepository.countByCompanyIdAndDateAndStatus(companyId, date, AttendanceStatus.VACATION);
-        long halfDay = employeeAttendanceRepository.countByCompanyIdAndDateAndStatus(companyId, date, AttendanceStatus.HALF_DAY);
-        long absent = total - present - vacation - halfDay;
-        if (absent < 0) absent = 0;
+        List<VacationRequest> vacations = vacationRequestRepository.findByCompanyAndDate(company, date);
+        return summarizeEmployees(total, vacations);
+    }
 
-        return new AttendanceSummaryDTO(total, present + halfDay, absent, vacation);
+    public static AttendanceSummaryDTO summarizeEmployees(long total, List<VacationRequest> vacations) {
+        long vacation = vacations.stream()
+                .filter(v -> v.getStatus() == VacationRequest.VacationStatus.APPROVED)
+                .filter(v -> v.getDurationEnum() == VacationRequest.VacationDuration.FULL_DAY)
+                .map(VacationRequest::getUserName)
+                .distinct()
+                .count();
+        if (vacation > total) vacation = total;
+        return new AttendanceSummaryDTO(total, total - vacation, 0, vacation);
     }
 
     public List<EmployeeAttendanceDTO> getEmployeeAttendanceList(Long companyId, LocalDate date) {
@@ -82,11 +94,16 @@ public class AttendanceService {
 
     // ==================== 어르신 출석 ====================
 
+    /**
+     * 어르신 오늘 현황. 현장은 결석만 표시하고 나머지는 나오는 걸로 본다 — 앱 배차 화면이 그렇게 쓴다.
+     * 그래서 결석은 ABSENT 기록 수, 출석은 총원에서 결석을 뺀 값이다. 예전엔 PRESENT 기록이 없으면
+     * 전원 결석으로 나왔다.
+     */
     public ElderAttendanceSummaryDTO getElderAttendanceSummary(Long companyId, LocalDate date) {
         long total = elderRepository.countByCompanyId(companyId);
-        long present = elderAttendanceRepository.countByCompanyIdAndDateAndStatus(companyId, date, ElderAttendanceStatus.PRESENT);
-        long absent = total - present;
-        if (absent < 0) absent = 0;
+        long absent = elderAttendanceRepository.countByCompanyIdAndDateAndStatus(companyId, date, ElderAttendanceStatus.ABSENT);
+        if (absent > total) absent = total;
+        long present = total - absent;
         long personalPickup = elderAttendanceRepository.countByCompanyIdAndDateAndPersonalPickupTrue(companyId, date);
         long personalDropoff = elderAttendanceRepository.countByCompanyIdAndDateAndPersonalDropoffTrue(companyId, date);
 
