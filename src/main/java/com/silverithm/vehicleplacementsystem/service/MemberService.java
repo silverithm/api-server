@@ -638,16 +638,17 @@ public class MemberService {
 
     // 알림 전송 헬퍼 메서드들
     private void sendJoinRequestNotificationToAdmins(MemberJoinRequest joinRequest) {
-        List<String> adminFcmTokens = getAdminFcmTokens(joinRequest.getCompany());
-
-        for (String adminToken : adminFcmTokens) {
+        // 받는 사람을 한 사람씩 남긴다 — "admin"이라는 리터럴로 저장하면 앱이 자기 id로
+        // 알림함을 조회할 때 아무에게도 보이지 않는다(푸시는 갔는데 알림함엔 없던 이유).
+        for (AdminNotificationTargets.AdminRecipient admin
+                : adminNotificationTargets.recipientsOf(joinRequest.getCompany())) {
             try {
                 FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
-                        .recipientToken(adminToken)
+                        .recipientToken(admin.fcmToken())
                         .title("새 회원가입 요청")
                         .message(joinRequest.getName() + "님이 회원가입을 요청했습니다.")
-                        .recipientUserId("admin")
-                        .recipientUserName("관리자")
+                        .recipientUserId(admin.userId())
+                        .recipientUserName(admin.userName())
                         .type("member_join_requested")
                         .relatedEntityId(joinRequest.getId())
                         .relatedEntityType("member_join_request")
@@ -716,12 +717,6 @@ public class MemberService {
     }
 
     /** 회사 관리자(AppUser)들의 FCM 토큰 목록 조회 */
-    private List<String> getAdminFcmTokens(Company company) {
-        // 수집 규칙은 AdminNotificationTargets 한 곳에만 둔다 (가입 계정 + ADMIN 역할 직원).
-        // 예전에는 여기서 AppUser만 봐서 직원 계정 관리자에게는 가입 요청 알림이 가지 않았다.
-        return adminNotificationTargets.fcmTokensOf(company);
-    }
-
     @Transactional
     public MemberSigninResponseDTO signin(MemberSigninDTO signinDTO) {
         log.info("[Member Service] 로그인 요청: username={}", PrivacyMask.name(signinDTO.getUsername()));
@@ -874,16 +869,15 @@ public class MemberService {
      * 관리자에게 회원탈퇴 알림 전송
      */
     private void sendMemberWithdrawalNotificationToAdmins(Member member) {
-        List<String> adminFcmTokens = getAdminFcmTokens(member.getCompany());
-
-        for (String adminToken : adminFcmTokens) {
+        for (AdminNotificationTargets.AdminRecipient admin
+                : adminNotificationTargets.recipientsOf(member.getCompany())) {
             try {
                 FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
-                        .recipientToken(adminToken)
+                        .recipientToken(admin.fcmToken())
                         .title("회원탈퇴 알림")
                         .message(member.getName() + "님이 회원탈퇴했습니다.")
-                        .recipientUserId("admin")
-                        .recipientUserName("관리자")
+                        .recipientUserId(admin.userId())
+                        .recipientUserName(admin.userName())
                         .type("member_withdrawal")
                         .relatedEntityId(member.getId())
                         .relatedEntityType("member")

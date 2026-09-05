@@ -703,14 +703,16 @@ public class ApprovalRequestService {
     private void notifyAdminsOfSubmission(ApprovalRequest request) {
         try {
             Company company = request.getCompany();
-            for (String token : adminNotificationTargets.fcmTokensOf(company)) {
+            // 받는 사람을 한 사람씩 남긴다 — "admin" 리터럴로 저장하면 앱이 자기 id로
+            // 알림함을 조회할 때 아무에게도 보이지 않는다
+            for (AdminNotificationTargets.AdminRecipient admin : adminNotificationTargets.recipientsOf(company)) {
                 try {
                     notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
-                            .recipientToken(token)
+                            .recipientToken(admin.fcmToken())
                             .title("새 전자결재 요청")
                             .message(requesterDisplayName(request) + "님이 '" + request.getTitle() + "' 결재를 상신했습니다.")
-                            .recipientUserId("admin")
-                            .recipientUserName("관리자")
+                            .recipientUserId(admin.userId())
+                            .recipientUserName(admin.userName())
                             .type("approval")
                             .relatedEntityId(request.getId())
                             .relatedEntityType("approval_request")

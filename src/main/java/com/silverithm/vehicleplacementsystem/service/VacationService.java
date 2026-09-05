@@ -595,16 +595,17 @@ public class VacationService {
     }
 
     private void sendVacationSubmittedNotificationToAdmins(VacationRequest vacation, Company company) {
-        List<String> adminFcmTokens = getAdminFcmTokens(company);
         // 이름만 적으면 동명이인일 때 누구인지 알 수 없어 직책을 함께 보여준다
         String submitter = PersonDisplay.withPosition(vacation.getUserName(), findSubmitterPosition(vacation));
 
-        for (String adminToken : adminFcmTokens) {
+        // 받는 사람을 한 사람씩 남긴다 — "admin" 리터럴로 저장하면 앱이 자기 id로
+        // 알림함을 조회할 때 아무에게도 보이지 않는다
+        for (AdminNotificationTargets.AdminRecipient admin : getAdminRecipients(company)) {
             try {
                 notificationService.sendVacationSubmittedNotification(
-                        adminToken,
-                        "admin", // 관리자 사용자 ID
-                        "관리자", // 관리자 이름
+                        admin.fcmToken(),
+                        admin.userId(),
+                        admin.userName(),
                         submitter,
                         vacation.getDate().toString(),
                         vacation.getId()
@@ -653,13 +654,13 @@ public class VacationService {
         }
     }
 
-    private List<String> getAdminFcmTokens(Company company) {
-        log.debug("[Vacation Service] 관리자 FCM 토큰 목록 조회");
+    private List<AdminNotificationTargets.AdminRecipient> getAdminRecipients(Company company) {
+        log.debug("[Vacation Service] 관리자 알림 대상 조회");
 
         try {
-            return adminNotificationTargets.fcmTokensOf(company);
+            return adminNotificationTargets.recipientsOf(company);
         } catch (Exception e) {
-            log.error("[Vacation Service] 관리자 FCM 토큰 조회 중 오류 발생", e);
+            log.error("[Vacation Service] 관리자 알림 대상 조회 중 오류 발생", e);
             return List.of(); // 빈 리스트 반환
         }
     }
