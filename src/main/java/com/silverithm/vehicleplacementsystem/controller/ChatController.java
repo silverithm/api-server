@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.*;
 import com.silverithm.vehicleplacementsystem.service.ChatCallerResolver;
 import com.silverithm.vehicleplacementsystem.service.ChatService;
+import com.silverithm.vehicleplacementsystem.service.ChatThumbnailBackfillService;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class ChatController {
     /** '나'를 가리키는 값은 요청이 아니라 토큰에서 정한다 (ChatCallerResolver 참고) */
     private final ChatCallerResolver chatCallerResolver;
     private final FileStorageService fileStorageService;
+    private final ChatThumbnailBackfillService chatThumbnailBackfillService;
 
     @Value("${app.base-url:https://silverithm.site}")
     private String baseUrl;
@@ -847,6 +849,34 @@ public class ChatController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 축소본이 없는 옛 사진 메시지에 축소본을 채운다 (운영 정비용, 여러 번 돌려도 안전하다).
+     *
+     * 축소본이 없으면 채팅 목록이 수 MB짜리 원본을 그대로 그린다 — 옛 대화를 훑을 때
+     * 사진이 깨져 보인다는 제보의 유력한 방아쇠였다. 한 번에 limit만큼만 처리한다.
+     */
+    @PostMapping("/thumbnails/backfill")
+    public ResponseEntity<Map<String, Object>> backfillThumbnails(
+            @RequestParam(defaultValue = "100") int limit) {
+        try {
+            ChatThumbnailBackfillService.Result result = chatThumbnailBackfillService.backfill(limit);
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "filled", result.filled(),
+                            "skipped", result.skipped(),
+                            "failed", result.failed(),
+                            "total", result.total()
+                    ));
+        } catch (Exception e) {
+            log.error("[Chat API] 축소본 백필 오류: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "축소본 백필 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 

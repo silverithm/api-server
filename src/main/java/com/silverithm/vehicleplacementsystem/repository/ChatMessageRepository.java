@@ -15,6 +15,17 @@ import java.util.Optional;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
+    /**
+     * 축소본이 아직 없는 사진 메시지 — 목록이 원본(수 MB)을 그대로 그리고 있던 것들.
+     *
+     * enum은 파라미터로 넘긴다. JPQL 안에 enum을 적으면 컴파일은 통과하고 리포지토리 빈을
+     * 만들 때만 터져, 배포가 조용히 롤백된 전례가 있다.
+     */
+    @Query("SELECT m FROM ChatMessage m WHERE m.type = :type AND m.isDeleted = false "
+            + "AND m.thumbnailUrl IS NULL AND m.fileUrl IS NOT NULL ORDER BY m.id DESC")
+    List<ChatMessage> findImagesMissingThumbnail(@Param("type") ChatMessage.MessageType type,
+                                                 Pageable pageable);
+
     // 채팅방의 메시지 목록 (페이지네이션, 최신순)
     // 답글 원문은 목록에 그대로 실려 나가므로 함께 가져온다 — 지연 로딩으로 두면 답글 하나마다 SELECT가 더 나간다.
     @EntityGraph(attributePaths = {"replyTo"})
