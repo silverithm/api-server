@@ -17,6 +17,7 @@ import com.silverithm.vehicleplacementsystem.entity.ChatRoom;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.*;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,7 @@ class ChatServiceEditMessageTest {
     @Autowired private CompanyRepository companyRepository;
     @Autowired private MemberRepository memberRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private EntityManager em;
 
     private static ChatNotificationExecutor directExecutor() {
         ChatNotificationExecutor executor = new ChatNotificationExecutor();
@@ -83,7 +85,8 @@ class ChatServiceEditMessageTest {
                 chatMessageReadRepository, chatMessageReactionRepository, companyRepository,
                 memberRepository, userRepository,
                 messagingTemplate, mock(NotificationService.class),
-                mock(ResourceScopeGuard.class), directExecutor());
+                mock(ResourceScopeGuard.class), directExecutor(),
+                new ChatReadRecorder(chatMessageReadRepository, em));
 
         Company company = companyRepository.save(Company.of("테스트기관", "서울", null));
         room = chatRoomRepository.save(ChatRoom.builder()

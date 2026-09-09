@@ -88,7 +88,8 @@ class ChatQueryCountTest {
                 chatMessageReadRepository, chatMessageReactionRepository, companyRepository,
                 memberRepository, userRepository,
                 mock(SimpMessagingTemplate.class), mock(NotificationService.class),
-                mock(ResourceScopeGuard.class), directExecutor());
+                mock(ResourceScopeGuard.class), directExecutor(),
+                new ChatReadRecorder(chatMessageReadRepository, em));
 
         Company company = companyRepository.save(Company.of("테스트기관", "서울", null));
         companyId = company.getId();

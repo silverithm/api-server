@@ -74,6 +74,7 @@ public class ChatService {
     private final NotificationService notificationService;
     private final ResourceScopeGuard resourceScopeGuard;
     private final ChatNotificationExecutor chatNotificationExecutor;
+    private final ChatReadRecorder chatReadRecorder;
 
 
     /**
@@ -829,7 +830,13 @@ public class ChatService {
                             .userName(userName)
                             .build())
                     .collect(Collectors.toList());
-            chatMessageReadRepository.saveAll(reads);
+
+            // 이미 남아 있는 기록과 겹쳐도 이 트랜잭션이 되돌아가지 않게 따로 저장한다
+            // (같은 사람이 앱과 웹에서 거의 동시에 읽으면 둘 다 '안 읽음'으로 보고 둘 다 넣으려 한다).
+            // 한꺼번에 넣다 하나라도 겹치면 한 건씩 다시 넣어, 겹치지 않은 것은 살린다.
+            if (!chatReadRecorder.recordAll(reads)) {
+                reads.forEach(chatReadRecorder::recordOne);
+            }
         }
 
         // WebSocket으로 읽음 상태 알림

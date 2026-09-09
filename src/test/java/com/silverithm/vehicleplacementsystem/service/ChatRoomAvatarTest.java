@@ -79,7 +79,8 @@ class ChatRoomAvatarTest {
                 chatMessageReadRepository, chatMessageReactionRepository, companyRepository,
                 memberRepository, userRepository,
                 mock(SimpMessagingTemplate.class), mock(NotificationService.class),
-                mock(ResourceScopeGuard.class), directExecutor());
+                mock(ResourceScopeGuard.class), directExecutor(),
+                new ChatReadRecorder(chatMessageReadRepository, em));
 
         companyId = companyRepository.save(Company.of("숲속재활어르신재가복지센터", "서울", null)).getId();
     }
