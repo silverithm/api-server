@@ -7,6 +7,9 @@ import com.silverithm.vehicleplacementsystem.config.querydsl.QuerydslConfigurati
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.jwt.CarevPrincipal;
+import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
+import java.util.List;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import com.silverithm.vehicleplacementsystem.service.TokenIdentityResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -114,6 +117,45 @@ class TokenIdentityResolverTest {
         memberRepository.save(직원);
 
         assertThat(resolver.resolve(CarevPrincipal.TYPE_MEMBER, 직원.getId(), "bjm")).isEmpty();
+    }
+
+    /**
+     * **진짜 토큰으로** 한 번 더 본다.
+     *
+     * 위 시험들은 클레임 값을 손으로 넣어 준다. 실제로는 로그인이 발급한 토큰을 앱이 그대로
+     * 돌려주고, 서버가 거기서 클레임을 꺼낸다. 발급과 해석 사이가 어긋나 있으면
+     * 규칙이 아무리 맞아도 현장에서는 또 로그인 화면을 만난다.
+     */
+    @Test
+    @DisplayName("로그인이 발급한 직원 토큰을 그대로 넣어도 주인을 찾는다")
+    void resolvesRealMemberToken() {
+        // 테스트 전용 키 — 운영 키와 무관하다
+        JwtTokenProvider provider = new JwtTokenProvider(
+                "dGVzdC1vbmx5LWtleS1mb3Itand0LXRva2VuLXByb3ZpZGVyLXRlc3RzLTEyMzQ1Ng==");
+
+        String accessToken = provider.generateToken(
+                직원.getUsername(),
+                List.of(new SimpleGrantedAuthority("ROLE_CAREGIVER")),
+                CarevPrincipal.TYPE_MEMBER,
+                직원.getId()
+        ).getAccessToken();
+
+        var identity = resolver.resolve(
+                provider.getPrincipalType(accessToken),
+                provider.getPrincipalId(accessToken),
+                io.jsonwebtoken.Jwts.parserBuilder()
+                        .setSigningKey(io.jsonwebtoken.security.Keys.hmacShaKeyFor(
+                                io.jsonwebtoken.io.Decoders.BASE64.decode(
+                                        "dGVzdC1vbmx5LWtleS1mb3Itand0LXRva2VuLXByb3ZpZGVyLXRlc3RzLTEyMzQ1Ng==")))
+                        .build()
+                        .parseClaimsJws(accessToken)
+                        .getBody()
+                        .getSubject()
+        );
+
+        assertThat(identity).isPresent();
+        assertThat(identity.get().id()).isEqualTo(직원.getId());
+        assertThat(identity.get().admin()).isFalse();
     }
 
     @Test
