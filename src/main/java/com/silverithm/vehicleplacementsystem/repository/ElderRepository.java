@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.repository;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import java.util.List;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,13 @@ public interface ElderRepository extends JpaRepository<Elderly, Long> {
 
     // 이름 컬럼은 암호화돼 있어 DB 정렬이 무의미하다 — 정렬은 조회 후 앱에서 한다
     List<Elderly> findByCompanyId(Long companyId);
+
+    /**
+     * 케어 정보까지 한 번에 가져오는 목록용 조회.
+     * 1:1 지연 로딩은 조회 시점에 어르신 수만큼 추가 쿼리가 나가므로(N+1) 페치 조인으로 묶는다.
+     */
+    @EntityGraph(attributePaths = "careProfile")
+    List<Elderly> findWithCareProfileByCompanyId(Long companyId);
 
     long countByCompanyId(Long companyId);
 
