@@ -3,6 +3,9 @@ package com.silverithm.vehicleplacementsystem.controller;
 import com.silverithm.vehicleplacementsystem.dto.AddElderRequest;
 import com.silverithm.vehicleplacementsystem.dto.AddEmployeeRequest;
 import com.silverithm.vehicleplacementsystem.dto.CompanyElderRequestDTO;
+import com.silverithm.vehicleplacementsystem.dto.CompanyElderResponse;
+import com.silverithm.vehicleplacementsystem.dto.ElderCareProfileDTO;
+import com.silverithm.vehicleplacementsystem.dto.ElderCareProfileRequest;
 import com.silverithm.vehicleplacementsystem.dto.ElderUpdateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ElderlyDTO;
 import com.silverithm.vehicleplacementsystem.service.ElderService;
@@ -70,7 +73,7 @@ public class ElderController {
 
     @GetMapping("/api/v1/elders/company/{companyId}")
     public ResponseEntity<Map<String, Object>> getEldersByCompany(@PathVariable("companyId") Long companyId) {
-        List<ElderlyDTO> elders = elderService.getEldersByCompany(companyId);
+        List<CompanyElderResponse> elders = elderService.getEldersByCompany(companyId);
         return ResponseEntity.ok(Map.of("elders", elders));
     }
 
@@ -98,6 +101,29 @@ public class ElderController {
     public ResponseEntity<String> updateCompanyElder(@PathVariable("id") Long id,
                                                       @RequestBody CompanyElderRequestDTO request) throws Exception {
         elderService.updateCompanyElder(id, request);
+        return ResponseEntity.ok("Success");
+    }
+
+    /** 케어 정보만 저장 — 이름·주소는 건드리지 않는다(앱·웹 공용) */
+    @PutMapping("/api/v1/elders/company/elder/{id}/care-profile")
+    public ResponseEntity<ElderCareProfileDTO> updateCareProfile(@PathVariable("id") Long id,
+                                                                 @RequestBody ElderCareProfileRequest request) {
+        return ResponseEntity.ok(elderService.updateCareProfile(id, request));
+    }
+
+    /** 주민번호 전체 열람 — 관리자만. 목록·상세에는 마스킹 값만 나간다. */
+    @GetMapping("/api/v1/elders/company/elder/{id}/resident-number")
+    public ResponseEntity<Map<String, String>> getResidentNumber(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(Map.of("residentNumber", elderService.revealResidentNumber(id)));
+    }
+
+    /**
+     * 기관 검증이 붙은 삭제. 기존 {@code /api/v1/elder/{id}}는 검증이 없어
+     * ID만 알면 남의 기관 어르신이 지워졌다 — 화면은 이 경로를 쓴다.
+     */
+    @DeleteMapping("/api/v1/elders/company/elder/{id}")
+    public ResponseEntity<String> deleteCompanyElder(@PathVariable("id") Long id) {
+        elderService.deleteCompanyElder(id);
         return ResponseEntity.ok("Success");
     }
 }
