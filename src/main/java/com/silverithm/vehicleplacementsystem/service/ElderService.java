@@ -228,11 +228,20 @@ public class ElderService {
     /** 케어 정보만 갱신 (앱·웹 공용) */
     @Transactional
     public ElderCareProfileDTO updateCareProfile(Long elderId, ElderCareProfileRequest request) {
+        return updateCareProfile(elderId, request, false);
+    }
+
+    /**
+     * @param merge 참이면 값이 없는 칸은 저장된 값을 그대로 둔다(엑셀 채우기).
+     *              거짓이면 요청이 그 어르신의 케어 정보 전체가 된다(화면 수정).
+     */
+    @Transactional
+    public ElderCareProfileDTO updateCareProfile(Long elderId, ElderCareProfileRequest request, boolean merge) {
         Elderly elderly = loadElderInScope(elderId);
         if (request == null) {
             throw new CustomException("케어 정보가 비어 있습니다", HttpStatus.BAD_REQUEST);
         }
-        applyCareProfile(elderly, request);
+        applyCareProfile(elderly, request, merge);
         // @LastModifiedDate는 flush 때 채워진다 — 그 전에 DTO를 만들면 '최종 수정'이 한 박자 늦게 나간다
         elderRepository.flush();
         return ElderCareProfileDTO.from(elderly.getCareProfile());
@@ -280,6 +289,10 @@ public class ElderService {
      * 주민번호도 같은 규칙이라, null은 유지·빈 문자열은 삭제로 갈라 놓는다.
      */
     private void applyCareProfile(Elderly elderly, ElderCareProfileRequest request) {
+        applyCareProfile(elderly, request, false);
+    }
+
+    private void applyCareProfile(Elderly elderly, ElderCareProfileRequest request, boolean merge) {
         if (request == null) {
             return;
         }
@@ -297,7 +310,7 @@ public class ElderService {
         ElderCareProfile.Gender gender = request.gender() != null
                 ? request.gender() : ElderCareProfileSupport.deriveGender(source);
 
-        profile.apply(request.withIdentity(stored, birthDate, gender), touched);
+        profile.apply(request.withIdentity(stored, birthDate, gender), touched, merge);
     }
 
     /**
