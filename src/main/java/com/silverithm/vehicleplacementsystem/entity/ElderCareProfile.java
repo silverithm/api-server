@@ -176,39 +176,70 @@ public class ElderCareProfile extends BaseEntity {
      * @param residentNumberTouched 주민번호 칸을 실제로 바꾸는 요청인지
      */
     public void apply(ElderCareProfileRequest values, boolean residentNumberTouched) {
+        apply(values, residentNumberTouched, false);
+    }
+
+    /**
+     * 케어 정보를 반영한다.
+     *
+     * @param merge 참이면 <b>채우기</b> — 값이 없는 칸은 저장된 값을 그대로 둔다.
+     *              거짓이면 <b>덮어쓰기</b> — 요청이 그 어르신의 케어 정보 전체가 된다.
+     *
+     * <p>화면 수정은 덮어쓰기다. 스위치를 끄거나 메모를 지운 것이 저장돼야 하기 때문이다.
+     * 엑셀 업로드는 채우기다. 현장 명단은 시트마다 담는 항목이 달라서, 자리 시트만 올렸다고
+     * 투약이 지워지면 안 된다. 지워진 투약은 화면에서 '미입력'으로만 보여 알아채기 어렵다.
+     */
+    public void apply(ElderCareProfileRequest values, boolean residentNumberTouched, boolean merge) {
         if (residentNumberTouched) {
             this.residentNumber = values.residentNumber();
         }
-        this.birthDate = values.birthDate();
-        this.gender = values.gender();
-        this.careGrade = values.careGrade();
-        this.fallRisk = Boolean.TRUE.equals(values.fallRisk());
-        this.fallNote = values.fallNote();
-        this.pressureSore = Boolean.TRUE.equals(values.pressureSore());
-        this.pressureSoreNote = values.pressureSoreNote();
-        this.diaperType = values.diaperType();
-        this.diaperIntermittent = Boolean.TRUE.equals(values.diaperIntermittent());
-        this.cognitionLevel = values.cognitionLevel();
-        this.cognitionNote = values.cognitionNote();
-        this.mealType = values.mealType();
-        // 간식·저녁은 값이 없으면 true다 — 대부분 드시는 쪽이 기본이라 누락을 "안 드심"으로 읽으면 안 된다
-        this.morningSnack = !Boolean.FALSE.equals(values.morningSnack());
-        this.afternoonSnack = !Boolean.FALSE.equals(values.afternoonSnack());
-        this.dinner = !Boolean.FALSE.equals(values.dinner());
-        this.mealNote = values.mealNote();
-        this.bathTime = values.bathTime();
-        this.bathNote = values.bathNote();
-        this.medMorning = Boolean.TRUE.equals(values.medMorning());
-        this.medLunch = Boolean.TRUE.equals(values.medLunch());
-        this.medEvening = Boolean.TRUE.equals(values.medEvening());
-        this.medMorningTime = values.medMorningTime();
-        this.medLunchTime = values.medLunchTime();
-        this.medEveningTime = values.medEveningTime();
-        this.medNote = values.medNote();
-        this.vehicleNote = values.vehicleNote();
-        this.floor = values.floor();
-        this.seatNote = values.seatNote();
-        this.careNote = values.careNote();
+        this.birthDate = pick(values.birthDate(), this.birthDate, merge);
+        this.gender = pick(values.gender(), this.gender, merge);
+        this.careGrade = pick(values.careGrade(), this.careGrade, merge);
+        this.fallRisk = flag(values.fallRisk(), this.fallRisk, merge);
+        this.fallNote = pick(values.fallNote(), this.fallNote, merge);
+        this.pressureSore = flag(values.pressureSore(), this.pressureSore, merge);
+        this.pressureSoreNote = pick(values.pressureSoreNote(), this.pressureSoreNote, merge);
+        this.diaperType = pick(values.diaperType(), this.diaperType, merge);
+        this.diaperIntermittent = flag(values.diaperIntermittent(), this.diaperIntermittent, merge);
+        this.cognitionLevel = pick(values.cognitionLevel(), this.cognitionLevel, merge);
+        this.cognitionNote = pick(values.cognitionNote(), this.cognitionNote, merge);
+        this.mealType = pick(values.mealType(), this.mealType, merge);
+        // 간식·저녁은 덮어쓰기에서 값이 없으면 true다 — 대부분 드시는 쪽이 기본이라
+        // 누락을 "안 드심"으로 읽으면 안 된다. 채우기에서는 저장된 값을 그대로 둔다.
+        this.morningSnack = merge ? flag(values.morningSnack(), this.morningSnack, true)
+                : !Boolean.FALSE.equals(values.morningSnack());
+        this.afternoonSnack = merge ? flag(values.afternoonSnack(), this.afternoonSnack, true)
+                : !Boolean.FALSE.equals(values.afternoonSnack());
+        this.dinner = merge ? flag(values.dinner(), this.dinner, true)
+                : !Boolean.FALSE.equals(values.dinner());
+        this.mealNote = pick(values.mealNote(), this.mealNote, merge);
+        this.bathTime = pick(values.bathTime(), this.bathTime, merge);
+        this.bathNote = pick(values.bathNote(), this.bathNote, merge);
+        this.medMorning = flag(values.medMorning(), this.medMorning, merge);
+        this.medLunch = flag(values.medLunch(), this.medLunch, merge);
+        this.medEvening = flag(values.medEvening(), this.medEvening, merge);
+        this.medMorningTime = pick(values.medMorningTime(), this.medMorningTime, merge);
+        this.medLunchTime = pick(values.medLunchTime(), this.medLunchTime, merge);
+        this.medEveningTime = pick(values.medEveningTime(), this.medEveningTime, merge);
+        this.medNote = pick(values.medNote(), this.medNote, merge);
+        this.vehicleNote = pick(values.vehicleNote(), this.vehicleNote, merge);
+        this.floor = pick(values.floor(), this.floor, merge);
+        this.seatNote = pick(values.seatNote(), this.seatNote, merge);
+        this.careNote = pick(values.careNote(), this.careNote, merge);
+    }
+
+    /** 채우기에서 값이 없으면 저장된 값을 그대로 둔다 */
+    private static <T> T pick(T incoming, T current, boolean merge) {
+        return (merge && incoming == null) ? current : incoming;
+    }
+
+    /** 켬/끔은 안 보낸 것(null)과 끈 것(false)이 다르다 — 채우기에서 null은 그대로 둔다 */
+    private static boolean flag(Boolean incoming, boolean current, boolean merge) {
+        if (incoming != null) {
+            return incoming;
+        }
+        return merge ? current : false;
     }
 
     /** 저장된 주민번호가 있는지 */

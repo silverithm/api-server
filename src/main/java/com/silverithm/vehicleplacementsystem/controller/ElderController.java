@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -106,9 +107,13 @@ public class ElderController {
 
     /** 케어 정보만 저장 — 이름·주소는 건드리지 않는다(앱·웹 공용) */
     @PutMapping("/api/v1/elders/company/elder/{id}/care-profile")
-    public ResponseEntity<ElderCareProfileDTO> updateCareProfile(@PathVariable("id") Long id,
-                                                                 @RequestBody ElderCareProfileRequest request) {
-        return ResponseEntity.ok(elderService.updateCareProfile(id, request));
+    public ResponseEntity<ElderCareProfileDTO> updateCareProfile(
+            @PathVariable("id") Long id,
+            // merge=true는 엑셀 채우기 — 값이 없는 칸은 저장된 값을 그대로 둔다.
+            // 기본은 덮어쓰기다(화면 수정은 끈 스위치·지운 메모가 저장돼야 한다).
+            @RequestParam(name = "merge", defaultValue = "false") boolean merge,
+            @RequestBody ElderCareProfileRequest request) {
+        return ResponseEntity.ok(elderService.updateCareProfile(id, request, merge));
     }
 
     /** 주민번호 전체 열람 — 관리자만. 목록·상세에는 마스킹 값만 나간다. */
