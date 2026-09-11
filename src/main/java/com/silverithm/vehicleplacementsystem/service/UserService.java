@@ -132,14 +132,16 @@ public class UserService {
                         findUser.getCompany().getName(),
                         findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                         findUser.getCompany().getCompanyCode(),
-                        tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey());
+                        tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey(),
+                        findUser.getProfileImageUrl());
             }
 
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getId(),
                     findUser.getCompany().getName(),
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     findUser.getCompany().getCompanyCode(),
-                    tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey());
+                    tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(),
+                    findUser.getProfileImageUrl());
 
         } catch (AuthenticationException e) {
             throw new CustomException("아이디 또는 비밀번호가 올바르지 않습니다", HttpStatus.UNPROCESSABLE_ENTITY);

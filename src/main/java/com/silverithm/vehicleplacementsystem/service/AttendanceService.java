@@ -44,16 +44,29 @@ public class AttendanceService {
 
     public static AttendanceSummaryDTO summarizeEmployees(long total, List<VacationRequest> vacations, LocalDate date) {
         if (date.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            return new AttendanceSummaryDTO(total, 0, 0, total);
+            return new AttendanceSummaryDTO(total, 0, 0, total, List.of());
         }
-        long vacation = vacations.stream()
+
+        // **하루를 통째로 쉬는 것은 연차(FULL_DAY)만이 아니다.** 일반·필수·대체휴무는 duration이
+        // UNUSED로 저장되는데(연차를 깎지 않는다는 뜻일 뿐 하루 쉬는 건 같다), 그걸 빼고 세는 바람에
+        // 실제로는 여섯 명이 쉬는 날 대시보드에 셋만 나왔다. 반나절만 쉬는 반차는 근무로 친다.
+        List<String> names = vacations.stream()
                 .filter(v -> v.getStatus() == VacationRequest.VacationStatus.APPROVED)
-                .filter(v -> v.getDurationEnum() == VacationRequest.VacationDuration.FULL_DAY)
+                .filter(v -> isFullDayOff(v.getDurationEnum()))
                 .map(VacationRequest::getUserName)
+                .filter(name -> name != null && !name.isBlank())
                 .distinct()
-                .count();
-        if (vacation > total) vacation = total;
-        return new AttendanceSummaryDTO(total, total - vacation, 0, vacation);
+                .sorted()
+                .toList();
+
+        long vacation = Math.min(names.size(), total);
+        return new AttendanceSummaryDTO(total, total - vacation, 0, vacation, names);
+    }
+
+    /** 하루를 통째로 쉬는 종류인가 — 반차만 아니면 종일이다 */
+    private static boolean isFullDayOff(VacationRequest.VacationDuration duration) {
+        return duration != VacationRequest.VacationDuration.HALF_DAY_AM
+                && duration != VacationRequest.VacationDuration.HALF_DAY_PM;
     }
 
     public List<EmployeeAttendanceDTO> getEmployeeAttendanceList(Long companyId, LocalDate date) {
