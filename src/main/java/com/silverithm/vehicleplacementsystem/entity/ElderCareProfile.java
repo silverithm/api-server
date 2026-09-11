@@ -14,6 +14,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import lombok.Getter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.NoArgsConstructor;
 
 /**
@@ -49,10 +51,14 @@ public class ElderCareProfile extends BaseEntity {
     private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
+    // Hibernate 6은 STRING enum을 MySQL ENUM으로 기대한다 — 컬럼은 VARCHAR라 validate에서 기동이 막힌다
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "gender", length = 20)
     private Gender gender;
 
     @Enumerated(EnumType.STRING)
+    // Hibernate 6은 STRING enum을 MySQL ENUM으로 기대한다 — 컬럼은 VARCHAR라 validate에서 기동이 막힌다
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "care_grade", length = 20)
     private CareGrade careGrade;
 
@@ -71,6 +77,8 @@ public class ElderCareProfile extends BaseEntity {
     private String pressureSoreNote;
 
     @Enumerated(EnumType.STRING)
+    // Hibernate 6은 STRING enum을 MySQL ENUM으로 기대한다 — 컬럼은 VARCHAR라 validate에서 기동이 막힌다
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "diaper_type", length = 20)
     private DiaperType diaperType;
 
@@ -79,6 +87,8 @@ public class ElderCareProfile extends BaseEntity {
     private boolean diaperIntermittent;
 
     @Enumerated(EnumType.STRING)
+    // Hibernate 6은 STRING enum을 MySQL ENUM으로 기대한다 — 컬럼은 VARCHAR라 validate에서 기동이 막힌다
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "cognition_level", length = 20)
     private CognitionLevel cognitionLevel;
 
@@ -87,6 +97,8 @@ public class ElderCareProfile extends BaseEntity {
     private String cognitionNote;
 
     @Enumerated(EnumType.STRING)
+    // Hibernate 6은 STRING enum을 MySQL ENUM으로 기대한다 — 컬럼은 VARCHAR라 validate에서 기동이 막힌다
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "meal_type", length = 20)
     private MealType mealType;
 
