@@ -101,6 +101,9 @@ public class UserService {
     private com.silverithm.vehicleplacementsystem.repository.UserDeviceRepository userDeviceRepository;
     @Autowired
     private com.silverithm.vehicleplacementsystem.repository.PositionRepository positionRepository;
+    /** 관리자와 직원은 서로 다른 표에 산다 — 토큰의 주인을 찾는 일은 여기 모아 둔다 */
+    @Autowired
+    private TokenIdentityResolver tokenIdentityResolver;
 
     private Key secretKey;
 
@@ -403,7 +406,7 @@ public class UserService {
                     .parseClaimsJws(token)
                     .getBody();
 
-            String userEmail = claims.getSubject();
+            String subject = claims.getSubject();
             Date expiration = claims.getExpiration();
 
             // 토큰 만료 시간 확인
@@ -411,21 +414,24 @@ public class UserService {
                 return TokenValidationResponse.fail("만료된 토큰입니다.");
             }
 
-            log.info("userEmail: {}", PrivacyMask.email(userEmail));
+            log.info("userEmail: {}", PrivacyMask.email(subject));
 
-            // 사용자 정보 조회
-            AppUser user = userRepository.findActiveByEmail(userEmail)
+            // **관리자 표만 보면 직원은 언제나 '존재하지 않는 사용자'가 된다.**
+            // 그 답을 받은 앱은 토큰을 갱신하고 다시 물었다가 또 무효를 듣고 로그인 화면으로
+            // 돌아갔다 — 자동로그인이 직원에게만 계속 풀리던 까닭이다.
+            var identity = tokenIdentityResolver
+                    .resolve(jwtTokenProvider.getPrincipalType(token), jwtTokenProvider.getPrincipalId(token), subject)
                     .orElse(null);
 
-            if (user == null) {
+            if (identity == null) {
                 return TokenValidationResponse.fail("존재하지 않는 사용자입니다.");
             }
 
             // 토큰 검증 성공
             return TokenValidationResponse.success(
-                    user.getEmail(),
-                    user.getUsername(),
-                    user.getId(),
+                    identity.email(),
+                    identity.displayName(),
+                    identity.id(),
                     expiration.getTime()
             );
 
