@@ -151,6 +151,8 @@ public class ElderService {
 
     @Transactional
     public void addElderToCompany(Long companyId, CompanyElderRequestDTO request) throws Exception {
+        // 조회·수정·삭제에만 검증이 붙어 있었다 — 생성도 막지 않으면 남의 기관에 어르신을 심을 수 있다
+        resourceScopeGuard.requireSameCompany(companyId);
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
@@ -178,6 +180,7 @@ public class ElderService {
         if (requests.size() > 500) {
             throw new CustomException("한 번에 500명까지 등록할 수 있습니다.", HttpStatus.BAD_REQUEST);
         }
+        resourceScopeGuard.requireSameCompany(companyId);
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회사입니다: " + companyId));
 
@@ -230,6 +233,8 @@ public class ElderService {
             throw new CustomException("케어 정보가 비어 있습니다", HttpStatus.BAD_REQUEST);
         }
         applyCareProfile(elderly, request);
+        // @LastModifiedDate는 flush 때 채워진다 — 그 전에 DTO를 만들면 '최종 수정'이 한 박자 늦게 나간다
+        elderRepository.flush();
         return ElderCareProfileDTO.from(elderly.getCareProfile());
     }
 
