@@ -60,4 +60,18 @@
     <logger name="org.springframework.amqp.rabbit.listener" level="DEBUG" />
     <logger name="org.springframework.amqp.rabbit.connection" level="DEBUG" />
     <logger name="com.silverithm.vehicleplacementsystem.config.RabbitMQConfig" level="DEBUG" />
+
+    <!--
+      소켓 CONNECT 거절(만료/위조/누락 토큰) 한 번마다 Spring이 이 로거에 DEBUG로
+      "Failed to send message to MessageChannel in session ..."를 스택 91줄과 함께 남긴다
+      (StompSubProtocolHandler.handleMessageFromClient의 catch(Throwable) 중 isDebugEnabled
+      분기 — StompAuthChannelInterceptor가 던진 MessageDeliveryException을 그대로 감싼다).
+      거절 사유는 이미 인터셉터가 한 줄 WARN으로 남기므로 그 뒤에 붙는 프레임워크 스택은
+      전부 중복 소음이다(2026-09-14 배포에서 거절 2,156회로 로그 1,060줄).
+      이 로거를 명시적으로 INFO로 못박아 상위(org.springframework.web=INFO) 설정이 어떤
+      이유로든 흔들려도(운영에서 디버그 플래그가 남는 등) 이 스택은 다시 새지 않게 한다.
+      이 메서드는 이 DEBUG 분기 밖에서는 애초에 스택을 남기지 않으므로(다른 커맨드 처리 중
+      진짜 버그는 error(message)만, throwable 없이 찍는다) 이 지정으로 잃는 정보는 없다.
+    -->
+    <logger name="org.springframework.web.socket.messaging.StompSubProtocolHandler" level="INFO" />
 </configuration>
