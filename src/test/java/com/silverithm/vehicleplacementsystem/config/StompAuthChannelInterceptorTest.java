@@ -20,7 +20,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 /**
- * 소켓 CONNECT의 토큰 검사. **만료됐거나 틀린 토큰은 거절한다.**
+ * 소켓 CONNECT의 토큰 검사. **틀린 토큰은 거절하고, 기한만 지난 토큰은 '나'를 채워 받아준다.**
  *
  * 전에는 만료된 토큰을 거절하지 않고 '나'만 비운 채 받아줬다. 그러면 요청에 적힌 senderId를
  * 그대로 믿게 되어 남의 이름으로 메시지를 보낼 수 있었다. 거절 문구의 "401"은 이미 배포된 앱이
@@ -68,14 +68,18 @@ class StompAuthChannelInterceptorTest {
     }
 
     @Test
-    @DisplayName("만료된 토큰은 거절한다 — 문구에 401이 있어 구버전 앱도 토큰을 갱신하고 다시 붙는다")
-    void expiredTokenIsRejectedWith401() {
+    @DisplayName("기한만 지난 토큰은 '나'를 채운 채 받아준다 — 거절하면 이미 배포된 웹이 새로고침 전까지 멈춘다")
+    void expiredButGenuineTokenIsAcceptedWithIdentity() {
         when(jwt.validateToken("old")).thenThrow(new ExpiredJwtException(null, null, "JWT expired"));
+        when(jwt.getAuthentication("old"))
+                .thenReturn(new UsernamePasswordAuthenticationToken("kim@example.com", null, List.of()));
 
-        assertThatThrownBy(() -> send(connect("Bearer old")))
-                .isInstanceOf(MessageDeliveryException.class)
-                .hasMessageContaining("401 Unauthorized")
-                .hasMessageContaining("만료");
+        StompHeaderAccessor accessor = connect("Bearer old");
+        send(accessor);
+
+        // 사칭 구멍을 막는 조건은 '거절'이 아니라 '나'가 비지 않는 것이다
+        assertThat(accessor.getUser()).isNotNull();
+        assertThat(accessor.getUser().getName()).isEqualTo("kim@example.com");
     }
 
     @Test

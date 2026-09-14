@@ -15,7 +15,8 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.core.Authentication;
 
 /**
- * STOMP CONNECT의 토큰을 검사해 '나'를 세션에 붙인다. **토큰이 없거나, 만료됐거나, 틀리면 거절한다.**
+ * STOMP CONNECT의 토큰을 검사해 '나'를 세션에 붙인다. **토큰이 없거나 틀리면 거절한다.**
+ * 기한만 지난 토큰은 '나'를 채운 채 받아준다(아래 ExpiredJwtException 처리의 이유 참고).
  *
  * <p>전에는 만료된 토큰을 거절하지 않고 Principal만 비운 채 연결을 받아줬다. 그러면 메시지 전송
  * 때 '나'를 정할 근거가 없어 요청에 적힌 senderId를 그대로 믿었고 — 만료된 토큰만 있으면
@@ -70,8 +71,18 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             log.info("[WebSocket] 인증 성공: user={}", PrivacyMask.email(auth.getName()));
             return auth;
         } catch (ExpiredJwtException e) {
-            log.warn("[WebSocket] 토큰 만료 — 연결 거부: sessionId={}", accessor.getSessionId());
-            throw new MessageDeliveryException(EXPIRED);
+            // 기한만 지난 토큰은 '나'를 살린 채 받아준다 — 서명이 맞으니 누가 보냈는지는 확실하다.
+            //
+            // 2026-09-14 배포에서 이걸 거절하자 이미 배포된 웹이 그대로 멈췄다: 웹은 소켓에 붙을 때
+            // 읽은 토큰을 다시 붙을 때도 그대로 쓰고(REST로 갱신한 새 토큰을 소켓엔 안 준다),
+            // 5초마다 401만 받으며 새로고침 전까지 남의 메시지를 못 받았다(사무실 PC 한 대가
+            // 40분간 2,156번). 거절의 목적은 '나'가 비어 senderId를 그대로 믿는 사칭 구멍을 막는
+            // 것이었고, 그건 여기서 '나'를 채우면 달성된다. 만료된 토큰이 갱신 없이 무한정
+            // 통하는 것은 아니다 — REST는 여전히 거절하므로 앱·웹은 곧 토큰을 새로 받는다.
+            Authentication auth = jwtTokenProvider.getAuthentication(jwt);
+            log.warn("[WebSocket] 만료된 토큰이지만 서명이 맞아 연결 허용: user={}, sessionId={}",
+                    PrivacyMask.email(auth.getName()), accessor.getSessionId());
+            return auth;
         } catch (MessageDeliveryException e) {
             throw e;
         } catch (Exception e) {
