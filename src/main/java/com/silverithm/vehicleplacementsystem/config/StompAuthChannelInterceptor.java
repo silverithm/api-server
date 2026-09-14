@@ -79,8 +79,11 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             // 40분간 2,156번). 거절의 목적은 '나'가 비어 senderId를 그대로 믿는 사칭 구멍을 막는
             // 것이었고, 그건 여기서 '나'를 채우면 달성된다. 만료된 토큰이 갱신 없이 무한정
             // 통하는 것은 아니다 — REST는 여전히 거절하므로 앱·웹은 곧 토큰을 새로 받는다.
+            //
+            // 다시 조일 때: 새 웹(chatSocket.ts의 beforeConnect가 토큰을 갱신하고 붙는다)이 충분히
+            // 퍼진 뒤에 한다. 그 전에 조이면 위와 같은 사고가 그대로 되풀이된다.
             Authentication auth = jwtTokenProvider.getAuthentication(jwt);
-            log.warn("[WebSocket] 만료된 토큰이지만 서명이 맞아 연결 허용: user={}, sessionId={}",
+            log.info("[WebSocket] 기한 지난 토큰 허용 — 구버전 웹 호환: user={}, sessionId={}",
                     PrivacyMask.email(auth.getName()), accessor.getSessionId());
             return auth;
         } catch (MessageDeliveryException e) {
