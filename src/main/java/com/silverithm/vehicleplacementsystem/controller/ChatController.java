@@ -455,6 +455,60 @@ public class ChatController {
     }
 
     /**
+     * 날짜로 이동 — 카톡처럼 채팅 검색에서 날짜를 지정하면 그 날짜 대화의 처음으로 이동한다
+     * (버그제보 2026-09-10, 배정민). 여기서 받은 messageId를 기존 "메시지 주변 조회"(around)에
+     * 넘겨 그 자리로 스크롤한다.
+     */
+    @GetMapping("/rooms/{roomId}/messages/first-on-date")
+    public ResponseEntity<Map<String, Object>> getFirstMessageOnDate(
+            @PathVariable Long roomId,
+            @RequestParam String date,
+            @RequestParam(required = false) String userId) {
+
+        java.time.LocalDate parsedDate;
+        try {
+            parsedDate = java.time.LocalDate.parse(date);
+        } catch (java.time.format.DateTimeParseException e) {
+            log.warn("[Chat API] 날짜로 이동 - 날짜 형식 오류: roomId={}, date={}", roomId, date);
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "날짜 형식이 올바르지 않습니다"));
+        }
+
+        try {
+            String callerId = chatCallerResolver.resolveSelf(userId);
+            log.info("[Chat API] 날짜로 이동: roomId={}, date={}, userId={}", roomId, parsedDate, callerId);
+
+            ChatFirstMessageOnDateDTO result = chatService.getFirstMessageOnDate(roomId, parsedDate, callerId);
+
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "messageId", result.getMessageId(),
+                            "createdAt", result.getCreatedAt()
+                    ));
+
+        } catch (SecurityException e) {
+            log.error("[Chat API] 날짜로 이동 권한 오류: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (IllegalArgumentException e) {
+            log.error("[Chat API] 날짜로 이동 실패: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (Exception e) {
+            log.error("[Chat API] 날짜로 이동 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "날짜로 이동 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 메시지 전송
      */
     @PostMapping("/rooms/{roomId}/messages")

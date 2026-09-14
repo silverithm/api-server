@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -90,6 +91,15 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     // 채팅방의 최신 메시지
     Optional<ChatMessage> findFirstByChatRoomIdOrderByCreatedAtDesc(Long chatRoomId);
+
+    /**
+     * "날짜로 이동" — 그 날짜 00시(서버 로컬 시간) 이후 첫 메시지.
+     *
+     * 삭제된 메시지도 목록에 "삭제된 메시지입니다"로 보이므로(around 조회와 같은 기준) isDeleted로
+     * 거르지 않는다. 없으면 그 날짜 이후 대화가 없다는 뜻 — 컨트롤러가 404로 응답한다.
+     */
+    Optional<ChatMessage> findFirstByChatRoomIdAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(
+            Long chatRoomId, LocalDateTime createdAtFrom);
 
     // 채팅방의 공유된 미디어 (이미지, 파일)
     @Query("SELECT m FROM ChatMessage m " +

@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import jakarta.annotation.PreDestroy;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -604,6 +605,28 @@ public class ChatService {
         boolean hasAfter = afterAsc.size() == half;
 
         return new ChatMessagesAroundDTO(messages, hasBefore, hasAfter);
+    }
+
+    /**
+     * "날짜로 이동" — 카톡처럼 채팅 검색에서 날짜를 지정하면 그 날짜 대화의 처음으로 이동하는 기능
+     * (버그제보 2026-09-10, 배정민). 여기서 찾은 messageId를 클라이언트가 기존 "주변 조회"(around)에
+     * 넘겨 그 자리로 이동한다.
+     */
+    @Transactional(readOnly = true)
+    public ChatFirstMessageOnDateDTO getFirstMessageOnDate(Long roomId, LocalDate date, String currentUserId) {
+        log.info("[Chat Service] 날짜로 이동: roomId={}, date={}", roomId, date);
+
+        // 참가자만 조회 가능 — 다른 목록/전송 API와 같은 방식(findActiveByRoomAndPerson)으로 검사한다.
+        chatParticipantRepository
+                .findActiveByRoomAndPerson(roomId, person(currentUserId).memberId(), person(currentUserId).appUserId())
+                .orElseThrow(() -> new SecurityException("채팅방 참가자가 아닙니다"));
+
+        LocalDateTime startOfDay = date.atStartOfDay();
+        ChatMessage first = chatMessageRepository
+                .findFirstByChatRoomIdAndCreatedAtGreaterThanEqualOrderByCreatedAtAsc(roomId, startOfDay)
+                .orElseThrow(() -> new IllegalArgumentException("그 날짜 이후 대화가 없습니다"));
+
+        return new ChatFirstMessageOnDateDTO(first.getId(), first.getCreatedAt());
     }
 
     /**
