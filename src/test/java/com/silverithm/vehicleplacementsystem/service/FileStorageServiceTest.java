@@ -107,6 +107,32 @@ class FileStorageServiceTest {
     }
 
     @Test
+    @DisplayName("공문 전체를 한 장으로 올린 아주 긴 이미지는 윗부분을 A4 비율로 잘라 썸네일을 만든다")
+    void cropsTopOfVeryTallImage() throws Exception {
+        // given: 1214x13817 — 8쪽 분량 공문을 한 장 JPG로 공유한 실제 크기. 통째로 줄이면 56x640 막대가 됐다.
+        byte[] tallImageBytes = createJpegBytes(1214, 13817);
+        MockMultipartFile file = new MockMultipartFile("file", "공문.jpg", "image/jpeg", tallImageBytes);
+        when(s3Client, PutObjectResponse.builder().build());
+
+        String thumbnailPath = fileStorageService.generateAndStoreThumbnail(file, "chat/1/doc-uuid.jpg");
+
+        assertNotNull(thumbnailPath);
+        BufferedImage thumbnail = ImageIO.read(new ByteArrayInputStream(capturePutObject(s3Client).bytes()));
+        // 1214x1717(A4 비율) 구간을 긴 변 640으로 줄인 크기
+        assertEquals(640, thumbnail.getHeight());
+        assertEquals(453, thumbnail.getWidth());
+    }
+
+    @Test
+    @DisplayName("휴대폰 화면 캡처(세로 약 2.2배)는 자르지 않고 통째로 줄인다")
+    void keepsWholePhoneScreenshot() {
+        assertEquals(2340, FileStorageService.thumbnailSourceHeight(1080, 2340));
+        assertEquals(2400, FileStorageService.thumbnailSourceHeight(1080, 2400));
+        assertEquals(1717, FileStorageService.thumbnailSourceHeight(1214, 13817));
+        assertEquals(800, FileStorageService.thumbnailSourceHeight(1200, 800));
+    }
+
+    @Test
     @DisplayName("긴 변이 640px 이하인 이미지는 썸네일을 만들지 않는다")
     void skipsThumbnailForSmallImage() throws Exception {
         byte[] smallImageBytes = createJpegBytes(400, 300);

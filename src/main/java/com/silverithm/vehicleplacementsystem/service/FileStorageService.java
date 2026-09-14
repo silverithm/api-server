@@ -344,6 +344,25 @@ public class FileStorageService {
      * 이미 바이트로 들고 있는 이미지의 썸네일을 만든다.
      * HEIC를 JPEG로 바꾼 뒤에는 변환 결과 바이트를 그대로 넘겨 다시 읽지 않는다.
      */
+    /** 이보다 세로가 길면(세로/가로) 썸네일을 윗부분만 잘라 만든다 — 휴대폰 캡처(약 2.2)는 건드리지 않는 선 */
+    static final double TALL_IMAGE_RATIO = 2.5;
+    private static final double A4_PORTRAIT_RATIO = 297.0 / 210.0;
+
+    /**
+     * 썸네일로 쓸 원본의 세로 범위.
+     *
+     * 공문을 채팅에 한 장짜리 긴 JPG로 올리게 되면서(제보 2026-09-10 "공문이 여러 장으로 잘려 온다"),
+     * 긴 변 640px에 맞춰 통째로 줄이면 1214×13817 공문의 썸네일이 56×640이 되어 채팅방 미리보기가
+     * 가느다란 막대로 보였다. 세로가 가로의 {@value #TALL_IMAGE_RATIO}배를 넘으면 윗부분을 A4 한 장
+     * 비율로 잘라 첫 장처럼 보이게 한다. 누르면 원본 전체가 열리므로 내용은 잃지 않는다.
+     */
+    static int thumbnailSourceHeight(int width, int height) {
+        if (width <= 0 || height <= (int) Math.round(width * TALL_IMAGE_RATIO)) {
+            return height;
+        }
+        return Math.min(height, (int) Math.round(width * A4_PORTRAIT_RATIO));
+    }
+
     public String generateAndStoreThumbnail(byte[] imageBytes, String originalRelativePath) {
         if (!s3Enabled || imageBytes == null || imageBytes.length == 0) {
             return null;
@@ -367,9 +386,12 @@ public class FileStorageService {
                 return null;
             }
 
-            double scale = (double) THUMBNAIL_MAX_SIDE / longSide;
+            // 아주 긴 세로 이미지(공문 전체를 한 장으로 올린 것 등)는 윗부분만 A4 비율로 잘라 쓴다.
+            int sourceHeight = thumbnailSourceHeight(width, height);
+            int sourceLongSide = Math.max(width, sourceHeight);
+            double scale = (double) THUMBNAIL_MAX_SIDE / sourceLongSide;
             int thumbWidth = Math.max(1, (int) Math.round(width * scale));
-            int thumbHeight = Math.max(1, (int) Math.round(height * scale));
+            int thumbHeight = Math.max(1, (int) Math.round(sourceHeight * scale));
 
             BufferedImage thumbnail = new BufferedImage(thumbWidth, thumbHeight, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = thumbnail.createGraphics();
@@ -380,7 +402,7 @@ public class FileStorageService {
                 // 원본에 투명 배경(PNG 등)이 있어도 JPEG에서 검게 나오지 않도록 흰 배경을 깐다.
                 g.setColor(Color.WHITE);
                 g.fillRect(0, 0, thumbWidth, thumbHeight);
-                g.drawImage(original, 0, 0, thumbWidth, thumbHeight, null);
+                g.drawImage(original, 0, 0, thumbWidth, thumbHeight, 0, 0, width, sourceHeight, null);
             } finally {
                 g.dispose();
             }
