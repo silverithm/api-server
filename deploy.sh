@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 UPSTREAM_CONF="data/nginx/upstream.conf"
-HEALTH_TIMEOUT_SEC=180
+HEALTH_TIMEOUT_SEC=${HEALTH_TIMEOUT_SEC:-180}
 DRAIN_SEC=10
 
 # ─── Slack ───
@@ -21,6 +21,44 @@ notify() {
   fi
   echo "[deploy] $text"
 }
+
+# ─── 지금 코드가 정말 최신인지 먼저 확인한다 ───
+#
+# 예전에 한 번, git pull이 실패했는데 그걸 모르고 배포를 태워서 옛 코드를 그대로 다시
+# 올린 적이 있다. 배포는 "성공"으로 끝나고 슬랙에도 성공이라 떠서, 로그의 커밋 해시를
+# 눈으로 확인하지 않았으면 몰랐을 일이다.
+# (원인은 `git pull | tail` 처럼 파이프를 걸어 실패 종료코드가 삼켜진 것이었다 —
+#  부르는 쪽 실수라도 여기서 막아 준다.)
+#
+# 배포 전에 origin과 대조해서 뒤처져 있으면 멈춘다.
+#   --check-only  : 확인만 하고 배포하지 않는다 (이 가드를 시험할 때 쓴다)
+#   SKIP_FRESHNESS_CHECK=1 : 급할 때 건너뛴다
+CHECK_ONLY=0
+if [ "${1:-}" = "--check-only" ]; then
+  CHECK_ONLY=1
+fi
+
+if [ "${SKIP_FRESHNESS_CHECK:-0}" != "1" ] && git rev-parse --git-dir >/dev/null 2>&1; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  [ "$BRANCH" = "HEAD" ] && BRANCH=main
+  git fetch --quiet origin "$BRANCH" 2>/dev/null || true
+  BEHIND=$(git rev-list --count "HEAD..origin/$BRANCH" 2>/dev/null || echo 0)
+
+  if [ "$BEHIND" -gt 0 ]; then
+    notify ":octagonal_sign: [배포 중단] 코드가 origin/$BRANCH 보다 ${BEHIND}커밋 뒤처져 있다 — 옛 코드를 올릴 뻔했다. git pull 후 다시 실행 (건너뛰려면 SKIP_FRESHNESS_CHECK=1)"
+    exit 1
+  fi
+
+  DIRTY=$(git status --porcelain 2>/dev/null | grep -v "deploy.sh" || true)
+  if [ -n "$DIRTY" ]; then
+    notify ":warning: [배포 주의] 서버에 커밋되지 않은 변경이 있다 — 배포되는 코드가 저장소와 다를 수 있다"
+  fi
+fi
+
+if [ "$CHECK_ONLY" = "1" ]; then
+  echo "[deploy] 최신 확인만 하고 끝낸다 (--check-only)"
+  exit 0
+fi
 
 # ─── 활성/유휴 색 판단 (upstream.conf 기준, 없거나 legacy면 blue부터) ───
 ACTIVE="legacy"
