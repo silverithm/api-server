@@ -111,7 +111,41 @@ if [ "$HEALTHY" != "1" ]; then
   exit 1
 fi
 
-notify ":stethoscope: [헬스체크 통과] ${IDLE} 기동 완료 — 트래픽 전환 시작"
+notify ":stethoscope: [헬스체크 통과] ${IDLE} 기동 완료 — 소켓 스모크 시작"
+
+# ─── 소켓 인증 스모크 테스트 (헬스체크 통과 직후, 트래픽 전환 전) ───
+#
+# 2026-09-14 배포에서 헬스체크(HTTP /health)는 "떴다"만 확인했다. 그런데 실제로 조여진
+# 건 STOMP CONNECT 인증 규칙이었고, 그건 헬스체크가 전혀 보지 않는 경로다 — 만료 토큰을
+# 쓰던 이미 배포된 웹이 전환 직후부터 40분간 소켓을 못 붙였고, 사람이 알아챈 뒤에야
+# 롤백했다. 여기서 유휴 컨테이너에 직접 STOMP CONNECT 4가지 분기(정상/만료/위조/누락
+# 토큰)를 태워, 하나라도 기대와 다르면 트래픽을 넘기지 않는다.
+#
+# 토큰은 유휴 컨테이너의 실제 서명 키로 스모크 스크립트가 직접 민팅한다(로그인 불필요 —
+# 이유는 verify/stomp_smoke.py 상단 주석). 키 이름은 JwtTokenProvider의
+# `@Value("${jwt.secretKey}")`가 Spring 환경변수 바인딩 규칙으로 컨테이너에 어떤 이름으로
+# 들어와도(JWT_SECRETKEY 또는 JWT_SECRET_KEY) 찾도록 둘 다 시도한다.
+JWT_SECRET_RAW=$(sudo docker inspect "silverithm-backend-${IDLE}" \
+    --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+    | grep -E '^(JWT_SECRETKEY|JWT_SECRET_KEY)=' | head -1 | cut -d= -f2- || true)
+
+if [ -z "$JWT_SECRET_RAW" ]; then
+  notify ":x: [배포 실패] ${IDLE} 컨테이너에서 JWT 서명 키(JWT_SECRETKEY/JWT_SECRET_KEY)를 못 찾음 — 소켓 스모크를 할 수 없어 전환하지 않음"
+  sudo docker-compose stop "app-${IDLE}" >/dev/null 2>&1 || true
+  exit 1
+fi
+
+SMOKE_OUTPUT=$(python3 verify/stomp_smoke.py --port "$IDLE_PORT" --secret "$JWT_SECRET_RAW" 2>&1) || SMOKE_STATUS=$?
+SMOKE_STATUS=${SMOKE_STATUS:-0}
+echo "$SMOKE_OUTPUT"
+
+if [ "$SMOKE_STATUS" != "0" ]; then
+  notify ":x: [배포 실패] ${IDLE} 소켓 인증 스모크 실패(코드 ${SMOKE_STATUS}) — ${ACTIVE} 계속 서빙 중 (무중단). 상세는 배포 로그 참고"
+  sudo docker-compose stop "app-${IDLE}" >/dev/null 2>&1 || true
+  exit 1
+fi
+
+notify ":closed_lock_with_key: [소켓 스모크 통과] ${IDLE} CONNECT 인증 4분기(정상/만료/위조/누락) 정상 — 트래픽 전환 시작"
 
 # ─── nginx upstream 전환 ───
 echo "upstream backend_upstream { server silverithm-backend-${IDLE}:8080; }" > "$UPSTREAM_CONF"
@@ -127,7 +161,62 @@ if ! sudo docker exec nginx-proxy nginx -t >/dev/null 2>&1; then
 fi
 
 sudo docker exec nginx-proxy nginx -s reload
-notify ":arrows_counterclockwise: [트래픽 전환] ${ACTIVE} → ${IDLE} 완료"
+notify ":arrows_counterclockwise: [트래픽 전환] ${ACTIVE} → ${IDLE} 완료 — 전환 후 감시 시작"
+
+# ─── 전환 후 감시 ───
+#
+# 스모크는 전환 "직전"의 유휴 컨테이너를 몇 번의 왕복으로만 본다. 실제 트래픽에만 있는
+# 조건(구버전 앱 비중, 동시 접속 규모 등)에서 문제가 생길 수 있어 전환 "직후"에도 잠깐
+# 지켜본다. 전환 시점부터 누적으로, ${MONITOR_WINDOW_SEC}초 동안 ${MONITOR_INTERVAL_SEC}초
+# 간격으로 새 활성(${IDLE}) 컨테이너 로그의 "연결 거부" 건수와, nginx-proxy 로그에서 같은
+# IP가 ws/chat 핸드셰이크를 반복하는 횟수(최댓값)를 본다. 임계를 넘으면 슬랙 경고 — 구버전
+# (${ACTIVE}) 컨테이너를 아직 끄지 않은 이 시점이라야 AUTO_ROLLBACK=1일 때 되돌릴 수 있어서,
+# 구버전 중지는 이 감시 뒤로 옮겼다. 기본은 경고만 하고 그대로 진행한다(무중단 성질 유지).
+MONITOR_WINDOW_SEC=${MONITOR_WINDOW_SEC:-90}
+MONITOR_INTERVAL_SEC=${MONITOR_INTERVAL_SEC:-15}
+REJECT_THRESHOLD=${REJECT_THRESHOLD:-20}
+IP_REPEAT_THRESHOLD=${IP_REPEAT_THRESHOLD:-12}
+AUTO_ROLLBACK=${AUTO_ROLLBACK:-0}
+
+SWITCH_EPOCH=$(date +%s)
+ROLLBACK_NEEDED=0
+ELAPSED=0
+while [ "$ELAPSED" -lt "$MONITOR_WINDOW_SEC" ]; do
+  sleep "$MONITOR_INTERVAL_SEC"
+  ELAPSED=$((ELAPSED + MONITOR_INTERVAL_SEC))
+
+  REJECT_COUNT=$(sudo docker logs --since "$SWITCH_EPOCH" "silverithm-backend-${IDLE}" 2>&1 \
+      | grep -c "연결 거부") || true
+  REJECT_COUNT=${REJECT_COUNT:-0}
+
+  IP_MAX_REPEAT=$(sudo docker logs --since "$SWITCH_EPOCH" nginx-proxy 2>&1 \
+      | grep "ws/chat" | awk '{print $1}' | sort | uniq -c | sort -rn | head -1 \
+      | awk '{print $1+0}') || true
+  IP_MAX_REPEAT=${IP_MAX_REPEAT:-0}
+
+  echo "[deploy] 감시 ${ELAPSED}/${MONITOR_WINDOW_SEC}s (누적, 전환시점부터) — 연결거부=${REJECT_COUNT} IP반복최대=${IP_MAX_REPEAT}"
+
+  if [ "$REJECT_COUNT" -ge "$REJECT_THRESHOLD" ] || [ "$IP_MAX_REPEAT" -ge "$IP_REPEAT_THRESHOLD" ]; then
+    ROLLBACK_NEEDED=1
+    notify ":warning: [전환 후 경고] ${IDLE} 활성화 후 소켓 이상 신호 — 연결거부 누적 ${REJECT_COUNT}건(임계 ${REJECT_THRESHOLD}), 동일 IP 핸드셰이크 반복 최대 ${IP_MAX_REPEAT}회(임계 ${IP_REPEAT_THRESHOLD}). AUTO_ROLLBACK=${AUTO_ROLLBACK}"
+    break
+  fi
+done
+
+if [ "$ROLLBACK_NEEDED" = "1" ] && [ "$AUTO_ROLLBACK" = "1" ] && [ "$ACTIVE" != "legacy" ]; then
+  echo "upstream backend_upstream { server silverithm-backend-${ACTIVE}:8080; }" > "$UPSTREAM_CONF"
+  if sudo docker exec nginx-proxy nginx -t >/dev/null 2>&1; then
+    sudo docker exec nginx-proxy nginx -s reload
+    notify ":leftwards_arrow_with_hook: [자동 롤백] upstream을 ${ACTIVE}(으)로 되돌림 — ${IDLE}은 조사를 위해 계속 띄워둠(수동 정리 필요)"
+  else
+    notify ":x: [자동 롤백 실패] nginx 설정 검증 실패 — upstream이 ${IDLE}에 남아있을 수 있음, 즉시 수동 확인 필요"
+  fi
+  exit 1
+fi
+
+if [ "$ROLLBACK_NEEDED" = "1" ]; then
+  notify ":warning: [진행] AUTO_ROLLBACK 미설정이라 경고만 하고 배포를 계속 진행함 — 로그를 확인할 것"
+fi
 
 # ─── 드레인 후 구버전 중지 ───
 sleep "$DRAIN_SEC"
