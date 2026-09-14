@@ -49,7 +49,7 @@ if [ "${SKIP_FRESHNESS_CHECK:-0}" != "1" ] && git rev-parse --git-dir >/dev/null
     exit 1
   fi
 
-  DIRTY=$(git status --porcelain 2>/dev/null | grep -v "deploy.sh" || true)
+  DIRTY=$(git status --porcelain --untracked-files=no 2>/dev/null | grep -v "deploy.sh" || true)
   if [ -n "$DIRTY" ]; then
     notify ":warning: [배포 주의] 서버에 커밋되지 않은 변경이 있다 — 배포되는 코드가 저장소와 다를 수 있다"
   fi
