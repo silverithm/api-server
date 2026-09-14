@@ -122,20 +122,30 @@ notify ":stethoscope: [헬스체크 통과] ${IDLE} 기동 완료 — 소켓 스
 # 토큰)를 태워, 하나라도 기대와 다르면 트래픽을 넘기지 않는다.
 #
 # 토큰은 유휴 컨테이너의 실제 서명 키로 스모크 스크립트가 직접 민팅한다(로그인 불필요 —
-# 이유는 verify/stomp_smoke.py 상단 주석). 키 이름은 JwtTokenProvider의
-# `@Value("${jwt.secretKey}")`가 Spring 환경변수 바인딩 규칙으로 컨테이너에 어떤 이름으로
-# 들어와도(JWT_SECRETKEY 또는 JWT_SECRET_KEY) 찾도록 둘 다 시도한다.
+# 이유는 verify/stomp_smoke.py 상단 주석). 키는 컨테이너 환경변수에는 없고
+# src/main/resources/application-prod.yaml의 jwt.secretKey에 평문(base64)으로 들어
+# 있다(이 파일은 .gitignore 대상이라 저장소 클론이 아니라 서버 체크아웃 자체에 배치돼
+# 있음 — .env와 같은 성격). 혹시 나중에 환경변수로 옮겨질 수도 있으니 env를 먼저 보고,
+# 없으면 yaml을 본다. **키 값은 절대 echo/notify(슬랙)하지 않는다** — 변수에 담아
+# 스크립트로 그대로 흘려보내기만 한다.
 JWT_SECRET_RAW=$(sudo docker inspect "silverithm-backend-${IDLE}" \
     --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
     | grep -E '^(JWT_SECRETKEY|JWT_SECRET_KEY)=' | head -1 | cut -d= -f2- || true)
 
+PROD_YAML="src/main/resources/application-prod.yaml"
+if [ -z "$JWT_SECRET_RAW" ] && [ -f "$PROD_YAML" ]; then
+  JWT_SECRET_RAW=$(grep -E '^[[:space:]]*secretKey:' "$PROD_YAML" | head -1 \
+      | sed -E 's/^[[:space:]]*secretKey:[[:space:]]*//' | tr -d "\"'" || true)
+fi
+
 if [ -z "$JWT_SECRET_RAW" ]; then
-  notify ":x: [배포 실패] ${IDLE} 컨테이너에서 JWT 서명 키(JWT_SECRETKEY/JWT_SECRET_KEY)를 못 찾음 — 소켓 스모크를 할 수 없어 전환하지 않음"
+  notify ":x: [배포 실패] JWT 서명 키를 못 찾음(컨테이너 env, ${PROD_YAML} 둘 다) — 소켓 스모크를 할 수 없어 전환하지 않음"
   sudo docker-compose stop "app-${IDLE}" >/dev/null 2>&1 || true
   exit 1
 fi
 
-SMOKE_OUTPUT=$(python3 verify/stomp_smoke.py --port "$IDLE_PORT" --secret "$JWT_SECRET_RAW" 2>&1) || SMOKE_STATUS=$?
+# --secret -로 stdin에 흘려보낸다 — 인자로 주면 ps로 다른 프로세스에 노출된다.
+SMOKE_OUTPUT=$(echo "$JWT_SECRET_RAW" | python3 verify/stomp_smoke.py --port "$IDLE_PORT" --secret - 2>&1) || SMOKE_STATUS=$?
 SMOKE_STATUS=${SMOKE_STATUS:-0}
 echo "$SMOKE_OUTPUT"
 
