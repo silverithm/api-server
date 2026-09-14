@@ -9,6 +9,8 @@ import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
 import com.silverithm.vehicleplacementsystem.util.PersonDisplay;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -75,6 +77,11 @@ public class ChatService {
     private final ResourceScopeGuard resourceScopeGuard;
     private final ChatNotificationExecutor chatNotificationExecutor;
     private final ChatReadRecorder chatReadRecorder;
+    private final ChatMessageWriter chatMessageWriter;
+    private final ChatSendMetrics chatSendMetrics;
+
+    /** 교착으로 되돌아간 저장을 다시 시도하는 횟수(첫 시도 포함). */
+    static final int SEND_ATTEMPTS = 3;
 
 
     /**
@@ -600,79 +607,99 @@ public class ChatService {
     }
 
     /**
-     * 메시지 전송
+     * 메시지 전송. 소켓·REST·파일 세 경로가 모두 여기로 온다.
+     *
+     * <p>저장은 {@link ChatMessageWriter}의 트랜잭션이 하고, 방송과 알림은 그 트랜잭션이 커밋된
+     * 뒤에 한다. 여기에 {@code @Transactional}이 없는 것은 의도다 — 저장이 교착으로 되돌아가면
+     * 새 트랜잭션으로 다시 시도해야 하는데, 이 메서드가 트랜잭션이면 되돌아간 것을 되살릴 수 없다.
+     *
+     * <p>같은 {@code clientMessageId}로 다시 오면 저장하지 않고 처음 것을 돌려준다. 그때는
+     * 방송도 알림도 다시 나가지 않는다 — 상대는 이미 받았다.
      */
-    @Transactional
     public ChatMessageDTO sendMessage(Long roomId, ChatMessageCreateRequest request) {
-        log.info("[Chat Service] 메시지 전송: roomId={}, senderId={}", roomId, request.getSenderId());
-
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
-
-        // 참가자 확인
-        chatParticipantRepository.findActiveByRoomAndPerson(roomId, person(request.getSenderId()).memberId(), person(request.getSenderId()).appUserId())
-                .orElseThrow(() -> new RuntimeException("채팅방 참가자가 아닙니다"));
-
-        // 메시지 타입 파싱
-        ChatMessage.MessageType messageType = ChatMessage.MessageType.TEXT;
-        if (request.getType() != null) {
-            try {
-                messageType = ChatMessage.MessageType.valueOf(request.getType().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                log.warn("[Chat Service] 알 수 없는 메시지 타입: {}", request.getType());
-            }
-        }
-
-        // 답글 대상 메시지 조회
-        ChatMessage replyTo = null;
-        if (request.getReplyToId() != null) {
-            replyTo = chatMessageRepository.findById(request.getReplyToId()).orElse(null);
-        }
+        log.info("[Chat Service] 메시지 전송: roomId={}, senderId={}, clientMessageId={}",
+                roomId, request.getSenderId(), request.getClientMessageId());
 
         // 발신자 직책 조회 (서버에서 직접 조회하여 신뢰성 확보)
         String senderPosition = getParticipantPosition(request.getSenderId());
 
-        // 메시지 저장
-        ChatMessage message = ChatMessage.builder()
-                .chatRoom(room)
-                .senderId(request.getSenderId())
-                .senderName(request.getSenderName())
-                .senderPosition(senderPosition)
-                .type(messageType)
-                .content(request.getContent())
-                .fileUrl(request.getFileUrl())
-                .fileName(request.getFileName())
-                .fileSize(request.getFileSize())
-                .mimeType(request.getMimeType())
-                .thumbnailUrl(request.getThumbnailUrl())
-                .replyTo(replyTo)
-                .isDeleted(false)
-                .build();
+        ChatMessageWriter.Stored stored = persistWithRetry(roomId, request, senderPosition);
+        ChatMessageDTO dto = stored.dto();
 
-        ChatMessage saved = chatMessageRepository.save(message);
-        log.info("[Chat Service] 메시지 저장 완료: id={}", saved.getId());
+        if (stored.duplicate()) {
+            chatSendMetrics.duplicate();
+            return dto;
+        }
+        chatSendMetrics.stored();
 
-        // 채팅방 최신 메시지 시간 업데이트
-        room.updateLastMessageAt();
-        chatRoomRepository.save(room);
-
-        // 발신자 읽음 처리
-        markMessageAsRead(saved, request.getSenderId(), request.getSenderName());
-
-        // 발신자 읽음이 보장되므로 readCount=1로 설정
-        ChatMessageDTO dto = ChatMessageDTO.fromEntityWithReadCount(saved, 1);
-
-        // WebSocket으로 메시지 전송
+        // 커밋된 뒤에 방송한다 — 되돌아간 메시지가 상대 화면에 뜨는 일이 없도록.
         ChatWebSocketMessage wsMessage = ChatWebSocketMessage.messageEvent(roomId, dto);
-        messagingTemplate.convertAndSend("/topic/chat/" + roomId, wsMessage);
+        afterCommit(() -> messagingTemplate.convertAndSend("/topic/chat/" + roomId, wsMessage));
 
         // FCM 푸시 알림 전송 (다른 참가자들에게).
         // 보낸 사람을 기다리게 하지 않는다 — 자세한 이유는 dispatchMessageNotification 주석 참고.
         // 사진을 여러 장 한 번에 보낸 경우에는 마지막 장까지 올라온 뒤 한 번만 나간다.
-        dispatchMessageNotification(room.getId(), saved.getId(),
+        dispatchMessageNotification(roomId, stored.messageId(),
                 request.getBatchId(), request.getBatchSize());
 
         return dto;
+    }
+
+    /**
+     * 저장이 교착으로 되돌아가면 잠깐 쉬고 새 트랜잭션으로 다시 한다. 유니크 제약에 막히면
+     * 같은 식별자의 메시지가 방금 먼저 들어간 것이므로 그것을 찾아 돌려준다.
+     */
+    private ChatMessageWriter.Stored persistWithRetry(Long roomId, ChatMessageCreateRequest request,
+                                                      String senderPosition) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return chatMessageWriter.persist(roomId, request, senderPosition);
+            } catch (PessimisticLockingFailureException e) {
+                if (attempt >= SEND_ATTEMPTS) {
+                    chatSendMetrics.failed();
+                    log.error("[Chat Service] 교착으로 {}번 실패 — 포기: roomId={}", attempt, roomId);
+                    throw e;
+                }
+                chatSendMetrics.deadlockRetry();
+                log.warn("[Chat Service] 교착으로 되돌아감 — 다시 시도 {}/{}: roomId={}", attempt + 1, SEND_ATTEMPTS, roomId);
+                pause(20L * attempt);
+            } catch (DataIntegrityViolationException e) {
+                Optional<ChatMessageDTO> existing = chatMessageWriter.findExistingDto(
+                        roomId, request.getSenderId(), request.getClientMessageId());
+                if (existing.isPresent()) {
+                    log.info("[Chat Service] 같은 식별자가 방금 먼저 저장됨 — 기존 메시지 반환: clientMessageId={}",
+                            request.getClientMessageId());
+                    return new ChatMessageWriter.Stored(existing.get(), true);
+                }
+                chatSendMetrics.failed();
+                throw e;
+            } catch (RuntimeException e) {
+                chatSendMetrics.failed();
+                throw e;
+            }
+        }
+    }
+
+    private static void pause(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** 트랜잭션 안에서 불렸으면 커밋 뒤에, 아니면 지금 바로 실행한다. */
+    private static void afterCommit(Runnable task) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+        } else {
+            task.run();
+        }
     }
 
     /**
@@ -1028,17 +1055,6 @@ public class ChatService {
         messagingTemplate.convertAndSend("/topic/chat/" + room.getId(), wsMessage);
     }
 
-    private void markMessageAsRead(ChatMessage message, String userId, String userName) {
-        if (!chatMessageReadRepository.existsByMessageAndPerson(message.getId(), person(userId).memberId(), person(userId).appUserId())) {
-            ChatMessageRead read = ChatMessageRead.builder()
-                    .message(message)
-                    .userId(userId)
-                    .userName(userName)
-                    .build();
-            chatMessageReadRepository.save(read);
-        }
-    }
-
     /** 메시지 id별 읽은 사람 수. 결과에 없는 메시지는 아무도 읽지 않은 것(0)이다. */
     private Map<Long, Long> readCounts(List<Long> messageIds) {
         if (messageIds.isEmpty()) {
@@ -1278,16 +1294,7 @@ public class ChatService {
             }
         };
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    chatNotificationExecutor.execute(task);
-                }
-            });
-        } else {
-            chatNotificationExecutor.execute(task);
-        }
+        afterCommit(() -> chatNotificationExecutor.execute(task));
     }
 
     /**

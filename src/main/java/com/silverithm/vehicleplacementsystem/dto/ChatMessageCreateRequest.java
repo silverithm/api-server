@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Getter
@@ -17,6 +18,14 @@ public class ChatMessageCreateRequest {
     private String senderName;
 
     private String senderPosition;
+
+    /**
+     * 보내는 쪽이 붙인 메시지 식별자(UUID). 같은 값으로 다시 보내면 서버는 새로 저장하지 않고
+     * 처음 저장한 메시지를 돌려준다. 소켓으로 보낸 뒤 응답을 못 받아 REST로 다시 보내는 경우가
+     * 그렇다. 없으면(구버전) 매번 새 메시지다.
+     */
+    @Size(max = 64, message = "clientMessageId는 64자 이하여야 합니다")
+    private String clientMessageId;
 
     private String type; // TEXT, IMAGE, FILE, SYSTEM
 

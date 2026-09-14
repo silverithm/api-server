@@ -61,6 +61,7 @@ class ChatServiceEditMessageTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private EntityManager em;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager txManager;
 
     private static ChatNotificationExecutor directExecutor() {
         ChatNotificationExecutor executor = new ChatNotificationExecutor();
@@ -86,7 +87,10 @@ class ChatServiceEditMessageTest {
                 memberRepository, userRepository,
                 messagingTemplate, mock(NotificationService.class),
                 mock(ResourceScopeGuard.class), directExecutor(),
-                new ChatReadRecorder(chatMessageReadRepository, em));
+                new ChatReadRecorder(chatMessageReadRepository, txManager),
+                ChatTestSupport.writer(chatRoomRepository, chatParticipantRepository,
+                        chatMessageRepository, chatMessageReadRepository),
+                ChatTestSupport.metrics());
 
         Company company = companyRepository.save(Company.of("테스트기관", "서울", null));
         room = chatRoomRepository.save(ChatRoom.builder()

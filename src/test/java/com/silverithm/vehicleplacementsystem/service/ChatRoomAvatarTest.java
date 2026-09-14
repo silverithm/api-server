@@ -59,6 +59,7 @@ class ChatRoomAvatarTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private EntityManager em;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager txManager;
 
     private ChatService chatService;
     private Long companyId;
@@ -80,7 +81,10 @@ class ChatRoomAvatarTest {
                 memberRepository, userRepository,
                 mock(SimpMessagingTemplate.class), mock(NotificationService.class),
                 mock(ResourceScopeGuard.class), directExecutor(),
-                new ChatReadRecorder(chatMessageReadRepository, em));
+                new ChatReadRecorder(chatMessageReadRepository, txManager),
+                ChatTestSupport.writer(chatRoomRepository, chatParticipantRepository,
+                        chatMessageRepository, chatMessageReadRepository),
+                ChatTestSupport.metrics());
 
         companyId = companyRepository.save(Company.of("숲속재활어르신재가복지센터", "서울", null)).getId();
     }

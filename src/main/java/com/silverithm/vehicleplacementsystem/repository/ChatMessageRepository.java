@@ -15,6 +15,11 @@ import java.util.Optional;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
+    /** 같은 사람이 같은 식별자로 이미 보낸 메시지 — 재전송을 두 번째 메시지로 만들지 않기 위한 조회. */
+    @EntityGraph(attributePaths = {"replyTo"})
+    Optional<ChatMessage> findByChatRoomIdAndSenderIdAndClientMessageId(
+            Long chatRoomId, String senderId, String clientMessageId);
+
     /**
      * 축소본이 아직 없는 사진 메시지 — 목록이 원본(수 MB)을 그대로 그리고 있던 것들.
      *

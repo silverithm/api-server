@@ -2,33 +2,46 @@ package com.silverithm.vehicleplacementsystem.config;
 
 import com.silverithm.vehicleplacementsystem.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.messaging.simp.stomp.StompCommand;
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
-import com.silverithm.vehicleplacementsystem.util.PrivacyMask;
 
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
-@Slf4j
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    /** 서버·클라이언트가 서로 살아 있는지 확인하는 간격. 앱·웹 클라이언트도 10초로 맞춰져 있다. */
+    private static final long HEARTBEAT_MS = 10_000L;
+
     private final JwtTokenProvider jwtTokenProvider;
+
+    /**
+     * 브로커 하트비트용 스케줄러. 이게 없으면 심플 브로커의 하트비트가 꺼진 채 돈다.
+     *
+     * 꺼져 있으면 폰이 화면을 끄거나 망을 옮겨 소켓이 조용히 죽어도 서버는 세션을 살아 있다고
+     * 믿는다 — 그 세션으로 방송한 메시지는 아무 데도 가지 않는다.
+     */
+    @Bean
+    public ThreadPoolTaskScheduler webSocketHeartbeatScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(1);
+        scheduler.setThreadNamePrefix("ws-heartbeat-");
+        scheduler.initialize();
+        return scheduler;
+    }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // 클라이언트가 구독할 수 있는 토픽 prefix
-        config.enableSimpleBroker("/topic", "/queue");
+        config.enableSimpleBroker("/topic", "/queue")
+                .setHeartbeatValue(new long[]{HEARTBEAT_MS, HEARTBEAT_MS})
+                .setTaskScheduler(webSocketHeartbeatScheduler());
 
         // 클라이언트가 메시지를 보낼 때 사용할 prefix
         config.setApplicationDestinationPrefixes("/app");
@@ -39,6 +52,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // 거절 사유를 본문에도 싣는다 — 이유는 StompAuthErrorHandler 참고
+        registry.setErrorHandler(new StompAuthErrorHandler());
+
         // WebSocket 엔드포인트 설정
         registry.addEndpoint("/ws/chat")
                 .setAllowedOriginPatterns("*")
@@ -51,45 +67,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(new ChannelInterceptor() {
-            @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
-                StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(
-                        message, StompHeaderAccessor.class);
-
-                if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    log.info("[WebSocket] 새 연결 시도: sessionId={}", accessor.getSessionId());
-
-                    // JWT 토큰 검증
-                    String token = accessor.getFirstNativeHeader("Authorization");
-                    if (token != null && token.startsWith("Bearer ")) {
-                        try {
-                            String jwt = token.substring(7);
-                            if (jwtTokenProvider.validateToken(jwt)) {
-                                var auth = jwtTokenProvider.getAuthentication(jwt);
-                                accessor.setUser(auth);
-                                log.info("[WebSocket] 인증 성공: user={}", PrivacyMask.email(auth.getName()));
-                            }
-                        } catch (Exception e) {
-                            log.warn("[WebSocket] 토큰 검증 실패: {}", e.getMessage());
-                        }
-                    } else {
-                        log.warn("[WebSocket] Authorization 헤더 없음 — 연결 거부: sessionId={}", accessor.getSessionId());
-                        throw new org.springframework.messaging.MessageDeliveryException("인증이 필요합니다");
-                    }
-                }
-
-                if (accessor != null && StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
-                    log.debug("[WebSocket] 구독: destination={}, sessionId={}",
-                            accessor.getDestination(), accessor.getSessionId());
-                }
-
-                if (accessor != null && StompCommand.DISCONNECT.equals(accessor.getCommand())) {
-                    log.info("[WebSocket] 연결 해제: sessionId={}", accessor.getSessionId());
-                }
-
-                return message;
-            }
-        });
+        registration.interceptors(new StompAuthChannelInterceptor(jwtTokenProvider));
     }
 }

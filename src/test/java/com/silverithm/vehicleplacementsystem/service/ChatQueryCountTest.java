@@ -62,6 +62,7 @@ class ChatQueryCountTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private EntityManager em;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager txManager;
 
     /** 테스트에서는 알림 스레드를 그 자리에서 돌린다 (전송 자체는 목이라 실제 호출은 없다) */
     private static ChatNotificationExecutor directExecutor() {
@@ -89,7 +90,10 @@ class ChatQueryCountTest {
                 memberRepository, userRepository,
                 mock(SimpMessagingTemplate.class), mock(NotificationService.class),
                 mock(ResourceScopeGuard.class), directExecutor(),
-                new ChatReadRecorder(chatMessageReadRepository, em));
+                new ChatReadRecorder(chatMessageReadRepository, txManager),
+                ChatTestSupport.writer(chatRoomRepository, chatParticipantRepository,
+                        chatMessageRepository, chatMessageReadRepository),
+                ChatTestSupport.metrics());
 
         Company company = companyRepository.save(Company.of("테스트기관", "서울", null));
         companyId = company.getId();

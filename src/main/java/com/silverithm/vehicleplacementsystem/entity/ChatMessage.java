@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "chat_messages")
+@Table(name = "chat_messages",
+       uniqueConstraints = @UniqueConstraint(name = "uk_chat_message_client_id",
+               columnNames = {"chat_room_id", "sender_id", "client_message_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,6 +42,13 @@ public class ChatMessage {
 
     @Column(nullable = false)
     private String senderName;
+
+    /**
+     * 보내는 쪽이 붙인 식별자(UUID). 같은 메시지를 다시 보내도 한 건만 남게 하는 열쇠 —
+     * (방, 보낸 사람, 이 값)이 유니크다. 구버전 클라이언트는 안 보내므로 null이다.
+     */
+    @Column(name = "client_message_id", length = 64)
+    private String clientMessageId;
 
     @Column
     private String senderPosition;

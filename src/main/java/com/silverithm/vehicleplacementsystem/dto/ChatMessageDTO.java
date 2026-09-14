@@ -31,6 +31,8 @@ public class ChatMessageDTO {
     private Long senderRefId;
     private String senderName;
     private String senderPosition;
+    /** 보내는 쪽이 붙인 식별자. 보낸 사람이 자기 '전송 중' 말풍선을 이 값으로 찾아 바꾼다. */
+    private String clientMessageId;
     private String type;
     private String content;
     private LocalDateTime createdAt;
@@ -74,6 +76,7 @@ public class ChatMessageDTO {
                 .senderRefId(person.refId())
                 .senderName(message.getSenderName())
                 .senderPosition(message.getSenderPosition())
+                .clientMessageId(message.getClientMessageId())
                 .type(message.getType().name())
                 .content(message.getContent())
                 .createdAt(message.getCreatedAt())

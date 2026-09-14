@@ -774,10 +774,17 @@ public class ChatController {
             // 사진 여러 장을 한 번에 보낼 때의 묶음 정보 — 알림을 마지막 장에 한 번만 보내기 위한 것.
             // 안 보내면(구버전 앱, 한 장짜리 전송) 지금까지처럼 장마다 알림이 나간다.
             @RequestParam(required = false) String batchId,
-            @RequestParam(required = false) Integer batchSize) {
+            @RequestParam(required = false) Integer batchSize,
+            // 재전송을 두 번째 메시지로 만들지 않기 위한 식별자 — ChatMessageCreateRequest.clientMessageId
+            @RequestParam(required = false) String clientMessageId) {
 
         try {
             senderId = chatCallerResolver.resolveSelf(senderId);
+            if (clientMessageId != null && clientMessageId.length() > 64) {
+                return ResponseEntity.badRequest()
+                        .headers(getCorsHeaders())
+                        .body(Map.of("error", "clientMessageId는 64자 이하여야 합니다"));
+            }
             log.info("[Chat API] 파일 업로드 시작: roomId={}, fileName={}, fileSize={}, senderId={}",
                     roomId, file.getOriginalFilename(), file.getSize(), senderId);
 
@@ -830,6 +837,7 @@ public class ChatController {
                     .thumbnailUrl(thumbnailUrl)
                     .batchId(batchId)
                     .batchSize(batchSize)
+                    .clientMessageId(clientMessageId)
                     .build();
 
             log.info("[Chat API] ChatService.sendMessage 호출");
