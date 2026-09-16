@@ -192,6 +192,22 @@ public class NotificationService {
         return NotificationDTO.fromEntity(saved);
     }
 
+    /**
+     * 채팅방을 읽었을 때 관련 알림(bell)도 같이 읽음 처리한다.
+     * recipientUserId는 채팅 사용자 식별자 규약(관리자 admin_<id>, 멤버는 원시 id)을 그대로 따라야
+     * 호출자가 넘긴 userId와 매칭된다 — sendMessageNotification이 저장할 때 쓰는 값과 동일해야 한다.
+     */
+    @Transactional
+    public int markReadByRelatedEntity(String recipientUserId, Long relatedEntityId, String relatedEntityType) {
+        int updated = notificationRepository.markReadByRelatedEntity(
+                recipientUserId, relatedEntityId, relatedEntityType, LocalDateTime.now());
+
+        log.info("[Notification Service] 관련 엔티티 알림 읽음 처리: recipientUserId={}, relatedEntityId={}, relatedEntityType={}, updated={}",
+                recipientUserId, relatedEntityId, relatedEntityType, updated);
+
+        return updated;
+    }
+
     @Transactional
     public void markAllAsRead(String userId) {
         log.info("[Notification Service] 전체 알림 읽음 처리: userId={}", userId);

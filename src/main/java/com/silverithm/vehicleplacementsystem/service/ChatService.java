@@ -868,6 +868,10 @@ public class ChatService {
         participant.updateLastRead(lastMessageId);
         chatParticipantRepository.save(participant);
 
+        // 방을 읽었으면 알림함에 남아있는 이 방의 CHAT 알림도 같이 읽음 처리한다.
+        // 여기서 recipientUserId를 저장할 때 쓴 것과 같은 식별자(userId)를 그대로 넘겨야 매칭된다.
+        notificationService.markReadByRelatedEntity(userId, roomId, "chatRoom");
+
         // 안읽은 메시지들에 대해 읽음 기록 추가.
         // 메시지마다 '조회 + 중복 확인 + 저장'으로 세 번씩 나가던 것을, 대상 조회 한 번 + 저장으로 줄인다.
         // (findUnreadMessageIds가 이미 NOT EXISTS로 걸러 오므로 건별 중복 확인이 필요 없다)

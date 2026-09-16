@@ -156,7 +156,7 @@ public class AttendanceService {
                 elderly.getUser() != null ? elderly.getUser().getCompany() : null);
 
         LocalDate targetDate = request.dateOrToday();
-        ElderAttendanceStatus status = ElderAttendanceStatus.valueOf(request.status());
+        ElderAttendanceStatus status = parseElderAttendanceStatus(request.status());
 
         ElderAttendance attendance = elderAttendanceRepository
                 .findByElderlyIdAndDate(request.elderlyId(), targetDate)
@@ -171,6 +171,21 @@ public class AttendanceService {
             attendance.updatePersonalTransport(request.personalPickupOrFalse(), request.personalDropoffOrFalse());
             if (request.note() != null) attendance.updateNote(request.note());
             elderAttendanceRepository.save(attendance);
+        }
+    }
+
+    /**
+     * status가 null/공백이거나 ElderAttendanceStatus에 없는 값이면 IllegalArgumentException(400)으로
+     * 명확히 응답한다 — 예전엔 valueOf가 그대로 터져 500 + 앱에는 "저장 실패"만 보였다.
+     */
+    private ElderAttendanceStatus parseElderAttendanceStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("출결 상태를 입력해주세요.");
+        }
+        try {
+            return ElderAttendanceStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("올바르지 않은 출결 상태입니다: " + status);
         }
     }
 

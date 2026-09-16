@@ -50,12 +50,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
+    /**
+     * 서비스 레이어에서 잘못된 입력(존재하지 않는 참조, 알 수 없는 enum 값 등)을
+     * IllegalArgumentException으로 던지는 경우 — 핸들러가 없으면 generic 핸들러로
+     * 떨어져 500이 나가지만, 실제로는 클라이언트 요청이 잘못된 것이므로 400이 맞다.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("잘못된 요청: {}", ex.getMessage());
+
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, String>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
         log.error("파일 크기 초과: {}", ex.getMessage());
 
         Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "파일 크기가 너무 큽니다. 최대 50MB까지 업로드 가능합니다.");
+        // 서블릿 멀티파트 전역 한도(MultipartConfig 참조) 초과 시의 최종 안전망 — 카테고리별
+        // 실제 한도(예: attachments 50MB)는 FileController/PlazaController가 먼저 걸러낸다.
+        errorResponse.put("error", "파일 크기가 너무 큽니다. 최대 100MB까지 업로드 가능합니다.");
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }

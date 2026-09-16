@@ -36,19 +36,19 @@ public class AttendanceController {
     }
 
     @PostMapping("/employee")
-    public ResponseEntity<String> checkEmployeeAttendance(
+    public ResponseEntity<Map<String, Object>> checkEmployeeAttendance(
             @RequestParam Long companyId,
             @RequestBody EmployeeAttendanceRequestDTO request) {
         attendanceService.checkEmployeeAttendance(companyId, request);
-        return ResponseEntity.ok("Success");
+        return ResponseEntity.ok(Map.of("saved", true));
     }
 
     @PostMapping("/employee/bulk")
-    public ResponseEntity<String> bulkCheckEmployeeAttendance(
+    public ResponseEntity<Map<String, Object>> bulkCheckEmployeeAttendance(
             @RequestParam Long companyId,
             @RequestBody List<EmployeeAttendanceRequestDTO> requests) {
         attendanceService.bulkCheckEmployeeAttendance(companyId, requests);
-        return ResponseEntity.ok("Success");
+        return ResponseEntity.ok(Map.of("saved", true));
     }
 
     // ==================== 어르신 출석 ====================
@@ -78,19 +78,19 @@ public class AttendanceController {
     }
 
     @PostMapping("/elder")
-    public ResponseEntity<String> checkElderAttendance(
+    public ResponseEntity<Map<String, Object>> checkElderAttendance(
             @RequestParam Long companyId,
             @RequestBody ElderAttendanceRequestDTO request) {
         attendanceService.checkElderAttendance(companyId, request);
-        return ResponseEntity.ok("Success");
+        return ResponseEntity.ok(Map.of("saved", true));
     }
 
     @PostMapping("/elder/bulk")
-    public ResponseEntity<String> bulkCheckElderAttendance(
+    public ResponseEntity<Map<String, Object>> bulkCheckElderAttendance(
             @RequestParam Long companyId,
             @RequestBody List<ElderAttendanceRequestDTO> requests) {
         attendanceService.bulkCheckElderAttendance(companyId, requests);
-        return ResponseEntity.ok("Success");
+        return ResponseEntity.ok(Map.of("saved", true));
     }
 
     // ==================== 공통 ====================

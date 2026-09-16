@@ -52,9 +52,10 @@ public class FileController {
             log.info("[File API] 파일 업로드 요청: fileName={}, size={}, category={}",
                     file.getOriginalFilename(), file.getSize(), category);
 
-            // 파일 크기 제한 — 결재 문서(approvals)는 스캔 PDF, 회의록(meetings)은 녹음 파일이 커서
-            // 서버 멀티파트 한도(50MB)까지 허용
-            long maxSize = ("approvals".equals(category) || "meetings".equals(category) ? 50L : 10L)
+            // 파일 크기 제한 — 결재 문서(approvals)는 스캔 PDF, 회의록(meetings)은 녹음 파일이,
+            // 기관 자료실(attachments)은 매뉴얼·서식 묶음 PDF/zip이 커서 50MB까지 허용한다.
+            // 그 외(templates/signatures/seals/profiles)는 작은 파일만 오가므로 10MB로 좁게 묶어둔다.
+            long maxSize = (Set.of("approvals", "meetings", "attachments").contains(category) ? 50L : 10L)
                     * 1024 * 1024;
             if (file.getSize() > maxSize) {
                 return ResponseEntity.badRequest()

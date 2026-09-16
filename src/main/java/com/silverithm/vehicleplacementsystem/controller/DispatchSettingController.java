@@ -78,6 +78,15 @@ public class DispatchSettingController {
      */
     @GetMapping("/driver-roles")
     public ResponseEntity<?> getDriverRoles(@RequestParam Long companyId, @RequestParam String memberName) {
+        return getDriverRolesInternal(companyId, memberName);
+    }
+
+    /**
+     * 클래스 레벨 @RequestMapping("/api/v1/dispatch-settings")이 메서드 경로 앞에 항상 붙기 때문에,
+     * 그 밖의 절대경로(/api/dispatch-settings/driver-roles, 옛 배포 앱 호환용)는 이 컨트롤러
+     * 안에서 매핑할 수 없다. {@link DispatchSettingLegacyController}가 이 메서드를 그대로 재사용한다.
+     */
+    ResponseEntity<?> getDriverRolesInternal(Long companyId, String memberName) {
         try {
             String json = repository.findByCompanyId(companyId)
                     .map(DispatchSetting::getSettingsJson)

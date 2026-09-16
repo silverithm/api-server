@@ -34,6 +34,9 @@ public class PlazaController {
 
     private final PlazaService plazaService;
 
+    /** 자료실 업로드 한도 — FileController의 attachments(기관 자료실)와 동일한 50MB. */
+    private static final long LIBRARY_MAX_FILE_SIZE_BYTES = 50L * 1024 * 1024;
+
     private String currentUserId(Authentication authentication) {
         return authentication != null ? authentication.getName() : null;
     }
@@ -337,6 +340,12 @@ public class PlazaController {
             String userId = requireUserId(authentication);
             if (file.isEmpty() || title == null || title.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "제목과 파일이 필요합니다"));
+            }
+            // 자료실은 FileController의 attachments와 같은 한도(50MB)로 맞춘다 — 멀티파트 전역 한도
+            // (100MB)에만 맡기면 서버가 너무 큰 자료도 그대로 받아 저장 공간을 잠식한다.
+            if (file.getSize() > LIBRARY_MAX_FILE_SIZE_BYTES) {
+                return ResponseEntity.badRequest().body(Map.of("error",
+                        "파일 크기는 " + (LIBRARY_MAX_FILE_SIZE_BYTES / 1024 / 1024) + "MB를 초과할 수 없습니다."));
             }
             Long id = plazaService.uploadLibraryItem(category, title.trim(),
                     description != null ? description.trim() : null,
