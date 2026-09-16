@@ -136,7 +136,7 @@ public class UserService {
                         findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                         findUser.getCompany().getCompanyCode(),
                         tokenInfo, new SubscriptionResponseDTO(), findUser.getCustomerKey(),
-                        findUser.getProfileImageUrl());
+                        findUser.getProfileImageUrl(), findUser.getEmail(), AdminDisplay.position(findUser));
             }
 
             return new SigninResponseDTO(findUser.getId(), findUser.getUsername(), findUser.getCompany().getId(),
@@ -144,7 +144,7 @@ public class UserService {
                     findUser.getCompany().getCompanyAddress(), findUser.getCompany().getAddressName(),
                     findUser.getCompany().getCompanyCode(),
                     tokenInfo, new SubscriptionResponseDTO(findUser.getSubscription()), findUser.getCustomerKey(),
-                    findUser.getProfileImageUrl());
+                    findUser.getProfileImageUrl(), findUser.getEmail(), AdminDisplay.position(findUser));
 
         } catch (AuthenticationException e) {
             throw new CustomException("아이디 또는 비밀번호가 올바르지 않습니다", HttpStatus.UNPROCESSABLE_ENTITY);
