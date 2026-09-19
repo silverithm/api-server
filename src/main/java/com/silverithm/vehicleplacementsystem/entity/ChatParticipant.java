@@ -82,9 +82,23 @@ public class ChatParticipant {
         this.leaveReason = reason;
     }
 
+    /**
+     * 읽음 위치는 앞으로만 움직인다.
+     *
+     * 앱은 보내는 중인 내 메시지에 임시 음수 번호를 붙이는데, 그 말풍선이 목록 맨 앞에 있을 때
+     * 그 번호로 읽음 처리를 보내 왔다. 전에는 그대로 덮어써서 읽음 위치가 음수가 되고, 안읽음 수가
+     * 방 전체(1,153건)로 되살아났다(2026-09-19 지표 점검). 0 이하이거나 지금보다 뒤로 가는 값은
+     * 무시한다 — 늦게 도착한 옛 읽음 요청이 위치를 되감는 것도 같이 막는다.
+     */
     public void updateLastRead(Long messageId) {
+        if (messageId == null || messageId <= 0) {
+            return;
+        }
         this.lastReadAt = LocalDateTime.now();
-        this.lastReadMessageId = messageId;
+        if (this.lastReadMessageId == null || this.lastReadMessageId <= 0
+                || messageId > this.lastReadMessageId) {
+            this.lastReadMessageId = messageId;
+        }
     }
 
     public enum ParticipantRole {
