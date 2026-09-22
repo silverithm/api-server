@@ -133,6 +133,9 @@ public class ApprovalRequestController {
                     .headers(getCorsHeaders())
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 상세 조회 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -205,6 +208,9 @@ public class ApprovalRequestController {
             return ResponseEntity.badRequest()
                     .headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 임시저장 갱신 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -233,6 +239,9 @@ public class ApprovalRequestController {
             return ResponseEntity.badRequest()
                     .headers(getCorsHeaders()).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 임시저장 상신 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -317,6 +326,9 @@ public class ApprovalRequestController {
                     ));
 
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 첨부파일 수정 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -354,6 +366,9 @@ public class ApprovalRequestController {
                     .headers(getCorsHeaders())
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 승인 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -394,6 +409,9 @@ public class ApprovalRequestController {
                     .headers(getCorsHeaders())
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 반려 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -494,6 +512,9 @@ public class ApprovalRequestController {
                     .headers(getCorsHeaders())
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
             log.error("[Approval API] 취소 오류:", e);
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
@@ -656,6 +677,22 @@ public class ApprovalRequestController {
         if (!accessService.isCompanyAdmin(caller, companyId)) {
             throw new SecurityException("과거 문서 이관은 기관 관리자만 할 수 있습니다");
         }
+    }
+
+    /**
+     * 지워졌거나 없는 결재 문서 — 서버 오류(500)가 아니라 404로 알린다.
+     * 앱이 목록을 새로 받기 전에 지워진 문서를 열거나 반려하려 할 때 생긴다 (2026-09-22 777번).
+     * 앱은 404 또는 이 문구를 보고 목록에서 그 문서를 뺀다.
+     */
+    private static boolean isNotFound(Exception e) {
+        return e.getMessage() != null && e.getMessage().contains("찾을 수 없습니다");
+    }
+
+    private ResponseEntity<Map<String, Object>> notFoundResponse(Long id) {
+        log.warn("[Approval API] 없는 결재 문서 요청: id={}", id);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .headers(getCorsHeaders())
+                .body(Map.of("error", "이미 삭제되었거나 찾을 수 없는 결재입니다.", "notFound", true));
     }
 
     @RequestMapping(method = RequestMethod.OPTIONS)
