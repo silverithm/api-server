@@ -27,6 +27,9 @@ public class ChatRoomDTO {
     private int participantCount;
     private ChatMessageDTO lastMessage;
     private int unreadCount;
+    /** 내가 이 방을 목록 맨 위에 고정했는지 (참가자별) */
+    private boolean pinned;
+    private LocalDateTime pinnedAt;
     private List<ChatParticipantDTO> participants;
 
     /**

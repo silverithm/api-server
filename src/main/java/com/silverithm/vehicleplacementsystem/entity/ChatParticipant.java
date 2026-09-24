@@ -64,6 +64,10 @@ public class ChatParticipant {
     @Column
     private LeaveReason leaveReason;
 
+    /** 이 사람이 방을 목록 맨 위에 고정한 시각. 비어 있으면 고정하지 않은 것 (V1.94.0). */
+    @Column(name = "pinned_at")
+    private LocalDateTime pinnedAt;
+
     @PrePersist
     protected void onCreate() {
         joinedAt = LocalDateTime.now();
@@ -74,6 +78,21 @@ public class ChatParticipant {
         // 이 호출이 위 if 안에 들어가면 안 된다 — isActive는 @Builder.Default로 항상 값이 있어
         // 그 블록이 돌지 않고, 참조 칼럼이 전부 NULL로 저장돼 조회에서 사라진다(실제 사고).
         syncPersonRef();
+    }
+
+    /** 방 고정/해제 — 고정은 사람마다 다르다. 이미 고정된 방을 다시 고정해도 시각을 바꾸지 않는다. */
+    public void setPinned(boolean pinned) {
+        if (pinned) {
+            if (this.pinnedAt == null) {
+                this.pinnedAt = LocalDateTime.now();
+            }
+        } else {
+            this.pinnedAt = null;
+        }
+    }
+
+    public boolean isPinned() {
+        return this.pinnedAt != null;
     }
 
     public void leave(LeaveReason reason) {

@@ -210,6 +210,31 @@ public class ChatController {
     }
 
     /**
+     * 채팅방 고정/해제 — 내 목록에서만 맨 위에 둔다. body: {"pinned": true|false}
+     */
+    @PutMapping("/rooms/{roomId}/pin")
+    public ResponseEntity<Map<String, Object>> setRoomPinned(
+            @PathVariable Long roomId,
+            @RequestParam(required = false) String userId,
+            @RequestBody Map<String, Object> request) {
+
+        try {
+            String callerId = chatCallerResolver.resolveSelf(userId);
+            boolean pinned = Boolean.TRUE.equals(request.get("pinned"))
+                    || "true".equals(String.valueOf(request.get("pinned")));
+            boolean result = chatService.setRoomPinned(roomId, callerId, pinned);
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("success", true, "pinned", result));
+        } catch (Exception e) {
+            log.error("[Chat API] 채팅방 고정 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "채팅방 고정 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
      * 채팅방 나가기
      */
     @PostMapping("/rooms/{roomId}/leave")

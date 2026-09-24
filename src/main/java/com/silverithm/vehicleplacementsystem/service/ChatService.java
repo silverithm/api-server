@@ -31,6 +31,8 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.List;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -134,6 +136,14 @@ public class ChatService {
 
         Map<Long, List<ChatRoomAvatarDTO>> avatarsByRoom = roomAvatars(roomIds, userId);
 
+        // 내가 고정한 방 — 참가 정보는 위에서 이미 한 번에 가져왔다
+        Map<Long, LocalDateTime> pinnedAtByRoom = new HashMap<>();
+        for (ChatParticipant p : myParticipations) {
+            if (p.getPinnedAt() != null) {
+                pinnedAtByRoom.put(p.getChatRoom().getId(), p.getPinnedAt());
+            }
+        }
+
         return rooms.stream()
                 .map(room -> {
                     ChatRoomDTO dto = ChatRoomDTO.fromEntity(room);
@@ -147,9 +157,30 @@ public class ChatService {
 
                     dto.setUnreadCount(unreadByRoom.getOrDefault(room.getId(), 0L).intValue());
 
+                    LocalDateTime pinnedAt = pinnedAtByRoom.get(room.getId());
+                    dto.setPinned(pinnedAt != null);
+                    dto.setPinnedAt(pinnedAt);
+
                     return dto;
                 })
+                // 고정한 방을 맨 위로. 안정 정렬이라 각 묶음 안에서는 최근 대화 순이 그대로 남는다.
+                .sorted(Comparator.comparing((ChatRoomDTO dto) -> !dto.isPinned()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 채팅방을 내 목록 맨 위에 고정하거나 푼다. 고정은 사람마다 다르다 — 다른 참가자의 목록은 그대로다.
+     * 참가 중인 방만 고정할 수 있다.
+     */
+    @Transactional
+    public boolean setRoomPinned(Long roomId, String userId, boolean pinned) {
+        ChatParticipant participant = chatParticipantRepository
+                .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
+                .orElseThrow(() -> new RuntimeException("참가자를 찾을 수 없습니다"));
+        participant.setPinned(pinned);
+        chatParticipantRepository.save(participant);
+        log.info("[Chat Service] 채팅방 고정: roomId={}, userId={}, pinned={}", roomId, userId, pinned);
+        return participant.isPinned();
     }
 
     /**
