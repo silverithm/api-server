@@ -186,12 +186,16 @@ public class ChatController {
     @PutMapping("/rooms/{roomId}")
     public ResponseEntity<Map<String, Object>> updateChatRoom(
             @PathVariable Long roomId,
-            @RequestBody ChatRoomUpdateRequest request) {
+            @RequestBody ChatRoomUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
             log.info("[Chat API] 채팅방 수정: roomId={}", roomId);
 
-            ChatRoomDTO room = chatService.updateChatRoom(roomId, request);
+            // 호출자는 로그인 정보로만 정한다 — 이름 변경 권한(관리자·방 만든 사람)을 여기서 가린다
+            String callerId = chatCallerResolver.resolveSelf(null);
+            ChatRoomDTO room = chatService.updateChatRoom(roomId, request, callerId,
+                    userDetails != null ? userDetails.getUsername() : null);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -200,6 +204,18 @@ public class ChatController {
                             "room", room,
                             "message", "채팅방이 수정되었습니다."
                     ));
+
+        } catch (SecurityException e) {
+            log.warn("[Chat API] 채팅방 수정 권한 없음: roomId={}, {}", roomId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("[Chat API] 채팅방 수정 거절: roomId={}, {}", roomId, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
 
         } catch (Exception e) {
             log.error("[Chat API] 채팅방 수정 오류:", e);

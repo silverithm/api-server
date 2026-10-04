@@ -249,19 +249,42 @@ public class ChatService {
         return ChatRoomDTO.fromEntityWithParticipants(room);
     }
 
+    /** 채팅방 이름 최대 길이 — 목록·머리줄에 한 줄로 보이는 정도 */
+    static final int MAX_ROOM_NAME_LENGTH = 50;
+
     /**
-     * 채팅방 수정
+     * 채팅방 수정.
+     *
+     * 이름은 방 사람 모두의 목록에 바로 보이므로 아무나 바꾸지 못하게 한다 — 기관 관리자이거나
+     * 그 방을 만든 사람만 바꿀 수 있다(2026-10 버그제보방 '채팅방 이름 변경' 요청).
+     * 설명·썸네일은 예전처럼 같은 기관이면 바꿀 수 있다.
+     *
+     * @param callerChatId        로그인 정보에서 얻은 호출자 채팅 id (직원은 memberId, 관리자 계정은 'admin_<id>')
+     * @param requesterIdentifier 로그인 사용자 이름 — 직원 중 관리자 역할인지 볼 때 쓴다
      */
     @Transactional
-    public ChatRoomDTO updateChatRoom(Long roomId, ChatRoomUpdateRequest request) {
-        log.info("[Chat Service] 채팅방 수정: roomId={}", roomId);
+    public ChatRoomDTO updateChatRoom(Long roomId, ChatRoomUpdateRequest request,
+                                      String callerChatId, String requesterIdentifier) {
+        log.info("[Chat Service] 채팅방 수정: roomId={}, caller={}", roomId, callerChatId);
 
         ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다: " + roomId));
         resourceScopeGuard.requireSameCompany(room.getCompany());
 
         if (request.getName() != null) {
-            room.setName(request.getName());
+            String name = request.getName().trim();
+            if (!name.equals(room.getName())) {
+                if (name.isEmpty()) {
+                    throw new IllegalArgumentException("채팅방 이름을 입력해 주세요");
+                }
+                if (name.length() > MAX_ROOM_NAME_LENGTH) {
+                    throw new IllegalArgumentException("채팅방 이름은 " + MAX_ROOM_NAME_LENGTH + "자까지 쓸 수 있습니다");
+                }
+                if (!canRenameRoom(room, callerChatId, requesterIdentifier)) {
+                    throw new SecurityException("채팅방 이름을 바꿀 권한이 없습니다");
+                }
+                room.setName(name);
+            }
         }
         if (request.getDescription() != null) {
             room.setDescription(request.getDescription());
@@ -1277,6 +1300,14 @@ public class ChatService {
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
+    }
+
+    /** 이름 변경 — 기관 관리자 계정·관리자 역할 직원, 또는 방을 만든 사람 */
+    private boolean canRenameRoom(ChatRoom room, String callerChatId, String requesterIdentifier) {
+        if (isAdminChatUserId(callerChatId) || isAdminRequester(requesterIdentifier)) {
+            return true;
+        }
+        return callerChatId != null && callerChatId.equals(room.getCreatedBy());
     }
 
     private boolean isAdminRequester(String requesterIdentifier) {
