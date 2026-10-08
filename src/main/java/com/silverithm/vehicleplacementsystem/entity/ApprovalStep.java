@@ -67,6 +67,10 @@ public class ApprovalStep {
     @Column(name = "reject_reason", length = 1000)
     private String rejectReason;
 
+    /** 승인하면서 남긴 의견 (V1.95.0). 비어 있으면 의견 없이 승인 */
+    @Column(name = "approver_comment", length = 1000)
+    private String comment;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

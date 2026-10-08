@@ -349,8 +349,9 @@ public class ApprovalRequestController {
             log.info("[Approval API] 결재 승인: id={}, processedBy={}, force={}", id, processedByName, force);
 
             String signatureBase64 = body != null ? body.getSignatureBase64() : null;
+            String comment = body != null ? body.getComment() : null;
             ApprovalRequestDTO approval = approvalService.approveRequest(
-                    id, processedBy, processedByName, userDetails, signatureBase64, force);
+                    id, processedBy, processedByName, userDetails, signatureBase64, force, comment);
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -363,6 +364,14 @@ public class ApprovalRequestController {
         } catch (SecurityException e) {
             log.warn("[Approval API] 승인 권한 거부: id={}, {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            if (isNotFound(e)) {
+                return notFoundResponse(id);
+            }
+            log.warn("[Approval API] 승인 요청 거절: id={}, {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

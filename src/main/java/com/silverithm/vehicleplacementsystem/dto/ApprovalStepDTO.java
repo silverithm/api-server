@@ -26,6 +26,7 @@ public class ApprovalStepDTO {
     private String signatureUrl;   // 전체 S3 URL (미서명 시 null)
     private LocalDateTime processedAt;
     private String rejectReason;
+    private String comment;        // 승인하면서 남긴 의견 (없으면 null)
 
     public static ApprovalStepDTO from(ApprovalStep step) {
         return ApprovalStepDTO.builder()
@@ -39,6 +40,7 @@ public class ApprovalStepDTO {
                 .signatureUrl(step.getSignatureUrl())
                 .processedAt(step.getProcessedAt())
                 .rejectReason(step.getRejectReason())
+                .comment(step.getComment())
                 .build();
     }
 }

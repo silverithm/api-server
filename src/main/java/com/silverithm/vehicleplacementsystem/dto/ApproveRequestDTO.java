@@ -17,4 +17,7 @@ public class ApproveRequestDTO {
 
     // data URL(data:image/png;base64,...) 또는 순수 base64 PNG
     private String signatureBase64;
+
+    // 승인하면서 남기는 의견 (선택, 1000자까지)
+    private String comment;
 }

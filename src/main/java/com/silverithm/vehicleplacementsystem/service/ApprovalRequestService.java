@@ -430,6 +430,20 @@ public class ApprovalRequestService {
     // force=true: 관리자 직권 승인(전결) — 남은 검토 단계를 건너뛰고 즉시 최종 승인
     public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName,
                                              UserDetails userDetails, String signatureBase64, boolean force) {
+        return approveRequest(id, processedBy, processedByName, userDetails, signatureBase64, force, null);
+    }
+
+    /** 승인 의견 최대 길이 — 반려 사유(reject_reason)와 같다 */
+    static final int MAX_APPROVER_COMMENT_LENGTH = 1000;
+
+    /**
+     * @param comment 승인하면서 남기는 의견(선택, 2026-10-08 버그제보방 요청). 결재선이 있는 문서에서
+     *                내가 승인한 단계에 남는다. 앞뒤 공백을 지우고, 비면 남기지 않는다.
+     */
+    public ApprovalRequestDTO approveRequest(Long id, String processedBy, String processedByName,
+                                             UserDetails userDetails, String signatureBase64, boolean force,
+                                             String comment) {
+        String approverComment = normalizeApproverComment(comment);
         ApprovalRequest request = requestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("결재 요청을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(request.getCompany());
@@ -459,7 +473,7 @@ public class ApprovalRequestService {
         }
 
         if (force) {
-            return forceApprove(request, processedBy, processedByName, caller, signatureBase64, now);
+            return forceApprove(request, processedBy, processedByName, caller, signatureBase64, now, approverComment);
         }
 
         ApprovalStep step = request.currentStep();
@@ -468,6 +482,7 @@ public class ApprovalRequestService {
         step.setStatus(ApprovalStep.StepStatus.APPROVED);
         step.setSignatureUrl(resolveSignature(caller, signatureBase64));
         step.setProcessedAt(now);
+        step.setComment(approverComment);
 
         if (request.isFinalStep(step)) {
             request.setStatus(ApprovalStatus.APPROVED);
@@ -496,7 +511,8 @@ public class ApprovalRequestService {
 
     // 관리자 직권 승인(전결): 관리자 본인 단계는 서명 날인으로 승인, 나머지 대기 단계는 SKIPPED 처리
     private ApprovalRequestDTO forceApprove(ApprovalRequest request, String processedBy, String processedByName,
-                                            CallerIdentity caller, String signatureBase64, LocalDateTime now) {
+                                            CallerIdentity caller, String signatureBase64, LocalDateTime now,
+                                            String approverComment) {
         if (!accessService.isCompanyAdmin(caller, request.getCompany().getId())) {
             throw new SecurityException("직권 승인은 기관 관리자만 할 수 있습니다.");
         }
@@ -510,6 +526,7 @@ public class ApprovalRequestService {
             if (isCallerStep) {
                 step.setStatus(ApprovalStep.StepStatus.APPROVED);
                 step.setSignatureUrl(resolveSignature(caller, signatureBase64));
+                step.setComment(approverComment);
             } else {
                 step.setStatus(ApprovalStep.StepStatus.SKIPPED);
             }
@@ -1047,5 +1064,20 @@ public class ApprovalRequestService {
             return path;
         }
         return fileStorageService.getFileUrl(path);
+    }
+
+    /** 승인 의견 정리 — 앞뒤 공백 제거, 비면 null, 너무 길면 거절 */
+    static String normalizeApproverComment(String comment) {
+        if (comment == null) {
+            return null;
+        }
+        String trimmed = comment.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > MAX_APPROVER_COMMENT_LENGTH) {
+            throw new IllegalArgumentException("의견은 " + MAX_APPROVER_COMMENT_LENGTH + "자까지 쓸 수 있습니다");
+        }
+        return trimmed;
     }
 }
