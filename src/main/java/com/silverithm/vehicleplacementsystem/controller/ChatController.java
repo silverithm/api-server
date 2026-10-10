@@ -130,7 +130,7 @@ public class ChatController {
         try {
             log.info("[Chat API] 채팅방 상세 조회: roomId={}", roomId);
 
-            ChatRoomDTO room = chatService.getChatRoomDetail(roomId);
+            ChatRoomDTO room = chatService.getChatRoomDetail(roomId, chatCallerResolver.currentChatUserId());
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())
@@ -162,7 +162,8 @@ public class ChatController {
 
             log.info("[Chat API] 방 공지 변경: roomId={}, messageId={}, fileMessageId={}", roomId, messageId, fileMessageId);
 
-            ChatRoomDTO room = chatService.updateChatRoomNotice(roomId, messageId, setByName, fileMessageId);
+            ChatRoomDTO room = chatService.updateChatRoomNotice(roomId, messageId, setByName, fileMessageId,
+                    chatCallerResolver.currentChatUserId());
 
             return ResponseEntity.ok()
                     .headers(getCorsHeaders())

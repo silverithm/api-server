@@ -147,6 +147,7 @@ public class ChatService {
         return rooms.stream()
                 .map(room -> {
                     ChatRoomDTO dto = ChatRoomDTO.fromEntity(room);
+                    dto.setName(DirectRoomName.forViewer(room, userId));
                     dto.setAvatars(avatarsByRoom.getOrDefault(room.getId(), List.of()));
 
                     ChatMessage lastMsg = lastMessageByRoom.get(room.getId());
@@ -240,13 +241,21 @@ public class ChatService {
      */
     @Transactional(readOnly = true)
     public ChatRoomDTO getChatRoomDetail(Long roomId) {
+        return getChatRoomDetail(roomId, null);
+    }
+
+    /** @param viewerChatUserId 보는 사람 — 1:1 방이면 그 사람의 상대 이름으로 부른다 ({@link DirectRoomName}) */
+    @Transactional(readOnly = true)
+    public ChatRoomDTO getChatRoomDetail(Long roomId, String viewerChatUserId) {
         log.info("[Chat Service] 채팅방 상세 조회: roomId={}", roomId);
 
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
         resourceScopeGuard.requireSameCompany(room.getCompany());
 
-        return ChatRoomDTO.fromEntityWithParticipants(room);
+        ChatRoomDTO dto = ChatRoomDTO.fromEntityWithParticipants(room);
+        dto.setName(DirectRoomName.forViewer(room, viewerChatUserId));
+        return dto;
     }
 
     /** 채팅방 이름 최대 길이 — 목록·머리줄에 한 줄로 보이는 정도 */
@@ -294,7 +303,9 @@ public class ChatService {
         }
 
         ChatRoom saved = chatRoomRepository.save(room);
-        return ChatRoomDTO.fromEntity(saved);
+        ChatRoomDTO dto = ChatRoomDTO.fromEntity(saved);
+        dto.setName(DirectRoomName.forViewer(saved, callerChatId));
+        return dto;
     }
 
     /**
@@ -314,6 +325,13 @@ public class ChatService {
      */
     @Transactional
     public ChatRoomDTO updateChatRoomNotice(Long roomId, Long messageId, String setByName, Long fileMessageId) {
+        return updateChatRoomNotice(roomId, messageId, setByName, fileMessageId, null);
+    }
+
+    /** @param viewerChatUserId 응답을 받을 사람 — 1:1 방 이름을 그 사람 쪽에서 부른다 */
+    @Transactional
+    public ChatRoomDTO updateChatRoomNotice(Long roomId, Long messageId, String setByName, Long fileMessageId,
+                                            String viewerChatUserId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("채팅방을 찾을 수 없습니다: " + roomId));
         resourceScopeGuard.requireSameCompany(room.getCompany());
@@ -363,7 +381,10 @@ public class ChatService {
                     roomId, messageId, fileMessageId);
         }
 
-        return ChatRoomDTO.fromEntity(chatRoomRepository.save(room));
+        ChatRoom saved = chatRoomRepository.save(room);
+        ChatRoomDTO dto = ChatRoomDTO.fromEntity(saved);
+        dto.setName(DirectRoomName.forViewer(saved, viewerChatUserId));
+        return dto;
     }
 
     /**
