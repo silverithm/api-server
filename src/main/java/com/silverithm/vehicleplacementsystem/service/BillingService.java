@@ -45,6 +45,15 @@ public class BillingService {
         BillingResponse billingResponse = requestBillingKey(requestDto);
         String encryptedBillingKey = billingKeyEncryptionService.encryptBillingKey(billingResponse.billingKey());
         user.updateBillingKey(encryptedBillingKey);
+        // 토스는 자동결제 승인 때 빌링키를 발급받은 customerKey를 그대로 요구한다.
+        // 정기결제 배치·수동 재결제는 계정에 저장된 customerKey로 요청하므로, 카드 등록 때 쓴 값과
+        // 다르면 첫 결제만 되고 다음 달부터 실패한다. 웹 결제 화면은 로그인 전에도 카드 등록창을
+        // 열 수 있어(임시 customerKey로 등록 → 로그인 후 결제) 두 값이 달라질 수 있다.
+        // 그래서 빌링키와 짝인 customerKey를 계정에 함께 저장한다 (토스 응답 값 우선).
+        String billingCustomerKey = billingResponse.customerKey() != null
+                ? billingResponse.customerKey()
+                : requestDto.getCustomerKey();
+        user.updateCustomerKey(billingCustomerKey);
 
         log.info("빌링키 발급 및 암호화 완료 - 사용자: {}", PrivacyMask.name(user.getUsername()));
     }

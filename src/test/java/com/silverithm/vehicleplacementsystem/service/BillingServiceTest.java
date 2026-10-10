@@ -1,9 +1,12 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.BillingResponse;
 import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionBillingType;
 import com.silverithm.vehicleplacementsystem.entity.SubscriptionType;
+import com.silverithm.vehicleplacementsystem.entity.UserRole;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +41,9 @@ class BillingServiceTest {
 
     @Mock
     private PaymentFailureService paymentFailureService;
+
+    @Mock
+    private BillingKeyEncryptionService billingKeyEncryptionService;
 
     @InjectMocks
     private BillingService billingService;
@@ -293,5 +299,37 @@ class BillingServiceTest {
         assertNotNull(result);
         assertEquals("FAILED", result.status());
         verify(slackService, never()).sendPaymentSuccessNotification(any(String.class), any(String.class), any(Double.class));
+    }
+
+    @Test
+    @DisplayName("빌링키를 발급하면 그 빌링키와 짝인 customerKey를 계정에 저장한다 — 다음 달 자동결제가 같은 키로 나가야 한다")
+    void ensureBillingKey_storesCustomerKeyBoundToBillingKey() {
+        // 로그인 전에 임시 customerKey로 카드를 등록하고, 로그인한 계정에는 예전 키가 들어 있는 상황
+        AppUser user = new AppUser("관리자", "admin@example.com", "encoded", UserRole.ROLE_ADMIN, null, null,
+                "old_customer_key");
+        BillingResponse issued = new BillingResponse(null, "guest_0f8e-4c2a", null, "카드", "billing_key_issued", null);
+        when(restTemplate.exchange(any(String.class), any(org.springframework.http.HttpMethod.class), any(),
+                eq(BillingResponse.class))).thenReturn(ResponseEntity.ok(issued));
+        when(billingKeyEncryptionService.encryptBillingKey("billing_key_issued")).thenReturn("v2:encrypted");
+
+        billingService.ensureBillingKey(user, requestDto);
+
+        assertEquals("guest_0f8e-4c2a", user.getCustomerKey());
+        assertEquals("v2:encrypted", user.getBillingKey());
+    }
+
+    @Test
+    @DisplayName("토스 응답에 customerKey가 없으면 요청에 쓴 customerKey를 저장한다")
+    void ensureBillingKey_fallsBackToRequestedCustomerKey() {
+        AppUser user = new AppUser("관리자", "admin@example.com", "encoded", UserRole.ROLE_ADMIN, null, null,
+                "old_customer_key");
+        BillingResponse issued = new BillingResponse(null, null, null, "카드", "billing_key_issued", null);
+        when(restTemplate.exchange(any(String.class), any(org.springframework.http.HttpMethod.class), any(),
+                eq(BillingResponse.class))).thenReturn(ResponseEntity.ok(issued));
+        when(billingKeyEncryptionService.encryptBillingKey("billing_key_issued")).thenReturn("v2:encrypted");
+
+        billingService.ensureBillingKey(user, requestDto);
+
+        assertEquals("customer_test_123", user.getCustomerKey());
     }
 }
