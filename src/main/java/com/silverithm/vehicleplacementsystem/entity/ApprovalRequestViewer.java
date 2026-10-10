@@ -16,7 +16,12 @@ import java.time.LocalDateTime;
  * 관리자·기안자 본인·결재선 참여자는 여기에 없어도 항상 열람할 수 있다.
  */
 @Entity
-@Table(name = "approval_request_viewers")
+@Table(name = "approval_request_viewers",
+       // 한 문서에 같은 대상을 두 번 넣을 수 없다 (V1.72.0 마이그레이션과 같은 제약).
+       // 엔티티에도 적어 두어야 테스트용 H2 스키마에 제약이 생겨, 열람자를 다시 넣다 터지는 사고를 재현할 수 있다.
+       uniqueConstraints = @UniqueConstraint(
+               name = "uk_approval_request_viewers",
+               columnNames = {"approval_request_id", "viewer_type", "ref_id"}))
 @Getter
 @Setter
 @NoArgsConstructor

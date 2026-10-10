@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1016,8 +1017,32 @@ public class ApprovalRequestService {
             }
         }
 
-        request.getViewers().clear();
-        request.getViewers().addAll(resolved);
+        // 통째로 지우고 다시 넣으면 안 된다 — 한 번의 flush 안에서 Hibernate가 INSERT를 DELETE보다 먼저
+        // 내보내, 그대로 남는 열람자가 하나라도 있으면 (approval_request_id, viewer_type, ref_id) 유니크 키에 걸린다.
+        // 기본 열람자가 있는 양식(수급자 퇴소 체크리스트 등)은 임시저장을 다시 저장하거나 상신하면
+        // 내용을 안 바꿔도 무조건 500이 났다(2026-10-09 버그제보방). 양식 쪽은 applyDefaultViewers가 같은 이유로 대조한다.
+        Map<String, ApprovalRequestViewer> wanted = new LinkedHashMap<>();
+        for (ApprovalRequestViewer viewer : resolved) {
+            wanted.put(viewer.getViewerType() + ":" + viewer.getRefId(), viewer);
+        }
+
+        Set<String> kept = new HashSet<>();
+        request.getViewers().removeIf(viewer -> {
+            String key = viewer.getViewerType() + ":" + viewer.getRefId();
+            ApprovalRequestViewer next = wanted.get(key);
+            if (next == null) {
+                return true;   // 이번에 빠진 열람자 — orphanRemoval이 지운다
+            }
+            kept.add(key);
+            viewer.setViewerName(next.getViewerName());
+            return false;
+        });
+
+        wanted.forEach((key, viewer) -> {
+            if (!kept.contains(key)) {
+                request.getViewers().add(viewer);
+            }
+        });
     }
 
     // DTO 변환 시 S3 URL로 변환

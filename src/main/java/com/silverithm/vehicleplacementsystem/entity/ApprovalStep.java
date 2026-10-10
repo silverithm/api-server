@@ -15,7 +15,11 @@ import java.time.LocalDateTime;
  * 중간 단계에서 반려되면 요청 전체가 반려된다.
  */
 @Entity
-@Table(name = "approval_steps")
+@Table(name = "approval_steps",
+       // 한 문서에 같은 차례가 둘일 수 없다 (V1.30.0 마이그레이션과 같은 제약 — 테스트 H2 스키마에도 걸리게 적어 둔다)
+       uniqueConstraints = @UniqueConstraint(
+               name = "uk_approval_steps_request_order",
+               columnNames = {"approval_request_id", "step_order"}))
 @Getter
 @Setter
 @NoArgsConstructor
