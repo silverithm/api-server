@@ -201,6 +201,14 @@ class ChatMarkAsReadIdempotentTest {
     }
 
     @Test
+    @DisplayName("방에서 나간 사람이 읽음을 보내도 500이 아니라 아무 일도 없다 — 2026-10-12 운영 '참가자를 찾을 수 없습니다'")
+    void markAsReadFromNonParticipantIsNoop() {
+        assertThatCode(() -> chatService.markAsRead(roomId, "99", "나간이", messageId))
+                .doesNotThrowAnyException();
+        assertThat(readRecordCount(messageId)).isZero();
+    }
+
+    @Test
     @DisplayName("처음 읽으면 기록이 남는다 — 중복을 막느라 아예 안 남기면 안 된다")
     void firstReadIsRecorded() {
         chatService.markAsRead(roomId, READER, "읽는이", messageId);

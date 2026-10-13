@@ -935,10 +935,16 @@ public class ChatService {
     public void markAsRead(Long roomId, String userId, String userName, Long lastMessageId) {
         log.info("[Chat Service] 읽음 처리: roomId={}, userId={}, lastMessageId={}", roomId, userId, lastMessageId);
 
-        // 참가자 정보 업데이트
+        // 참가자 정보 업데이트.
+        // 방에서 나갔거나 내보내진 사람의 앱·웹이 아직 그 방을 열어 둔 채 읽음을 보내는 일이 있다.
+        // 예전에는 여기서 예외를 던져 500이 났다(운영 2026-10-12) — 참가자가 아니면 읽을 것도 없으니 조용히 끝낸다.
         ChatParticipant participant = chatParticipantRepository
                 .findActiveByRoomAndPerson(roomId, person(userId).memberId(), person(userId).appUserId())
-                .orElseThrow(() -> new RuntimeException("참가자를 찾을 수 없습니다"));
+                .orElse(null);
+        if (participant == null) {
+            log.info("[Chat Service] 읽음 처리 건너뜀 — 이 방의 참가자가 아님: roomId={}, userId={}", roomId, userId);
+            return;
+        }
 
         participant.updateLastRead(lastMessageId);
         chatParticipantRepository.save(participant);
