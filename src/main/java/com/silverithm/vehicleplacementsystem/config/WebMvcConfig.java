@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.config;
 
+import com.silverithm.vehicleplacementsystem.lab.LabGuardInterceptor;
 import com.silverithm.vehicleplacementsystem.security.AuditLogInterceptor;
 import com.silverithm.vehicleplacementsystem.security.CompanyScopeInterceptor;
 import com.silverithm.vehicleplacementsystem.security.DemoPlazaWriteGuardInterceptor;
@@ -15,6 +16,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final CompanyScopeInterceptor companyScopeInterceptor;
     private final DemoPlazaWriteGuardInterceptor demoPlazaWriteGuardInterceptor;
     private final AuditLogInterceptor auditLogInterceptor;
+    private final LabGuardInterceptor labGuardInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -24,6 +26,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 광장은 전 기관 공유 게시판 — 체험(데모) 계정의 쓰기를 차단한다.
         registry.addInterceptor(demoPlazaWriteGuardInterceptor)
                 .addPathPatterns("/api/v1/plaza/**");
+        // 실험실은 허용된 기관의 관리자에게만 — 열려 있는지 묻는 /access는 누구나 물을 수 있어야 해서 뺀다.
+        registry.addInterceptor(labGuardInterceptor)
+                .addPathPatterns("/api/v1/lab/**")
+                .excludePathPatterns("/api/v1/lab/access");
         // 인증된 쓰기 요청의 감사 로그 (누가·언제·무엇을)
         registry.addInterceptor(auditLogInterceptor)
                 .addPathPatterns("/api/**");
