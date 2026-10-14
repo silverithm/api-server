@@ -15,6 +15,9 @@ public interface LabCopayBillRepository extends JpaRepository<LabCopayBill, Long
 
     List<LabCopayBill> findByCompanyIdAndBillMonth(Long companyId, String billMonth);
 
+    /** 한 해치 — bill_month가 'YYYY-MM' 고정 폭 문자열이라 사전순 범위가 곧 월 범위다(양 끝 포함) */
+    List<LabCopayBill> findByCompanyIdAndBillMonthBetween(Long companyId, String fromMonth, String toMonth);
+
     Optional<LabCopayBill> findByIdAndCompanyId(Long id, Long companyId);
 
     /**

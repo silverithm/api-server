@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 욕창(Braden)·낙상(Morse) 위험도 평가.
+ * 욕창(Braden)·낙상(Morse)·인지기능 위험도 평가.
  *
  * <p>합계와 위험 단계는 항상 서버가 항목 점수에서 계산한다({@link LabRiskScoring}). 평가는 쌓아서 이력으로
  * 남기고, 반기 점검 현황은 어르신별 최신 평가를 보고 웹이 판단한다.
@@ -59,14 +59,24 @@ public class LabRiskAssessmentService {
         // 어르신·종류별로 같은 날 여러 건이면 나중에 쌓은(id 큰) 평가를 최신으로 본다
         Map<Long, LabRiskAssessment> braden = new HashMap<>();
         Map<Long, LabRiskAssessment> morse = new HashMap<>();
+        Map<Long, LabRiskAssessment> cognitive = new HashMap<>();
         for (LabRiskAssessment a : assessments.findLatestPerElderAndKind(companyId)) {
-            Map<Long, LabRiskAssessment> target = LabRiskScoring.BRADEN.equals(a.getKind()) ? braden : morse;
+            Map<Long, LabRiskAssessment> target = switch (a.getKind()) {
+                case LabRiskScoring.BRADEN -> braden;
+                case LabRiskScoring.MORSE -> morse;
+                case LabRiskScoring.COGNITIVE -> cognitive;
+                default -> null;
+            };
+            if (target == null) {
+                continue;
+            }
             target.merge(a.getElderlyId(), a, (x, y) -> x.getId() >= y.getId() ? x : y);
         }
 
         return names.entrySet().stream()
                 .map(e -> new LabRiskDto.Latest(e.getKey(), e.getValue(),
-                        summary(braden.get(e.getKey())), summary(morse.get(e.getKey()))))
+                        summary(braden.get(e.getKey())), summary(morse.get(e.getKey())),
+                        summary(cognitive.get(e.getKey()))))
                 .sorted(Comparator.comparing(LabRiskDto.Latest::elderlyName))
                 .toList();
     }
@@ -81,7 +91,7 @@ public class LabRiskAssessmentService {
 
         String kind = input.kind() == null ? "" : input.kind().strip().toUpperCase();
         if (!LabRiskScoring.isKind(kind)) {
-            throw LabValidation.bad("평가 종류는 BRADEN 또는 MORSE여야 합니다");
+            throw LabValidation.bad("평가 종류는 BRADEN, MORSE, COGNITIVE 중 하나여야 합니다");
         }
         LabRiskScoring.Result result = LabRiskScoring.score(kind, input.scores());
 

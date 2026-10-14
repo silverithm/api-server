@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.lab.service;
 import com.silverithm.vehicleplacementsystem.entity.Elderly;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.ElderRepository;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,24 @@ public class LabElderDirectory {
             names.put(elderly.getId(), elderly.getName() == null ? "" : elderly.getName());
         }
         return names;
+    }
+
+    /**
+     * 여러 어르신이 모두 요청자 기관 소속인지 한 번에 확인하고 이름을 돌려준다(입력 순서 유지).
+     * 프로그램 참여자처럼 id 목록을 받는 곳에서 한 명씩 쿼리하지 않으려는 것이다. 하나라도 소속이 아니면 404.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> requireAllInCompany(Collection<Long> elderlyIds, Long companyId) {
+        Map<Long, String> inCompany = namesInCompany(companyId);
+        Map<Long, String> result = new LinkedHashMap<>();
+        for (Long id : elderlyIds) {
+            String name = inCompany.get(id);
+            if (name == null) {
+                throw notFound();
+            }
+            result.put(id, name);
+        }
+        return result;
     }
 
     /** 이미 소속을 확인한 어르신 1명의 이름 */

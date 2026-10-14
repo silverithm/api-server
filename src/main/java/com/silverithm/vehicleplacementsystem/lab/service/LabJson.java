@@ -3,6 +3,7 @@ package com.silverithm.vehicleplacementsystem.lab.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabCarePlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCopayBillDto;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -37,15 +38,53 @@ final class LabJson {
         }
     }
 
-    static Map<String, Integer> readScores(String json) {
+    /** 평가 점수 — 욕창·낙상은 값이 모두 정수, 인지기능은 도구·판정 같은 문자열도 섞여 있어 값은 Object다 */
+    static Map<String, Object> readScores(String json) {
         if (json == null || json.isBlank()) {
             return new LinkedHashMap<>();
         }
         try {
-            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Integer>>() {
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Object>>() {
             });
         } catch (JsonProcessingException e) {
             return new LinkedHashMap<>();
+        }
+    }
+
+    /** id 배열(프로그램 참여자·교육 참석자). 깨진 값은 빈 목록으로 흘린다 */
+    static List<Long> readIds(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<Long>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** 욕구사정 — 없거나 깨졌으면 모든 영역이 null인 객체 */
+    static LabCarePlanDto.Needs readNeeds(String json) {
+        if (json == null || json.isBlank()) {
+            return new LabCarePlanDto.Needs(null, null, null, null, null, null);
+        }
+        try {
+            return MAPPER.readValue(json, LabCarePlanDto.Needs.class);
+        } catch (JsonProcessingException e) {
+            return new LabCarePlanDto.Needs(null, null, null, null, null, null);
+        }
+    }
+
+    static List<LabCarePlanDto.ServiceItem> readServices(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabCarePlanDto.ServiceItem>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
         }
     }
 }

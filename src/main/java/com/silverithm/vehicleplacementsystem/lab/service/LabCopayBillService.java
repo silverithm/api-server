@@ -63,6 +63,22 @@ public class LabCopayBillService {
                 .toList();
     }
 
+    /**
+     * 그 해 모든 청구서 — 연간 납부 내역(의료비공제용)을 뽑는 데 쓴다. 월 오름차순, 같은 달은 이름순.
+     * 월은 'YYYY-01'부터 'YYYY-12'까지 양 끝을 포함해 읽으므로 전년 12월·다음 해 1월은 섞이지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public List<LabCopayBillDto.View> listByYear(String year) {
+        Long companyId = access.requireCompanyId();
+        int y = LabValidation.year(year, "연도");
+        Map<Long, String> names = elders.namesInCompany(companyId);
+        return bills.findByCompanyIdAndBillMonthBetween(companyId, y + "-01", y + "-12").stream()
+                .map(b -> toView(b, names.getOrDefault(b.getElderlyId(), "")))
+                .sorted(Comparator.comparing(LabCopayBillDto.View::billMonth)
+                        .thenComparing(LabCopayBillDto.View::elderlyName))
+                .toList();
+    }
+
     /** 청구서 저장. 같은 어르신·월이면 내용만 고치고 이미 받은 금액(paidAmount)은 그대로 둔다. */
     public LabCopayBillDto.View upsert(LabCopayBillDto.Input input) {
         Long companyId = access.requireCompanyId();

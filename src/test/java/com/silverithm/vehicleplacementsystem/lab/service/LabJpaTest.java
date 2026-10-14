@@ -25,7 +25,9 @@ import org.springframework.test.context.TestPropertySource;
 @Import({QuerydslConfiguration.class, BillingKeyEncryptionConfig.class, PiiEncryptionConfig.class,
         EncryptedPiiConverter.class, LabElderDirectory.class, LabTestAccess.class,
         LabCareRecordService.class, LabCareDeliveryService.class, LabCopayBillService.class,
-        LabRiskAssessmentService.class, LabEvalCheckService.class})
+        LabRiskAssessmentService.class, LabEvalCheckService.class,
+        LabNursingLogService.class, LabProgramService.class, LabStaffTrainingService.class,
+        LabConsultationService.class, LabCarePlanService.class, LabStaffService.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @TestPropertySource(properties = {
         "spring.profiles.active=test",
