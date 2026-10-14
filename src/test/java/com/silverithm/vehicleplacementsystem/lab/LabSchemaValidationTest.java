@@ -7,6 +7,12 @@ import com.silverithm.vehicleplacementsystem.config.PiiEncryptionConfig;
 import com.silverithm.vehicleplacementsystem.entity.EncryptedPiiConverter;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabBathLog;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabBudget;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabBusinessPlan;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabIntakeInquiry;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabProgramFeedback;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabProgramPlan;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabProgramSchedule;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabSatisfactionResponse;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabBudgetLine;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabCareDelivery;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabCareEvent;
@@ -51,7 +57,7 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.orm.hibernate5.SpringBeanContainer;
 
 /**
- * 실험실 엔티티가 실제 MySQL의 V1.96.0~V1.101.0 표와 맞는지 Hibernate SchemaValidator로 확인한다.
+ * 실험실 엔티티가 실제 MySQL의 V1.96.0~V1.102.0 표와 맞는지 Hibernate SchemaValidator로 확인한다.
  *
  * <p>운영은 ddl-auto=validate라 엔티티와 표가 한 칸만 어긋나도 기동이 막힌다. H2 테스트(create-drop)는
  * 엔티티에서 표를 만들기 때문에 이 어긋남을 절대 잡지 못한다. 그래서 마이그레이션이 적용된 MySQL을
@@ -65,7 +71,7 @@ import org.springframework.orm.hibernate5.SpringBeanContainer;
  */
 class LabSchemaValidationTest {
 
-    // 실험실 엔티티(1차~6차)가 MySQL의 V1.96.0~V1.101.0 표와 일치한다
+    // 실험실 엔티티(1차~7차)가 MySQL의 V1.96.0~V1.102.0 표와 일치한다
     @Test
     void entitiesMatchMigratedMysqlSchema() {
         String url = System.getenv("LAB_SCHEMA_DB_URL");
@@ -134,7 +140,14 @@ class LabSchemaValidationTest {
                         .addAnnotatedClass(LabBathLog.class)
                         .addAnnotatedClass(LabElderContract.class)
                         .addAnnotatedClass(LabDischargeReferral.class)
-                        .addAnnotatedClass(LabClaimReview.class);
+                        .addAnnotatedClass(LabClaimReview.class)
+                        // 7차(V1.102.0)
+                        .addAnnotatedClass(LabProgramPlan.class)
+                        .addAnnotatedClass(LabProgramSchedule.class)
+                        .addAnnotatedClass(LabProgramFeedback.class)
+                        .addAnnotatedClass(LabBusinessPlan.class)
+                        .addAnnotatedClass(LabSatisfactionResponse.class)
+                        .addAnnotatedClass(LabIntakeInquiry.class);
                 Metadata metadata = sources.buildMetadata();
                 // 세션 팩토리를 만드는 순간 표와 엔티티를 대조한다. 어긋난 컬럼·타입이 있으면
                 // SchemaManagementException으로 실패한다

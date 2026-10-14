@@ -3,12 +3,14 @@ package com.silverithm.vehicleplacementsystem.lab.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabBusinessPlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCarePlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCopayBillDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMealPlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMedicationDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMedicineDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabPayrollDto;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabProgramPlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabSafetyCheckDto;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -181,6 +183,45 @@ final class LabJson {
             });
         } catch (JsonProcessingException e) {
             return Collections.emptyList();
+        }
+    }
+
+    /** 월간 계획표 항목. 깨진 값은 빈 목록으로 흘린다 */
+    static List<LabProgramPlanDto.ScheduleItem> readScheduleItems(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabProgramPlanDto.ScheduleItem>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** 사업계획 분야별 항목 — 없거나 깨졌으면 세 분야 모두 빈 목록 */
+    static LabBusinessPlanDto.Sections readBusinessSections(String json) {
+        LabBusinessPlanDto.Sections empty = new LabBusinessPlanDto.Sections(List.of(), List.of(), List.of());
+        if (json == null || json.isBlank()) {
+            return empty;
+        }
+        try {
+            return MAPPER.readValue(json, LabBusinessPlanDto.Sections.class);
+        } catch (JsonProcessingException e) {
+            return empty;
+        }
+    }
+
+    /** 만족도 점수 {문항코드: 점수}. 깨진 값은 빈 맵으로 흘린다 */
+    static Map<String, Integer> readSatisfactionScores(String json) {
+        if (json == null || json.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Integer>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return new LinkedHashMap<>();
         }
     }
 }
