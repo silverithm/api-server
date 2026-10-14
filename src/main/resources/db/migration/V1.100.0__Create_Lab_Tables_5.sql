@@ -127,7 +127,7 @@ CREATE TABLE lab_resource_links (
     content         TEXT          NOT NULL COMMENT '암호화',
     outcome         TEXT          NULL COMMENT '암호화',
     follow_up_on    DATE          NULL,
-    referral_given  BOOLEAN       NOT NULL DEFAULT FALSE COMMENT '연계기록지 제공 여부',
+    referral_given  BOOLEAN       NOT NULL DEFAULT FALSE COMMENT '연계 결과를 보호자에게 알렸는지 — 퇴소 연계기록지와는 별개',
     writer_name     VARCHAR(50)   NULL,
     ai_assisted     BOOLEAN       NOT NULL DEFAULT FALSE,
     created_at      DATETIME(6)   NOT NULL,

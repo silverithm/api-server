@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 /**
  * 외부기관·지역자원 연계 기록. elderly_id가 비어 있으면 어르신 한 명이 아니라 기관 전체의 연계다.
  *
- * <p>담당자 이름·연계 내용·결과는 암호화한다. referral_given은 연계기록지를 상대 기관에 건넸는지 여부다.
+ * <p>담당자 이름·연계 내용·결과는 암호화한다. referral_given은 연계 결과를 보호자에게 알렸는지 여부다(2026 평가의 퇴소 연계기록지와는 별개).
  */
 @Entity
 @Table(name = "lab_resource_links", indexes = {
