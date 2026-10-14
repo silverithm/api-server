@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCarePlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCopayBillDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMealPlanDto;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabMedicationDto;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabMedicineDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabPayrollDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabSafetyCheckDto;
 import java.util.Collections;
@@ -150,6 +152,32 @@ final class LabJson {
         }
         try {
             return MAPPER.readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** 투약의뢰서의 약 목록. 깨진 값은 빈 목록으로 흘린다 */
+    static List<LabMedicationDto.MedicationItem> readMedicationItems(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabMedicationDto.MedicationItem>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** 약품 점검 항목. 깨진 값은 빈 목록으로 흘린다 */
+    static List<LabMedicineDto.CheckItem> readMedicineCheckItems(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabMedicineDto.CheckItem>>() {
             });
         } catch (JsonProcessingException e) {
             return Collections.emptyList();
