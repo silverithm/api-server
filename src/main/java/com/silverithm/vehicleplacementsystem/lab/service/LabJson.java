@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCarePlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCopayBillDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMealPlanDto;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabPayrollDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabSafetyCheckDto;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -110,6 +111,32 @@ final class LabJson {
         }
         try {
             return MAPPER.readValue(json, new TypeReference<List<LabSafetyCheckDto.Item>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** 기타 수당 JSON. 깨진 값은 빈 목록으로 흘린다 */
+    static List<LabPayrollDto.AllowanceView> readAllowances(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabPayrollDto.AllowanceView>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** 기타 공제 JSON. 깨진 값은 빈 목록으로 흘린다 */
+    static List<LabPayrollDto.DeductionView> readDeductions(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabPayrollDto.DeductionView>>() {
             });
         } catch (JsonProcessingException e) {
             return Collections.emptyList();

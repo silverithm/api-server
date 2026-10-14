@@ -43,6 +43,18 @@ final class LabValidation {
         return trimmed;
     }
 
+    /** min~max 정수. 비었거나 범위 밖이면 400 — int/BIGINT 열 범위를 넘는 값이 저장 단계에서 500이 되지 않게 한다 */
+    static long longInRange(Long value, long min, long max, String label) {
+        if (value == null) {
+            throw bad(label + "을(를) 입력해 주세요");
+        }
+        if (value < min || value > max) {
+            throw bad(label + "은(는) " + String.format("%,d", min) + "~" + String.format("%,d", max)
+                    + " 사이여야 합니다");
+        }
+        return value;
+    }
+
     static <T> T required(T value, String label) {
         if (value == null) {
             throw bad(label + "을(를) 입력해 주세요");
