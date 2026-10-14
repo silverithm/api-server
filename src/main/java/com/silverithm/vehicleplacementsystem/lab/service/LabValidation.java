@@ -118,6 +118,17 @@ final class LabValidation {
         }
     }
 
+    /** 본문으로 받은 날짜 — 2000~2100년. DATE 열 범위 밖의 먼 날짜가 저장 단계에서 500이 되지 않게 한다 */
+    static LocalDate plausibleDate(LocalDate value, String label) {
+        if (value == null) {
+            throw bad(label + "을(를) 입력해 주세요");
+        }
+        if (value.getYear() < MIN_YEAR || value.getYear() > MAX_YEAR) {
+            throw bad(label + "은(는) " + MIN_YEAR + "~" + MAX_YEAR + "년 사이여야 합니다");
+        }
+        return value;
+    }
+
     static String oneOf(String value, Set<String> allowed, String label) {
         String text = text(value, 40, label);
         if (text == null || !allowed.contains(text)) {

@@ -27,7 +27,8 @@ import org.springframework.test.context.TestPropertySource;
         LabCareRecordService.class, LabCareDeliveryService.class, LabCopayBillService.class,
         LabRiskAssessmentService.class, LabEvalCheckService.class,
         LabNursingLogService.class, LabProgramService.class, LabStaffTrainingService.class,
-        LabConsultationService.class, LabCarePlanService.class, LabStaffService.class})
+        LabConsultationService.class, LabCarePlanService.class, LabStaffService.class,
+        LabMealPlanService.class, LabSafetyCheckService.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
 @TestPropertySource(properties = {
         "spring.profiles.active=test",
