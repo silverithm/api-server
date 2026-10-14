@@ -142,4 +142,17 @@ final class LabJson {
             return Collections.emptyList();
         }
     }
+
+    /** 문자열 배열(기능회복훈련 항목). 깨진 값은 빈 목록으로 흘린다 */
+    static List<String> readStrings(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<String>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
 }

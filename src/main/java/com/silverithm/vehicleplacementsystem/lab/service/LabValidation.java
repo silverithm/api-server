@@ -2,6 +2,9 @@ package com.silverithm.vehicleplacementsystem.lab.service;
 
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashSet;
@@ -21,7 +24,55 @@ final class LabValidation {
     private static final int MIN_YEAR = 2000;
     private static final int MAX_YEAR = 2100;
 
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final Pattern DATE_TIME = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d$");
+    private static final DateTimeFormatter DATE_TIME_OUT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+    private static final Pattern CLOCK = Pattern.compile("^([01]\\d|2[0-3]):[0-5]\\d$");
+
     private LabValidation() {
+    }
+
+    /** 서울 현재 시각 — 서버 시간대와 상관없이 서울 기준으로 "지금"을 판정한다 */
+    static LocalDateTime seoulNow() {
+        return LocalDateTime.now(SEOUL);
+    }
+
+    static LocalDate seoulToday() {
+        return LocalDate.now(SEOUL);
+    }
+
+    /** 'YYYY-MM-DDTHH:MM'(초 없음, 서울 시각)만 통과. 비어 있으면 null */
+    static LocalDateTime dateTimeOrNull(String value, String label) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String text = value.strip();
+        if (!DATE_TIME.matcher(text).matches()) {
+            throw bad(label + "은(는) YYYY-MM-DDTHH:MM 형식이어야 합니다");
+        }
+        try {
+            LocalDateTime parsed = LocalDateTime.parse(text);
+            plausibleDate(parsed.toLocalDate(), label);
+            return parsed;
+        } catch (java.time.format.DateTimeParseException e) {
+            throw bad(label + "은(는) YYYY-MM-DDTHH:MM 형식이어야 합니다");
+        }
+    }
+
+    static String formatDateTime(LocalDateTime value) {
+        return value == null ? null : value.format(DATE_TIME_OUT);
+    }
+
+    /** 'HH:MM' 시각 — 필수. 분 단위 계산에 쓰므로 형식이 틀리면 400 */
+    static String clock(String value, String label) {
+        String text = value == null ? null : value.strip();
+        if (text == null || text.isEmpty()) {
+            throw bad(label + "을(를) 입력해 주세요");
+        }
+        if (!CLOCK.matcher(text).matches()) {
+            throw bad(label + "은(는) HH:MM 형식(예: 14:30)이어야 합니다");
+        }
+        return text;
     }
 
     static CustomException bad(String message) {

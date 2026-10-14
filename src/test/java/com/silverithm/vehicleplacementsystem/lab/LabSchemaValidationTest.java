@@ -5,7 +5,14 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import com.silverithm.vehicleplacementsystem.config.BillingKeyEncryptionConfig;
 import com.silverithm.vehicleplacementsystem.config.PiiEncryptionConfig;
 import com.silverithm.vehicleplacementsystem.entity.EncryptedPiiConverter;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabBudget;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabBudgetLine;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabCareDelivery;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabCareEvent;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabGuardianNotice;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabRehabSession;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabResourceLink;
+import com.silverithm.vehicleplacementsystem.lab.entity.LabVolunteerLog;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabCareRecord;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabCopayBill;
 import com.silverithm.vehicleplacementsystem.lab.entity.LabCarePlan;
@@ -36,7 +43,7 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.orm.hibernate5.SpringBeanContainer;
 
 /**
- * 실험실 엔티티가 실제 MySQL의 V1.96.0~V1.99.0 표와 맞는지 Hibernate SchemaValidator로 확인한다.
+ * 실험실 엔티티가 실제 MySQL의 V1.96.0~V1.100.0 표와 맞는지 Hibernate SchemaValidator로 확인한다.
  *
  * <p>운영은 ddl-auto=validate라 엔티티와 표가 한 칸만 어긋나도 기동이 막힌다. H2 테스트(create-drop)는
  * 엔티티에서 표를 만들기 때문에 이 어긋남을 절대 잡지 못한다. 그래서 마이그레이션이 적용된 MySQL을
@@ -50,7 +57,7 @@ import org.springframework.orm.hibernate5.SpringBeanContainer;
  */
 class LabSchemaValidationTest {
 
-    // 실험실 엔티티(1차~4차)가 MySQL의 V1.96.0~V1.99.0 표와 일치한다
+    // 실험실 엔티티(1차~5차)가 MySQL의 V1.96.0~V1.100.0 표와 일치한다
     @Test
     void entitiesMatchMigratedMysqlSchema() {
         String url = System.getenv("LAB_SCHEMA_DB_URL");
@@ -102,7 +109,15 @@ class LabSchemaValidationTest {
                         .addAnnotatedClass(LabPayrollProfile.class)
                         .addAnnotatedClass(LabPayrollLine.class)
                         .addAnnotatedClass(LabDonation.class)
-                        .addAnnotatedClass(LabLedgerEntry.class);
+                        .addAnnotatedClass(LabLedgerEntry.class)
+                        // 5차(V1.100.0)
+                        .addAnnotatedClass(LabCareEvent.class)
+                        .addAnnotatedClass(LabRehabSession.class)
+                        .addAnnotatedClass(LabGuardianNotice.class)
+                        .addAnnotatedClass(LabVolunteerLog.class)
+                        .addAnnotatedClass(LabResourceLink.class)
+                        .addAnnotatedClass(LabBudget.class)
+                        .addAnnotatedClass(LabBudgetLine.class);
                 Metadata metadata = sources.buildMetadata();
                 // 세션 팩토리를 만드는 순간 표와 엔티티를 대조한다. 어긋난 컬럼·타입이 있으면
                 // SchemaManagementException으로 실패한다
