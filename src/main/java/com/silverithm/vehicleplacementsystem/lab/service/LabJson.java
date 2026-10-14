@@ -12,6 +12,7 @@ import com.silverithm.vehicleplacementsystem.lab.dto.LabMedicineDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabPayrollDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabProgramPlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabSafetyCheckDto;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabStaffingDto;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -222,6 +223,19 @@ final class LabJson {
             });
         } catch (JsonProcessingException e) {
             return new LinkedHashMap<>();
+        }
+    }
+
+    /** 인력배치 직원 목록. 깨진 값은 빈 목록으로 흘린다 */
+    static List<LabStaffingDto.Staff> readStaffingStaff(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<LabStaffingDto.Staff>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
         }
     }
 }
