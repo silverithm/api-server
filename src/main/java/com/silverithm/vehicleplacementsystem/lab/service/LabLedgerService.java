@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 현금출납부 — 수입·지출 기록의 등록·수정·삭제와 월·연도 조회(날짜, id 순).
  *
- * <p>계정 코드는 3자리 숫자, 금액은 1~100억(BIGINT, 0·음수 거절). 후원금 연결(donationId)은 같은 기관 후원금만
+ * <p>계정 코드는 3~4자리 숫자, 금액은 1~100억(BIGINT, 0·음수 거절). 후원금 연결(donationId)은 같은 기관 후원금만
  * 되고 아니면 404 — 클라이언트가 보낸 id라 다른 기관 후원금에 지출이 붙으면 그 기관의 사용액이 오염된다.
  * 연결 시 후원금 행을 잠가 후원금 삭제와 엇갈려도 연결이 끊기거나 FK 오류(500)가 나지 않게 한다.
  */
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LabLedgerService {
 
     static final long MAX_AMOUNT = 10_000_000_000L;
-    private static final Pattern ACCOUNT_CODE = Pattern.compile("^[0-9]{3}$");
+    private static final Pattern ACCOUNT_CODE = Pattern.compile("^[0-9]{3,4}$");
     private static final Set<String> DIRECTIONS = Set.of("INCOME", "EXPENSE");
     private static final Set<String> EVIDENCE = Set.of("RECEIPT", "CARD", "TAX_INVOICE", "TRANSFER", "OTHER");
 
@@ -95,7 +95,7 @@ public class LabLedgerService {
         String direction = LabValidation.oneOf(input.direction(), DIRECTIONS, "구분");
         String code = input.accountCode() == null ? null : input.accountCode().strip();
         if (code == null || !ACCOUNT_CODE.matcher(code).matches()) {
-            throw LabValidation.bad("계정 코드는 3자리 숫자여야 합니다");
+            throw LabValidation.bad("계정 코드는 3~4자리 숫자여야 합니다");
         }
         String description = LabValidation.requiredText(input.description(), 200, "적요");
         long amount = LabValidation.longInRange(input.amount(), 1, MAX_AMOUNT, "금액");

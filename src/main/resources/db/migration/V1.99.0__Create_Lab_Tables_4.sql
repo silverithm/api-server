@@ -110,7 +110,7 @@ CREATE TABLE lab_ledger_entries (
     company_id    BIGINT        NOT NULL,
     entry_date    DATE          NOT NULL,
     direction     VARCHAR(10)   NOT NULL COMMENT 'INCOME | EXPENSE',
-    account_code  CHAR(3)       NOT NULL COMMENT '계정 코드 3자리 숫자',
+    account_code  VARCHAR(4)    NOT NULL COMMENT '계정 코드 3~4자리 숫자',
     description   VARCHAR(200)  NOT NULL,
     amount        BIGINT        NOT NULL COMMENT '원(1~10,000,000,000)',
     counterparty  VARCHAR(100)  NULL,

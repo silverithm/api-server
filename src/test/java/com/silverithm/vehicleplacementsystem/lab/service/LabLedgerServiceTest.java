@@ -51,11 +51,11 @@ class LabLedgerServiceTest {
                 "CASH", 500_000L, null, null, receiptNo));
     }
 
-    // 계정 코드는 3자리 숫자이고, 금액은 1~100억 사이다
+    // 계정 코드는 3~4자리 숫자이고, 금액은 1~100억 사이다
     @Test
     void accountCodeValidated() {
         LocalDate day = LocalDate.of(2026, 3, 10);
-        for (String bad : new String[] {"12", "1234", "abc", "1a3", "", " ", "１２３"}) {
+        for (String bad : new String[] {"12", "12345", "abc", "1a3", "", " ", "１２３"}) {
             assertStatus(() -> service.create(input(day, bad)), HttpStatus.BAD_REQUEST);
         }
         assertStatus(() -> service.create(input(day, null)), HttpStatus.BAD_REQUEST);
@@ -90,6 +90,18 @@ class LabLedgerServiceTest {
                 false)), HttpStatus.BAD_REQUEST);
         assertStatus(() -> service.create(new LabLedgerDto.Input(LocalDate.of(1999, 1, 1), "EXPENSE", "311", "적요",
                 1L, null, null, null, false)), HttpStatus.BAD_REQUEST);
+    }
+
+    // 네 자리 목 코드(별표 1011 등)도 근사 없이 그대로 저장된다
+    @Test
+    void fourDigitAccountCodeStored() {
+        LocalDate day = LocalDate.of(2026, 3, 11);
+        assertThat(service.create(input(day, "INCOME", "1011", 7_000L, null)).accountCode()).isEqualTo("1011");
+        assertThat(service.create(input(day, " 1112 ")).accountCode()).isEqualTo("1112");
+        Long id = service.create(input(day, "311")).id();
+        assertThat(service.update(id, input(day, "1012")).accountCode()).isEqualTo("1012");
+        assertStatus(() -> service.create(input(day, "10111")), HttpStatus.BAD_REQUEST);
+        assertThat(entries.count()).isEqualTo(3);
     }
 
     // 후원금 연결은 같은 기관 후원금만 — 다른 기관·없는 후원금은 404

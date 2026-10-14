@@ -39,7 +39,7 @@ public class LabLedgerEntry {
     @Column(name = "direction", nullable = false, length = 10)
     private String direction;
 
-    @Column(name = "account_code", nullable = false, length = 3, columnDefinition = "CHAR(3)")
+    @Column(name = "account_code", nullable = false, length = 4, columnDefinition = "VARCHAR(4)")
     private String accountCode;
 
     @Column(name = "description", nullable = false, length = 200)
