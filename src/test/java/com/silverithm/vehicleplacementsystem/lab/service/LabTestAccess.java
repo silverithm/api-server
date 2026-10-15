@@ -13,6 +13,8 @@ public class LabTestAccess extends LabAccessService {
 
     public Long companyId = 1L;
     public String username = "admin@forest.kr";
+    /** 작성자로 남는 사람 이름 — 로그인 식별자(이메일)가 아니어야 한다 */
+    public String displayName = "숲속 관리자";
 
     public LabTestAccess() {
         super("4", null, null, null);
@@ -26,6 +28,11 @@ public class LabTestAccess extends LabAccessService {
     @Override
     public Caller requireCaller() {
         return new Caller(username, companyId);
+    }
+
+    @Override
+    public String displayName(Caller caller) {
+        return displayName;
     }
 
     @Override

@@ -75,6 +75,26 @@ class LabAccessServiceTest {
         assertThat(service.requireCaller().username()).isEqualTo("admin@forest.kr");
     }
 
+    // 작성자 이름은 사람 이름 — 관리자는 표시 이름, 직원은 직원 이름, 못 찾으면 비우고 로그인 이메일·아이디는 쓰지 않는다
+    @Test
+    void displayNameIsPersonNotLoginId() {
+        LabAccessService service = service("4");
+        AppUser admin = mock(AppUser.class);
+        when(admin.getUsername()).thenReturn("윤센터");
+        when(memberRepository.findByUsername("admin@forest.kr")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("admin@forest.kr")).thenReturn(Optional.of(admin));
+        assertThat(service.displayName(new LabAccessService.Caller("admin@forest.kr", 4L))).isEqualTo("윤센터");
+
+        Member staff = mock(Member.class);
+        when(staff.getName()).thenReturn(" 박순자 ");
+        when(memberRepository.findByUsername("soonja01")).thenReturn(Optional.of(staff));
+        assertThat(service.displayName(new LabAccessService.Caller("soonja01", 4L))).isEqualTo("박순자");
+
+        when(memberRepository.findByUsername("ghost@x.kr")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("ghost@x.kr")).thenReturn(Optional.empty());
+        assertThat(service.displayName(new LabAccessService.Caller("ghost@x.kr", 4L))).isNull();
+    }
+
     // 허용 기관의 직원은 관리자 역할이 아니면 쓸 수 없고, 관리자 역할 직원은 쓸 수 있다
     @Test
     void labCompanyNonAdminIsNotEnabled() {

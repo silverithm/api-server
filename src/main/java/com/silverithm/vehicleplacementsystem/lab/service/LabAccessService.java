@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.lab.service;
 
+import com.silverithm.vehicleplacementsystem.entity.AppUser;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
@@ -77,6 +78,23 @@ public class LabAccessService {
             return Optional.empty();
         }
         return Optional.of(new Caller(username, companyId.get()));
+    }
+
+    /**
+     * 작성자로 남길 사람 이름 — 로그인 식별자(직원 아이디·관리자 이메일)는 화면·인쇄에 남기지 않는다.
+     * 직원 계정이면 직원 이름, 관리자 계정이면 관리자 표시 이름. 못 찾으면 null(작성자 칸을 비운다). 50자 열에 맞춰 자른다.
+     */
+    public String displayName(Caller caller) {
+        String username = caller.username();
+        if (username == null) {
+            return null;
+        }
+        String name = memberRepository.findByUsername(username).map(Member::getName)
+                .or(() -> userRepository.findByEmail(username).map(AppUser::getUsername))
+                .map(String::strip)
+                .filter(n -> !n.isEmpty())
+                .orElse(null);
+        return name == null || name.length() <= 50 ? name : name.substring(0, 50);
     }
 
     private boolean isAdmin(String username) {

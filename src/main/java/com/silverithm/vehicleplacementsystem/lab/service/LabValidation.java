@@ -101,12 +101,6 @@ final class LabValidation {
         return value == null ? null : value.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
     }
 
-    /** 서버가 로그인 사용자로 채우는 작성자 — 50자 열을 넘지 않게 자른다(식별자라 자르는 것이 기록을 바꾸지 않는다) */
-    static String writerName(LabAccessService.Caller caller) {
-        String name = caller.username();
-        return name == null ? null : (name.length() > 50 ? name.substring(0, 50) : name);
-    }
-
     /** 이 칸이 같은 종류의 id 목록에서 중복을 허용하지 않을 때 — 중복이 있으면 400, null 원소·개수 초과도 400 */
     static List<Long> distinctIds(List<Long> ids, int min, int max, String label) {
         if (ids == null || ids.size() < min) {

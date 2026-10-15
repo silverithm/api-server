@@ -92,7 +92,7 @@ class LabCaseMeetingServiceTest {
         assertThat(saved.targets()).extracting(LabCaseMeetingDto.Target::elderlyName)
                 .containsExactly("김어르신", "이어르신");
         assertThat(saved.targets().get(0).ownerName()).isEqualTo("사회복지사");
-        assertThat(saved.writerName()).isEqualTo("admin@forest.kr");
+        assertThat(saved.writerName()).isEqualTo("숲속 관리자");
         assertThat(saved.minutes()).isEqualTo("회의 내용 요약");
         assertEncryptedAtRest(jdbc, "lab_case_meetings", "minutes", "회의 내용 요약");
 

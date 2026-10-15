@@ -80,7 +80,7 @@ class LabTransportServiceTest {
             assertThat(r.boardTime()).isEqualTo("08:20");
             assertThat(r.alightTime()).isEqualTo("09:05");
         });
-        assertThat(first.writerName()).isEqualTo("admin@forest.kr");
+        assertThat(first.writerName()).isEqualTo("숲속 관리자");
 
         // 같은 키로 다시 저장 — 같은 행, 탑승자·동승자가 통째로 바뀐다
         LabTransportDto.LogView second = service.upsertLog(log("PICKUP", "12가3456", driver.getId(), null, null, null,

@@ -129,7 +129,7 @@ public class LabCaseMeetingService {
         elders.requireAllInCompany(targets.stream().map(StoredTarget::elderlyId).toList(), companyId);
 
         meeting.fill(heldOn, LabJson.write(attendeeIds), LabJson.write(opinions), LabJson.write(targets), minutes,
-                LabValidation.writerName(caller), Boolean.TRUE.equals(input.aiAssisted()));
+                access.displayName(caller), Boolean.TRUE.equals(input.aiAssisted()));
     }
 
     /** 의견 — 참석자의 것만, 참석자마다 하나. 비어 있는 의견은 '의견 없음'(null)으로 기록한다 */

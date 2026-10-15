@@ -128,7 +128,7 @@ public class LabTransportService {
         elders.requireAllInCompany(riders.stream().map(StoredRider::elderlyId).toList(), companyId);
 
         String ridersJson = LabJson.write(riders);
-        String writer = LabValidation.writerName(caller);
+        String writer = access.displayName(caller);
         LabTransportLog saved = LabValidation.upsertWithRetry(tx, () -> {
             LabTransportLog row = logs
                     .findByCompanyIdAndRunDateAndDirectionAndVehicleNo(companyId, runDate, direction, vehicleNo)

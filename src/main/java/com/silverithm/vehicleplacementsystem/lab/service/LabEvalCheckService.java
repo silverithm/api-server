@@ -47,8 +47,8 @@ public class LabEvalCheckService {
         String status = LabValidation.oneOf(input.status(), STATUSES, "준비 상태");
         String evidence = LabValidation.text(input.evidence(), 3000, "근거");
         String aiComment = LabValidation.text(input.aiComment(), 3000, "AI 의견");
-        // 수정자 표기는 50자 컬럼에 맞춘다 — 긴 이메일 때문에 저장이 실패하면 안 된다
-        String updatedBy = caller.username().length() > 50 ? caller.username().substring(0, 50) : caller.username();
+        // 수정자는 사람 이름으로 남긴다(로그인 이메일·아이디는 화면·인쇄에 남기지 않는다) — 50자 열에 맞춘 값
+        String updatedBy = access.displayName(caller);
 
         LabEvalCheck saved = LabValidation.upsertWithRetry(tx, () -> {
             LabEvalCheck check = checks.findByCompanyIdAndIndicatorCode(caller.companyId(), indicatorCode)

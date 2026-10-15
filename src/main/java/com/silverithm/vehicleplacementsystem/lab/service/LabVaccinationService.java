@@ -125,7 +125,7 @@ public class LabVaccinationService {
         String finalInstitution = institution;
         String finalVerifiedBy = verifiedBy;
         String finalReason = reason;
-        String writer = LabValidation.writerName(caller);
+        String writer = access.displayName(caller);
         LabVaccination saved = LabValidation.upsertWithRetry(tx, () -> {
             LabVaccination row = vaccinations
                     .findByCompanyIdAndElderlyIdAndSeasonYearAndVaccine(companyId, elderlyId, seasonYear, vaccine)

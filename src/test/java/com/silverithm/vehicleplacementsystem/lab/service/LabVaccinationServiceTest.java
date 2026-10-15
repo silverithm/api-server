@@ -47,7 +47,7 @@ class LabVaccinationServiceTest {
     void upsertByElderYearVaccine() {
         LabVaccinationDto.View first = service.upsert(done(kim.getId(), 2025, "INFLUENZA", LocalDate.of(2025, 10, 20)));
         assertThat(first.elderlyName()).isEqualTo("김어르신");
-        assertThat(first.writerName()).isEqualTo("admin@forest.kr");
+        assertThat(first.writerName()).isEqualTo("숲속 관리자");
         assertThat(first.status()).isEqualTo("DONE");
         assertThat(first.verifiedBy()).isEqualTo("CERT");
 

@@ -42,7 +42,7 @@ class LabEvalCheckServiceTest {
         assertThat(checks.count()).isEqualTo(2);
         assertThat(second.status()).isEqualTo("READY");
         assertThat(second.evidence()).isEqualTo("낙상·욕창 평가 완료");
-        assertThat(second.updatedBy()).isEqualTo("admin@forest.kr");
+        assertThat(second.updatedBy()).isEqualTo("숲속 관리자");
         assertThat(service.list()).extracting(LabEvalCheckDto.View::indicatorCode)
                 .containsExactly("OPS_02", "SAFE-01");
 
