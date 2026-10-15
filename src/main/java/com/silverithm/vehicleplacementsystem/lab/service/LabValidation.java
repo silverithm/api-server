@@ -75,6 +75,58 @@ final class LabValidation {
         return text;
     }
 
+    /** 서울 오늘까지의 날짜 — 필수. 2000~2100년 밖이거나 오늘보다 미래면 400 (아직 일어나지 않은 일은 기록하지 않는다) */
+    static LocalDate pastOrToday(LocalDate value, String label) {
+        plausibleDate(value, label);
+        if (value.isAfter(seoulToday())) {
+            throw bad(label + "은(는) 오늘 이후일 수 없습니다. 아직 일어나지 않은 일은 기록하지 않습니다");
+        }
+        return value;
+    }
+
+    /** 비었으면 null, 있으면 {@link #pastOrToday} */
+    static LocalDate pastOrTodayOrNull(LocalDate value, String label) {
+        return value == null ? null : pastOrToday(value, label);
+    }
+
+    /** 'HH:mm' 시각 — 선택. 비었으면 null, 형식이 틀리면 400 */
+    static java.time.LocalTime clockOrNull(String value, String label) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return java.time.LocalTime.parse(clock(value, label));
+    }
+
+    static String formatClock(java.time.LocalTime value) {
+        return value == null ? null : value.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    /** 서버가 로그인 사용자로 채우는 작성자 — 50자 열을 넘지 않게 자른다(식별자라 자르는 것이 기록을 바꾸지 않는다) */
+    static String writerName(LabAccessService.Caller caller) {
+        String name = caller.username();
+        return name == null ? null : (name.length() > 50 ? name.substring(0, 50) : name);
+    }
+
+    /** 이 칸이 같은 종류의 id 목록에서 중복을 허용하지 않을 때 — 중복이 있으면 400, null 원소·개수 초과도 400 */
+    static List<Long> distinctIds(List<Long> ids, int min, int max, String label) {
+        if (ids == null || ids.size() < min) {
+            throw bad(label + "은(는) 최소 " + min + "명 선택해 주세요");
+        }
+        if (ids.size() > max) {
+            throw bad(label + "은(는) 최대 " + max + "명까지 선택할 수 있습니다");
+        }
+        Set<Long> unique = new LinkedHashSet<>();
+        for (Long id : ids) {
+            if (id == null) {
+                throw bad(label + " 목록에 올바르지 않은 값이 있습니다");
+            }
+            if (!unique.add(id)) {
+                throw bad(label + " 목록에 같은 사람이 두 번 들어 있습니다");
+            }
+        }
+        return List.copyOf(unique);
+    }
+
     static CustomException bad(String message) {
         return new CustomException(message, HttpStatus.BAD_REQUEST);
     }

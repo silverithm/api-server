@@ -238,4 +238,29 @@ final class LabJson {
             return Collections.emptyList();
         }
     }
+
+    /** 객체 배열(사례관리 대상·송영 탑승자 등). 깨진 값은 빈 목록으로 흘린다 */
+    static <T> List<T> readList(String json, Class<T> type) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+        try {
+            return MAPPER.readValue(json, MAPPER.getTypeFactory().constructCollectionType(List.class, type));
+        } catch (JsonProcessingException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    /** {항목 키: boolean} — 규정 대장의 점검 결과. 깨진 값은 빈 맵으로 흘린다 */
+    static Map<String, Boolean> readChecks(String json) {
+        if (json == null || json.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, Boolean>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return new LinkedHashMap<>();
+        }
+    }
 }
