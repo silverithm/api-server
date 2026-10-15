@@ -80,9 +80,10 @@ class LabGrievanceSummaryServiceTest {
         assertThat(summary.replied()).isEqualTo(2);
         // 답한 건 둘: 1일·4일 -> 중앙값 2.5일
         assertThat(summary.medianReplyDays()).isEqualTo(2.5);
-        // 조치완료가 아닌 건 중 가장 오래된 것은 1월 10일 접수
-        assertThat(summary.oldestOpenDays()).isEqualTo(
-                (int) java.time.temporal.ChronoUnit.DAYS.between(jan, now));
+        // 조치완료가 아닌 건 중 가장 오래된 것은 1월 10일 접수 — 서비스가 계산하는 사이에 자정이 지나도 흔들리지 않게 호출 전후 값 사이인지 본다
+        int daysBefore = (int) java.time.temporal.ChronoUnit.DAYS.between(jan, now);
+        int daysAfter = (int) java.time.temporal.ChronoUnit.DAYS.between(jan, LabValidation.seoulNow());
+        assertThat(summary.oldestOpenDays()).isBetween(daysBefore, daysAfter);
 
         // 다른 기관에서 보면 그 기관 것 하나뿐
         access.companyId = other.getId();
