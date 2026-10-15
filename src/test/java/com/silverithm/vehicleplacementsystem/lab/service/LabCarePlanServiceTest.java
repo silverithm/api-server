@@ -161,4 +161,91 @@ class LabCarePlanServiceTest {
                 new LabCarePlanDto.Needs("가".repeat(1001), null, null, null, null, null), null, null, null, null,
                 null))).isInstanceOf(CustomException.class);
     }
+
+    private LabCarePlanDto.Needs fullNeeds() {
+        return new LabCarePlanDto.Needs("보행기 사용", "경도 인지저하", "연하 곤란 없음", "청력 저하", "배우자와 거주", null,
+                "고혈압·당뇨 약 복용", "틀니 사용, 잇몸 출혈 없음", "집에서 오래 지내고 싶다고 하심", "방문간호 이용 희망",
+                "낙상 위험이 있어 보행 훈련이 필요", "생선 비린내를 싫어함, 견과류 알레르기");
+    }
+
+    // 11차 새 키(질병·구강·주관적 욕구·자원이용·총평·기피식품)가 그대로 돌아오고, 암호문으로 저장되며, 칸 상한(1,000자)이 있다
+    @Test
+    void needsNewKeysRoundTrip() {
+        service.upsert(new LabCarePlanDto.Input(kim.getId(), 2026, ASSESSED, fullNeeds(), "목표", null, null, "박", false));
+        em.flush();
+        em.clear();
+
+        LabCarePlanDto.Needs read = service.listByYear("2026").get(0).needs();
+        assertThat(read.disease()).isEqualTo("고혈압·당뇨 약 복용");
+        assertThat(read.oral()).isEqualTo("틀니 사용, 잇몸 출혈 없음");
+        assertThat(read.subjective()).isEqualTo("집에서 오래 지내고 싶다고 하심");
+        assertThat(read.resources()).isEqualTo("방문간호 이용 희망");
+        assertThat(read.summary()).isEqualTo("낙상 위험이 있어 보행 훈련이 필요");
+        assertThat(read.avoidFoods()).isEqualTo("생선 비린내를 싫어함, 견과류 알레르기");
+        assertThat(read.physical()).isEqualTo("보행기 사용");
+        String stored = jdbc.queryForObject("SELECT needs FROM lab_care_plans", String.class);
+        assertThat(stored).startsWith(EncryptedPiiConverter.ENC_PREFIX).doesNotContain("견과류");
+
+        // 새 키만 비우고 다시 저장하면 ''로 돌아온다(null이 아니다)
+        service.upsert(new LabCarePlanDto.Input(kim.getId(), 2026, ASSESSED,
+                new LabCarePlanDto.Needs("보행기 사용", null, null, null, null, null), "목표", null, null, "박", false));
+        LabCarePlanDto.Needs cleared = service.listByYear("2026").get(0).needs();
+        assertThat(cleared.avoidFoods()).isEmpty();
+        assertThat(cleared.summary()).isEmpty();
+
+        // 열두 칸을 모두 1,000자로 채워도 저장되고(TEXT 64KB 안), 1,001자는 400
+        String big = "가".repeat(1000);
+        service.upsert(new LabCarePlanDto.Input(kim.getId(), 2026, ASSESSED,
+                new LabCarePlanDto.Needs(big, big, big, big, big, big, big, big, big, big, big, big), null, null, null,
+                null, false));
+        assertThat(jdbc.queryForObject("SELECT LENGTH(needs) FROM lab_care_plans", Integer.class)).isLessThan(65_535);
+        assertThat(service.listByYear("2026").get(0).needs().avoidFoods()).hasSize(1000);
+        for (int i = 0; i < 6; i++) {
+            LabCarePlanDto.Needs tooLong = new LabCarePlanDto.Needs(null, null, null, null, null, null,
+                    i == 0 ? "가".repeat(1001) : null, i == 1 ? "가".repeat(1001) : null,
+                    i == 2 ? "가".repeat(1001) : null, i == 3 ? "가".repeat(1001) : null,
+                    i == 4 ? "가".repeat(1001) : null, i == 5 ? "가".repeat(1001) : null);
+            assertThatThrownBy(() -> service.upsert(new LabCarePlanDto.Input(kim.getId(), 2026, ASSESSED, tooLong,
+                    null, null, null, null, false))).isInstanceOfSatisfying(CustomException.class,
+                    e -> assertThat(e.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        }
+    }
+
+    // 새 키가 없는 옛 기록(암호화된 옛 JSON)도 읽히고, 새 칸은 ''로 돌려준다. 깨진 값·빈 값도 터지지 않는다
+    @Test
+    void oldNeedsWithoutNewKeysStillRead() {
+        LabCarePlanDto.View saved = service.upsert(new LabCarePlanDto.Input(kim.getId(), 2026, ASSESSED, needs("보행기 사용"),
+                "목표", null, null, "박", false));
+        em.flush();
+        em.clear();
+        // 옛 형식 JSON(여섯 키뿐)을 그대로 심는다 — 컨버터가 암호화해 저장한다
+        com.silverithm.vehicleplacementsystem.lab.entity.LabCarePlan row = plans.findById(saved.id()).orElseThrow();
+        java.lang.reflect.Field field;
+        try {
+            field = row.getClass().getDeclaredField("needs");
+            field.setAccessible(true);
+            field.set(row, "{\"physical\":\"옛 신체\",\"cognition\":\"옛 인지\",\"nutrition\":null,"
+                    + "\"communication\":null,\"family\":null,\"other\":null}");
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+        plans.saveAndFlush(row);
+        em.clear();
+
+        LabCarePlanDto.Needs old = service.listByYear("2026").get(0).needs();
+        assertThat(old.physical()).isEqualTo("옛 신체");
+        assertThat(old.cognition()).isEqualTo("옛 인지");
+        assertThat(old.disease()).isEmpty();
+        assertThat(old.oral()).isEmpty();
+        assertThat(old.subjective()).isEmpty();
+        assertThat(old.resources()).isEmpty();
+        assertThat(old.summary()).isEmpty();
+        assertThat(old.avoidFoods()).isEmpty();
+
+        // 깨진 JSON도 모든 칸이 비어 읽힌다
+        LabCarePlanDto.Needs broken = LabJson.readNeeds("{깨짐");
+        assertThat(broken.physical()).isNull();
+        assertThat(broken.avoidFoods()).isEmpty();
+        assertThat(LabJson.readNeeds(null).summary()).isEmpty();
+    }
 }

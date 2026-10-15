@@ -72,16 +72,27 @@ final class LabJson {
         }
     }
 
-    /** 욕구사정 — 없거나 깨졌으면 모든 영역이 null인 객체 */
+    /** 욕구사정 — 없거나 깨졌으면 모든 영역이 비어 있는 객체. 11차 새 키(옛 기록엔 없음)는 ''로 돌려준다 */
     static LabCarePlanDto.Needs readNeeds(String json) {
-        if (json == null || json.isBlank()) {
-            return new LabCarePlanDto.Needs(null, null, null, null, null, null);
+        LabCarePlanDto.Needs needs = null;
+        if (json != null && !json.isBlank()) {
+            try {
+                needs = MAPPER.readValue(json, LabCarePlanDto.Needs.class);
+            } catch (JsonProcessingException e) {
+                needs = null;
+            }
         }
-        try {
-            return MAPPER.readValue(json, LabCarePlanDto.Needs.class);
-        } catch (JsonProcessingException e) {
-            return new LabCarePlanDto.Needs(null, null, null, null, null, null);
+        if (needs == null) {
+            needs = new LabCarePlanDto.Needs(null, null, null, null, null, null);
         }
+        return new LabCarePlanDto.Needs(needs.physical(), needs.cognition(), needs.nutrition(),
+                needs.communication(), needs.family(), needs.other(), blank(needs.disease()), blank(needs.oral()),
+                blank(needs.subjective()), blank(needs.resources()), blank(needs.summary()),
+                blank(needs.avoidFoods()));
+    }
+
+    private static String blank(String value) {
+        return value == null ? "" : value;
     }
 
     static List<LabCarePlanDto.ServiceItem> readServices(String json) {

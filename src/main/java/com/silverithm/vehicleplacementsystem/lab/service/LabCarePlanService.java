@@ -93,7 +93,7 @@ public class LabCarePlanService {
         plans.delete(plan);
     }
 
-    /** 여섯 영역을 모두 가진 객체로 정리한다(빈 칸은 null) — 읽는 쪽이 키 유무를 따지지 않게 */
+    /** 모든 영역을 가진 객체로 정리한다(빈 칸은 null) — 읽는 쪽이 키 유무를 따지지 않게 */
     private static LabCarePlanDto.Needs cleanNeeds(LabCarePlanDto.Needs needs) {
         if (needs == null) {
             return new LabCarePlanDto.Needs(null, null, null, null, null, null);
@@ -104,7 +104,13 @@ public class LabCarePlanService {
                 LabValidation.text(needs.nutrition(), NEED, "영양 상태 욕구"),
                 LabValidation.text(needs.communication(), NEED, "의사소통 욕구"),
                 LabValidation.text(needs.family(), NEED, "가족·환경 욕구"),
-                LabValidation.text(needs.other(), NEED, "기타 욕구"));
+                LabValidation.text(needs.other(), NEED, "기타 욕구"),
+                LabValidation.text(needs.disease(), NEED, "질병 상태"),
+                LabValidation.text(needs.oral(), NEED, "구강 상태"),
+                LabValidation.text(needs.subjective(), NEED, "주관적 욕구"),
+                LabValidation.text(needs.resources(), NEED, "자원이용 욕구"),
+                LabValidation.text(needs.summary(), NEED, "총평"),
+                LabValidation.text(needs.avoidFoods(), NEED, "기피식품"));
     }
 
     private static List<LabCarePlanDto.ServiceItem> cleanServices(List<LabCarePlanDto.ServiceItem> raw) {

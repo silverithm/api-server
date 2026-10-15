@@ -10,8 +10,19 @@ public final class LabCarePlanDto {
     private LabCarePlanDto() {
     }
 
+    /**
+     * 욕구사정 칸. 앞의 여섯은 1차부터, disease(질병상태)·oral(구강상태)·subjective(주관적 욕구)·resources(자원이용 욕구)·
+     * summary(총평)·avoidFoods(기피식품)는 11차에 더했다. 옛 기록에는 새 키가 없어 읽을 때 ''로 돌려준다.
+     */
     public record Needs(String physical, String cognition, String nutrition, String communication, String family,
-                        String other) {
+                        String other, String disease, String oral, String subjective, String resources,
+                        String summary, String avoidFoods) {
+
+        /** 1~10차 호환 — 새 칸은 비운다 */
+        public Needs(String physical, String cognition, String nutrition, String communication, String family,
+                     String other) {
+            this(physical, cognition, nutrition, communication, family, other, null, null, null, null, null, null);
+        }
     }
 
     public record ServiceItem(String area, String content, String frequency) {
