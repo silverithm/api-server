@@ -70,6 +70,18 @@ public class LabProgram {
     @Column(name = "participant_ids", nullable = false, columnDefinition = "TEXT")
     private String participantIds;
 
+    /** 진행 시간(분) 10~480. 옛 일지는 null */
+    @Column(name = "duration_minutes")
+    private Short durationMinutes;
+
+    /** 인지활동형 프로그램 여부 — 5등급·인지지원 어르신의 급여비용 산정 조건(고시 제32조⑩) */
+    @Column(name = "cognitive_activity", nullable = false)
+    private boolean cognitiveActivity;
+
+    /** PROGRAM_MANAGER | DEMENTIA_CAREGIVER | EXTERNAL_INSTRUCTOR | OTHER. 인지활동형이면 필수 */
+    @Column(name = "provider_kind", length = 20)
+    private String providerKind;
+
     @Column(name = "ai_assisted", nullable = false)
     private boolean aiAssisted;
 
@@ -86,7 +98,7 @@ public class LabProgram {
     /** 등록과 수정이 같은 경로 — 입력으로 내용을 통째로 덮어쓴다 */
     public void fill(LocalDate programDate, String startTime, String category, String title, String goal,
                      String content, String reaction, String instructorName, String participantIds,
-                     boolean aiAssisted) {
+                     boolean aiAssisted, Short durationMinutes, boolean cognitiveActivity, String providerKind) {
         this.programDate = programDate;
         this.startTime = startTime;
         this.category = category;
@@ -97,6 +109,9 @@ public class LabProgram {
         this.instructorName = instructorName;
         this.participantIds = participantIds;
         this.aiAssisted = aiAssisted;
+        this.durationMinutes = durationMinutes;
+        this.cognitiveActivity = cognitiveActivity;
+        this.providerKind = providerKind;
     }
 
     @PrePersist

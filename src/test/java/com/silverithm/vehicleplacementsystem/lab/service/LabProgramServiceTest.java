@@ -39,7 +39,7 @@ class LabProgramServiceTest {
 
     private LabProgramDto.Input input(LocalDate date, String time, List<Long> ids) {
         return new LabProgramDto.Input(date, time, "COGNITIVE", "회상 훈련", "기억력 자극", "옛 사진 보며 이야기 나누기",
-                "대체로 즐겁게 참여", "최강사", ids, true);
+                "대체로 즐겁게 참여", "최강사", ids, true, null, null, null);
     }
 
     private void assertStatus(Runnable call, HttpStatus status) {
@@ -142,12 +142,58 @@ class LabProgramServiceTest {
     void validatesInput() {
         LocalDate day = LocalDate.of(2026, 10, 14);
         assertStatus(() -> service.create(new LabProgramDto.Input(day, null, "GAME", "제목", null, null, null,
-                null, null, null)), HttpStatus.BAD_REQUEST);
+                null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
         assertStatus(() -> service.create(new LabProgramDto.Input(day, null, "SOCIAL", " ", null, null, null,
-                null, null, null)), HttpStatus.BAD_REQUEST);
+                null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
         assertStatus(() -> service.create(new LabProgramDto.Input(null, null, "SOCIAL", "제목", null, null, null,
-                null, null, null)), HttpStatus.BAD_REQUEST);
+                null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
         assertStatus(() -> service.create(new LabProgramDto.Input(day, null, "SOCIAL", "가".repeat(101), null, null,
-                null, null, null, null)), HttpStatus.BAD_REQUEST);
+                null, null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
+    }
+
+    private LabProgramDto.Input cognitive(Integer minutes, Boolean cognitive, String providerKind) {
+        return new LabProgramDto.Input(LocalDate.of(2026, 10, 14), "14:00", "COGNITIVE", "회상 훈련", null, null, null,
+                null, List.of(kim.getId()), false, minutes, cognitive, providerKind);
+    }
+
+    // 인지활동형이면 제공자 유형이 필수, 아니면 받은 값을 그대로 둔다. 모르는 유형은 400
+    @Test
+    void cognitiveRequiresProviderKind() {
+        assertStatus(() -> service.create(cognitive(60, true, null)), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.create(cognitive(60, true, "  ")), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.create(cognitive(60, true, "TEACHER")), HttpStatus.BAD_REQUEST);
+        assertThat(programs.count()).isZero();
+
+        LabProgramDto.View ok = service.create(cognitive(60, true, "DEMENTIA_CAREGIVER"));
+        assertThat(ok.cognitiveActivity()).isTrue();
+        assertThat(ok.providerKind()).isEqualTo("DEMENTIA_CAREGIVER");
+        assertThat(ok.durationMinutes()).isEqualTo(60);
+        // 인지활동형이 아니면 제공자 유형은 없어도 되고, 있으면 그대로 남는다
+        assertThat(service.create(cognitive(30, false, null)).providerKind()).isNull();
+        assertThat(service.create(cognitive(30, null, "EXTERNAL_INSTRUCTOR")).providerKind())
+                .isEqualTo("EXTERNAL_INSTRUCTOR");
+        // 인지활동형 칸이 없는 옛 요청은 null·false로 저장된다
+        LabProgramDto.View old = service.create(input(LocalDate.of(2026, 10, 15), null, null));
+        assertThat(old.cognitiveActivity()).isFalse();
+        assertThat(old.providerKind()).isNull();
+        assertThat(old.durationMinutes()).isNull();
+        // 수정으로 제공자 유형을 지우는 것도 인지활동형이면 막힌다
+        assertStatus(() -> service.update(ok.id(), cognitive(60, true, null)), HttpStatus.BAD_REQUEST);
+        assertThat(service.listByMonth("2026-10")).extracting(LabProgramDto.View::providerKind)
+                .contains("DEMENTIA_CAREGIVER");
+    }
+
+    // 시간(분)은 10~480, 비워도 된다
+    @Test
+    void durationRange() {
+        assertStatus(() -> service.create(cognitive(9, false, null)), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.create(cognitive(481, false, null)), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.create(cognitive(0, false, null)), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.create(cognitive(-5, false, null)), HttpStatus.BAD_REQUEST);
+        assertThat(programs.count()).isZero();
+
+        assertThat(service.create(cognitive(10, false, null)).durationMinutes()).isEqualTo(10);
+        assertThat(service.create(cognitive(480, false, null)).durationMinutes()).isEqualTo(480);
+        assertThat(service.create(cognitive(null, false, null)).durationMinutes()).isNull();
     }
 }

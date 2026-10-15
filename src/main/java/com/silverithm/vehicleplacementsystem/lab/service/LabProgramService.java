@@ -29,6 +29,10 @@ public class LabProgramService {
     private static final int TITLE = 100;
     private static final int NAME = 50;
     private static final Set<String> CATEGORIES = Set.of("COGNITIVE", "PHYSICAL", "LEISURE", "SOCIAL", "OTHER");
+    static final Set<String> PROVIDER_KINDS = Set.of("PROGRAM_MANAGER", "DEMENTIA_CAREGIVER",
+            "EXTERNAL_INSTRUCTOR", "OTHER");
+    static final int MIN_DURATION = 10;
+    static final int MAX_DURATION = 480;
     private static final Pattern START_TIME = Pattern.compile("^([01]\\d|2[0-3]):[0-5]\\d$");
 
     private final LabAccessService access;
@@ -90,12 +94,22 @@ public class LabProgramService {
         String reaction = LabValidation.text(input.reaction(), LONG_TEXT, "참여자 반응");
         String instructor = LabValidation.text(input.instructorName(), NAME, "진행자 이름");
 
+        Short duration = input.durationMinutes() == null ? null
+                : (short) LabValidation.longInRange(input.durationMinutes().longValue(), MIN_DURATION,
+                MAX_DURATION, "프로그램 시간(분)");
+        boolean cognitive = Boolean.TRUE.equals(input.cognitiveActivity());
+        String providerKind = input.providerKind() == null || input.providerKind().isBlank() ? null
+                : LabValidation.oneOf(input.providerKind(), PROVIDER_KINDS, "제공자 유형");
+        if (cognitive && providerKind == null) {
+            throw LabValidation.bad("인지활동형 프로그램은 제공자 유형(프로그램관리자·치매전문요양보호사·외부강사·기타)을 선택해 주세요");
+        }
+
         List<Long> ids = LabValidation.idList(input.participantIds(), MAX_PARTICIPANTS, "참여자");
         // 한 번의 조회로 전원이 이 기관 어르신인지 확인한다 — 한 명이라도 아니면 아무것도 저장하지 않는다
         Map<Long, String> names = ids.isEmpty() ? Map.of() : elders.requireAllInCompany(ids, companyId);
 
         program.fill(date, startTime, category, title, goal, content, reaction, instructor,
-                LabJson.write(ids), Boolean.TRUE.equals(input.aiAssisted()));
+                LabJson.write(ids), Boolean.TRUE.equals(input.aiAssisted()), duration, cognitive, providerKind);
         return names;
     }
 
@@ -126,7 +140,9 @@ public class LabProgramService {
         }
         return new LabProgramDto.View(p.getId(), p.getProgramDate(), p.getStartTime(), p.getCategory(),
                 p.getTitle(), p.getGoal(), p.getContent(), p.getReaction(), p.getInstructorName(), ids,
-                participantNames, p.isAiAssisted(), p.getUpdatedAt());
+                participantNames, p.isAiAssisted(), p.getUpdatedAt(),
+                p.getDurationMinutes() == null ? null : p.getDurationMinutes().intValue(),
+                p.isCognitiveActivity(), p.getProviderKind());
     }
 
     private static CustomException notFound() {

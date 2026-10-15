@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabBusinessPlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCarePlanDto;
+import com.silverithm.vehicleplacementsystem.lab.dto.LabCareRecordDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabCopayBillDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMealPlanDto;
 import com.silverithm.vehicleplacementsystem.lab.dto.LabMedicationDto;
@@ -156,6 +157,31 @@ final class LabJson {
             });
         } catch (JsonProcessingException e) {
             return Collections.emptyList();
+        }
+    }
+
+    /** 급여제공기록 서식 칸. 옛 기록(null)이거나 깨졌으면 null — 목록 전체가 죽지 않게 한다 */
+    static LabCareRecordDto.Form readCareForm(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return MAPPER.readValue(json, LabCareRecordDto.Form.class);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
+    }
+
+    /** {항목 코드: 'YES'|'NO'} — 시설 정보의 적용 여부 직접 지정. 깨진 값은 빈 맵으로 흘린다 */
+    static Map<String, String> readStringMap(String json) {
+        if (json == null || json.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<LinkedHashMap<String, String>>() {
+            });
+        } catch (JsonProcessingException e) {
+            return new LinkedHashMap<>();
         }
     }
 

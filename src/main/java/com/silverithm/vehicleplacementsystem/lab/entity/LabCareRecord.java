@@ -81,6 +81,11 @@ public class LabCareRecord {
     @Column(name = "bath", length = 1024)
     private String bath;
 
+    /** 별지 제15호 서식 칸 JSON(CareRecordForm). 건강 정보가 들어 있어 암호화한다. 옛 기록은 null */
+    @Convert(converter = EncryptedPiiConverter.class)
+    @Column(name = "form", columnDefinition = "TEXT")
+    private String form;
+
     @Column(name = "provider_name", length = 50)
     private String providerName;
 
@@ -102,7 +107,7 @@ public class LabCareRecord {
     /** 입력으로 내용을 통째로 덮어쓴다 — 같은 날 다시 저장하면 마지막 저장이 그날의 기록이 된다 */
     public void fill(String physical, String cognitive, String nursing, String training, String specialNote,
                      String rawNote, String meal, String toilet, String bath, String providerName,
-                     boolean aiAssisted) {
+                     boolean aiAssisted, String form) {
         this.physical = physical;
         this.cognitive = cognitive;
         this.nursing = nursing;
@@ -114,6 +119,7 @@ public class LabCareRecord {
         this.bath = bath;
         this.providerName = providerName;
         this.aiAssisted = aiAssisted;
+        this.form = form;
     }
 
     @PrePersist
