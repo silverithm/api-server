@@ -103,13 +103,13 @@ public class LabStaffHrService {
 
     // ---- 이수·검진 기록 ----
 
-    /** memberId와 year 중 하나 이상 필요 — 둘 다 주면 그 직원의 그 해. 날짜 최신순 */
+    /**
+     * memberId·year로 거른다 — 둘 다 주면 그 직원의 그 해, 둘 다 없으면 기관 전체. 날짜 최신순.
+     * 직원 인사 화면·오늘 확인할 것(건강검진 기한)·평가 근거는 해를 넘겨 가장 최근 검진·교육을 봐야 해서 전체를 부른다.
+     */
     @Transactional(readOnly = true)
     public List<LabStaffHrDto.CertView> listCerts(Long memberId, String year) {
         Long companyId = access.requireCompanyId();
-        if (memberId == null && (year == null || year.isBlank())) {
-            throw LabValidation.bad("memberId 또는 year 중 하나를 보내 주세요");
-        }
         LocalDate from = null;
         LocalDate to = null;
         if (year != null && !year.isBlank()) {
@@ -124,8 +124,10 @@ public class LabStaffHrService {
                     ? certs.findByCompanyIdAndMemberIdOrderByDoneOnDescIdDesc(companyId, memberId)
                     : certs.findByCompanyIdAndMemberIdAndDoneOnBetweenOrderByDoneOnDescIdDesc(companyId, memberId,
                             from, to);
-        } else {
+        } else if (from != null) {
             rows = certs.findByCompanyIdAndDoneOnBetweenOrderByDoneOnDescIdDesc(companyId, from, to);
+        } else {
+            rows = certs.findByCompanyIdOrderByDoneOnDescIdDesc(companyId);
         }
         Set<Long> ids = new LinkedHashSet<>();
         rows.forEach(r -> ids.add(r.getMemberId()));

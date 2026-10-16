@@ -70,10 +70,9 @@ class LabNinthControllerTest {
                 .andExpect(jsonPath("$[0].hours").value(8.5))
                 .andExpect(jsonPath("$[0].certNo").value("A-1"))
                 .andExpect(jsonPath("$[0].memberName").value("이요양"));
-        when(hr.listCerts(null, null)).thenThrow(new CustomException("memberId 또는 year 중 하나를 보내 주세요",
-                HttpStatus.BAD_REQUEST));
-        mvc.perform(get("/api/v1/lab/staff-certs")).andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("memberId 또는 year 중 하나를 보내 주세요"));
+        // 조건 없이 부르면 기관 전체 — 웹(직원 인사·오늘 확인할 것·평가 근거)이 이렇게 부른다
+        when(hr.listCerts(null, null)).thenReturn(List.of());
+        mvc.perform(get("/api/v1/lab/staff-certs")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
         when(hr.createCert(any())).thenThrow(new CustomException("직원을 찾을 수 없습니다", HttpStatus.NOT_FOUND));
         mvc.perform(post("/api/v1/lab/staff-certs").contentType(MediaType.APPLICATION_JSON).content(
                 "{\"memberId\":9,\"kind\":\"HEALTH_CHECK\",\"doneOn\":\"2026-01-05\"}"))

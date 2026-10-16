@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LabStaffCertRepository extends JpaRepository<LabStaffCert, Long> {
 
+    List<LabStaffCert> findByCompanyIdOrderByDoneOnDescIdDesc(Long companyId);
+
     List<LabStaffCert> findByCompanyIdAndMemberIdOrderByDoneOnDescIdDesc(Long companyId, Long memberId);
 
     List<LabStaffCert> findByCompanyIdAndDoneOnBetweenOrderByDoneOnDescIdDesc(Long companyId, LocalDate from,

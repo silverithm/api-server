@@ -171,7 +171,7 @@ class LabStaffHrServiceTest {
                 .isEqualTo("박간호");
     }
 
-    // memberId 또는 year로 거르고 둘 다 없으면 400 — 최신순, 해 경계 포함
+    // memberId·year로 거르고 둘 다 없으면 기관 전체 — 최신순, 해 경계 포함
     @Test
     void yearFilter() {
         service.createCert(cert(lee.getId(), "CONTINUING_EDU", LocalDate.of(2025, 1, 1), "4"));
@@ -188,11 +188,15 @@ class LabStaffHrServiceTest {
                 .containsExactly("박간호");
         assertThat(service.listCerts(null, "2023")).isEmpty();
 
-        assertRejected(() -> service.listCerts(null, null), HttpStatus.BAD_REQUEST, "memberId 또는 year");
+        // 조건이 없으면 해를 넘겨 전부 — 직원 인사·건강검진 기한·평가 근거가 이렇게 부른다
+        assertThat(service.listCerts(null, null)).extracting(LabStaffHrDto.CertView::doneOn)
+                .containsExactly(LocalDate.of(2025, 12, 31), LocalDate.of(2025, 5, 5), LocalDate.of(2025, 1, 1),
+                        LocalDate.of(2024, 12, 31));
         assertRejected(() -> service.listCerts(null, "25"), HttpStatus.BAD_REQUEST, "YYYY");
 
         // 다른 기관은 이 기록을 보지 못한다
         access.companyId = LabTestFixtures.company(em, "다른기관").getId();
         assertThat(service.listCerts(null, "2025")).isEmpty();
+        assertThat(service.listCerts(null, null)).isEmpty();
     }
 }

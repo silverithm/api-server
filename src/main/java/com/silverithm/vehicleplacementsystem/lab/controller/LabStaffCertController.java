@@ -23,7 +23,7 @@ public class LabStaffCertController {
 
     private final LabStaffHrService service;
 
-    /** memberId 또는 year(또는 둘 다)로 거른다 — 둘 다 없으면 400 */
+    /** memberId·year(또는 둘 다)로 거른다 — 둘 다 없으면 기관 전체 */
     @GetMapping
     public List<LabStaffHrDto.CertView> list(@RequestParam(required = false) Long memberId,
                                              @RequestParam(required = false) String year) {
