@@ -1,7 +1,13 @@
 <configuration>
     <property resource="logback-variables.properties" />
 
-    <timestamp key="ToDay" datePattern="yyyyMMdd" />
+    <!--
+      파일 이름은 롤링 정책의 fileNamePattern 하나로만 정한다(<file>을 두지 않는다).
+      전에는 <file>에 날짜 변수를 넣었는데, 에러 쪽은 정의되지 않은 ${TODAY}를 써서 그날 에러가
+      'TODAY_IS_UNDEFINED_server.log'에 쌓였고, 정보 쪽 ${ToDay}는 서버를 띄운 날로 굳어 자정이 지나도
+      그 이름에 계속 쓰였다. 배포로 프로세스가 바뀔 때마다 그 파일이 이름 규칙 밖에 남아 maxHistory로도
+      지워지지 않았다. <file>이 없으면 지금 쓰는 파일이 곧 '20261016_server_0.log' 같은 오늘 날짜 파일이다.
+    -->
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <layout class="ch.qos.logback.classic.PatternLayout">
@@ -17,7 +23,6 @@
             <onMatch>ACCEPT</onMatch>
             <onMismatch>DENY</onMismatch>
         </filter>
-        <file>${LOG_PATH}/info/${ToDay}_${LOG_FILE_NAME}.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>
                 ${LOG_PATH}/info/%d{yyyyMMdd}_${LOG_FILE_NAME}_%i.log
@@ -36,7 +41,6 @@
             <onMatch>ACCEPT</onMatch>
             <onMismatch>DENY</onMismatch>
         </filter>
-        <file>${LOG_PATH}/error/${TODAY}_${LOG_FILE_NAME}.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>
                 ${LOG_PATH}/error/%d{yyyyMMdd}_${LOG_FILE_NAME}_%i.log
