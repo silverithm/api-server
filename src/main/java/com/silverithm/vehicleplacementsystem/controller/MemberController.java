@@ -2,6 +2,7 @@ package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.*;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.service.MemberService;
 import com.silverithm.vehicleplacementsystem.util.ClientIp;
 import jakarta.servlet.http.HttpServletRequest;
@@ -399,17 +400,25 @@ public class MemberController {
         }
     }
 
+    /**
+     * 직원 비밀번호 찾기 — 임시 비밀번호를 이메일로 보낸다.
+     *
+     * <p>message·error는 문자열로 내려준다. 전에는 {@code {"message": {"password": "..."}}}처럼 객체로 감쌌는데,
+     * 앱(AuthProvider.findPassword)은 message를 문자열로 바로 띄워 형 변환 오류가 났다 — 메일은 갔는데 화면엔 실패로 보였다.
+     * 가입된 이메일이 없을 때도 500으로 뭉개지 않고 그 상태 코드와 사유를 그대로 돌려준다.
+     */
     @PostMapping("/find/password")
-    public ResponseEntity<Map<String, FindPasswordResponse>> findPassword(@RequestParam String email) {
+    public ResponseEntity<Map<String, String>> findPassword(@RequestParam String email) {
+        log.info("[Member API] 비밀번호 찾기 요청: username={}", PrivacyMask.email(email));
         try {
-            log.info("[Member API] 비밀번호 찾기 요청: username={}", PrivacyMask.email(email));
-            return ResponseEntity.ok().body(Map.of("message", memberService.findPassword(email)));
+            return ResponseEntity.ok(Map.of("message", memberService.findPassword(email).password()));
+        } catch (CustomException e) {
+            log.warn("[Member API] 비밀번호 찾기 실패: {}", e.getMessage());
+            return ResponseEntity.status(e.getHttpStatus()).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-
-
             log.error("[Member API] 비밀번호 찾기 요청 오류:", e);
             return ResponseEntity.internalServerError()
-                    .body(Map.of("error", new FindPasswordResponse("비밀번호 찾기 중 오류가 발생했습니다")));
+                    .body(Map.of("error", "비밀번호 찾기 중 오류가 발생했습니다"));
         }
     }
 
