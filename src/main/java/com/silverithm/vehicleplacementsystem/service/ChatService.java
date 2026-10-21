@@ -7,6 +7,7 @@ import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.repository.*;
 import com.silverithm.vehicleplacementsystem.util.AdminDisplay;
 import com.silverithm.vehicleplacementsystem.util.PersonDisplay;
+import com.silverithm.vehicleplacementsystem.util.PushPreview;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -1488,7 +1489,7 @@ public class ChatService {
                                 .title(mentioned
                                         ? sender + " — 나를 호출했어요"
                                         : sender)
-                                .message(batchBody(message, batchCount))
+                                .message(PushPreview.of(batchBody(message, batchCount)))
                                 .recipientUserId(participant.getUserId())
                                 .recipientUserName(participant.getUserName())
                                 .type("CHAT")
