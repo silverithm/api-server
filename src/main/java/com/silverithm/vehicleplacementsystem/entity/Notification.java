@@ -100,6 +100,7 @@ public class Notification {
         CHAT,                   // 채팅 알림
         APPROVAL,               // 결재 알림
         MEETING_MINUTES,        // 회의록 서명 요청
-        GENERAL                 // 일반 알림
+        GENERAL,                // 일반 알림
+        WORK_TASK               // 업무진행도 — 배정·매일 미완료 알림
     }
 } 
