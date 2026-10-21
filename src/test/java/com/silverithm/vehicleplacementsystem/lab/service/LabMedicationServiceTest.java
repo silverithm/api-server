@@ -306,4 +306,51 @@ class LabMedicationServiceTest {
         service.deleteRequest(empty.id());
         assertThat(requests.count()).isZero();
     }
+
+    private LabMedicationDto.MedicationItem itemOnDays(String name, List<Integer> weekdays, String... slots) {
+        return new LabMedicationDto.MedicationItem(name, "1정", "ORAL", List.of(slots), "AFTER_MEAL", "", weekdays);
+    }
+
+    @Test
+    void weekdaysValidatedAndNormalized() {
+        // 중복·순서는 정리하고, 일곱 요일을 다 고르면 '매일'이라 비운다
+        LabMedicationDto.RequestView request = service.createRequest(input(kim.getId(),
+                List.of(itemOnDays("변비약", List.of(3, 1, 1), "EVENING"),
+                        itemOnDays("혈압약", List.of(1, 2, 3, 4, 5, 6, 7), "MORNING")), START, END, "ACTIVE"));
+        assertThat(request.medicines().get(0).weekdays()).containsExactly(1, 3);
+        assertThat(request.medicines().get(1).weekdays()).isEmpty();
+
+        assertRejected(() -> service.createRequest(input(kim.getId(),
+                        List.of(itemOnDays("변비약", List.of(8), "EVENING")), START, END, "ACTIVE")),
+                HttpStatus.BAD_REQUEST, "요일");
+        assertRejected(() -> service.createRequest(input(kim.getId(),
+                        List.of(itemOnDays("변비약", List.of(0), "EVENING")), START, END, "ACTIVE")),
+                HttpStatus.BAD_REQUEST, "요일");
+    }
+
+    @Test
+    void weekdaysAbsentInOldJsonMeansEveryDay() {
+        List<LabMedicationDto.MedicationItem> read = LabJson.readMedicationItems(
+                "[{\"name\":\"혈압약\",\"dose\":\"1정\",\"route\":\"ORAL\",\"slots\":[\"MORNING\"],"
+                        + "\"timing\":\"AFTER_MEAL\",\"note\":\"\"}]");
+        assertThat(read).hasSize(1);
+        assertThat(read.get(0).weekdays()).isNull();
+        assertThat(read.get(0).givenOn(LocalDate.of(2026, 1, 13))).isTrue();
+    }
+
+    @Test
+    void doseOnlyOnScheduledWeekdays() {
+        // 2026-01-12 월, 01-13 화, 01-14 수
+        LabMedicationDto.RequestView request = service.createRequest(input(kim.getId(),
+                List.of(itemOnDays("변비약", List.of(1, 3), "EVENING")), START, END, "ACTIVE"));
+
+        service.upsertDose(dose(request.id(), LocalDate.of(2026, 1, 12), "EVENING", "GIVEN", "18:30"));
+        assertRejected(() -> service.upsertDose(dose(request.id(), LocalDate.of(2026, 1, 13), "EVENING", "GIVEN",
+                "18:30")), HttpStatus.BAD_REQUEST, "먹이는 요일이 아닙니다");
+
+        // 이미 월요일에 기록한 의뢰서를 화요일만으로 바꾸면 기록이 요일 밖으로 밀려난다
+        assertRejected(() -> service.updateRequest(request.id(), input(kim.getId(),
+                        List.of(itemOnDays("변비약", List.of(2), "EVENING")), START, END, "ACTIVE")),
+                HttpStatus.CONFLICT, "이미 기록한 투약");
+    }
 }

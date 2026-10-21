@@ -147,7 +147,7 @@ public class LabMedicationService {
             Set<String> slots = slotsOf(medicines);
             for (LabMedicationDose dose : recorded) {
                 boolean outside = dose.getGivenOn().isBefore(start) || (end != null && dose.getGivenOn().isAfter(end));
-                if (outside || !slots.contains(dose.getSlot())) {
+                if (outside || !slots.contains(dose.getSlot()) || !slotsOn(medicines, dose.getGivenOn()).contains(dose.getSlot())) {
                     throw new CustomException("이미 기록한 투약(" + dose.getGivenOn()
                             + ")이 바꾼 기간·시간대 밖에 있습니다. 기록을 먼저 확인해 주세요", HttpStatus.CONFLICT);
                 }
@@ -184,9 +184,35 @@ public class LabMedicationService {
             }
             List<String> slots = SLOT_ORDER.stream().filter(chosen::contains).toList();
             result.add(new LabMedicationDto.MedicationItem(name, dose, route, slots, timing,
-                    LabValidation.text(item.note(), ITEM_NOTE, "약 메모")));
+                    LabValidation.text(item.note(), ITEM_NOTE, "약 메모"), weekdays(name, item.weekdays())));
         }
         return result;
+    }
+
+    /** 먹이는 요일 검증 — 1(월)~7(일), 중복 없이 정렬. 비우거나 일곱 요일을 다 고르면 '매일'이라 비워 저장한다 */
+    static List<Integer> weekdays(String name, List<Integer> input) {
+        if (input == null || input.isEmpty()) {
+            return List.of();
+        }
+        java.util.TreeSet<Integer> days = new java.util.TreeSet<>();
+        for (Integer day : input) {
+            if (day == null || day < 1 || day > 7) {
+                throw LabValidation.bad("'" + name + "'의 먹는 요일이 올바르지 않습니다(월~일)");
+            }
+            days.add(day);
+        }
+        return days.size() == 7 ? List.of() : List.copyOf(days);
+    }
+
+    /** 그 날 먹이는 시간대 — 요일이 정해진 약은 해당 요일에만 센다 */
+    private static Set<String> slotsOn(List<LabMedicationDto.MedicationItem> medicines, LocalDate day) {
+        Set<String> slots = new HashSet<>();
+        for (LabMedicationDto.MedicationItem item : medicines) {
+            if (item.givenOn(day)) {
+                slots.addAll(item.slots());
+            }
+        }
+        return slots;
     }
 
     private static Set<String> slotsOf(List<LabMedicationDto.MedicationItem> medicines) {
@@ -262,8 +288,12 @@ public class LabMedicationService {
                         + (request.getEndDate() == null ? request.getStartDate() + "부터"
                         : request.getStartDate() + " ~ " + request.getEndDate()) + ")을 벗어났습니다");
             }
-            if (!slotsOf(LabJson.readMedicationItems(request.getMedicines())).contains(slot)) {
+            List<LabMedicationDto.MedicationItem> items = LabJson.readMedicationItems(request.getMedicines());
+            if (!slotsOf(items).contains(slot)) {
                 throw LabValidation.bad("이 의뢰서에 없는 시간대입니다");
+            }
+            if (!slotsOn(items, day).contains(slot)) {
+                throw LabValidation.bad("이 날(" + day + ")은 이 시간대에 먹이는 요일이 아닙니다");
             }
             LabMedicationDose dose = doses.findByRequestIdAndGivenOnAndSlot(requestId, day, slot)
                     .orElseGet(() -> new LabMedicationDose(companyId, request.getElderlyId(), requestId, day, slot));
