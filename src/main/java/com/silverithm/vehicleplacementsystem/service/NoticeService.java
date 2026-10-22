@@ -399,15 +399,16 @@ public class NoticeService {
         try {
             log.info("[Notice Service] 공지사항 FCM 알림 전송 시작: noticeId={}", notice.getId());
 
-            // 해당 회사의 모든 활성 멤버 조회 (FCM 토큰이 있는 멤버만)
-            List<Member> members = memberRepository.findByCompanyIdAndFcmTokenIsNotNull(company.getId());
+            // 해당 회사의 재직 중인 직원 모두 — 기기가 없어도 알림함에는 남겨 웹에서 확인할 때까지 띄운다.
+            // 예전에는 토큰이 있는 직원만 골라 웹만 쓰는 직원에게는 공지 알림이 아예 없었다(2026-10-22 원장).
+            List<Member> members = memberRepository.findByCompanyAndStatus(company, Member.MemberStatus.ACTIVE);
 
             log.info("[Notice Service] 알림 전송 대상 멤버 수: {}", members.size());
 
             for (Member member : members) {
                 try {
                     FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
-                            .recipientToken(member.getFcmToken())
+                            .recipientToken(member.getFcmToken() == null ? "" : member.getFcmToken())
                             .title("[공지] " + notice.getTitle())
                             .message(truncateContent(notice.getContent(), 100))
                             .recipientUserId(member.getId().toString())

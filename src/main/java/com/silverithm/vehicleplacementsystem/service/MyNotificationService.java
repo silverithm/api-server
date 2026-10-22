@@ -16,7 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>받는 사람은 토큰으로 정한다(채팅 식별자 — 직원 "12", 관리자 "admin_3"). 경로에 사람 id를 받는
  * 옛 알림 API와 달리 남의 알림을 읽거나 확인할 수 없다.
- * 채팅 알림은 뺀다 — 채팅은 말풍선 배지와 새 메시지 알림이 따로 있다.
+ * 채팅도 함께 내려준다 — 원장 요청(2026-10-22)대로 채팅·근무조정·일정·결재·업무진행도를 모두 같은 카드로 띄운다.
+ * 웹이 방마다 하나로 묶고, 방을 읽으면 채팅 쪽이 그 방 알림을 읽음으로 바꾼다.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,7 +25,8 @@ public class MyNotificationService {
 
     static final int DEFAULT_DAYS = 3;
     static final int MAX_DAYS = 14;
-    static final int LIMIT = 30;
+    /** 채팅이 섞이면 한 방에서 수십 건이 올 수 있다 — 웹이 방마다 묶으므로 넉넉히 */
+    static final int LIMIT = 100;
 
     private final NotificationRepository notifications;
     private final ChatCallerResolver chatCallerResolver;
@@ -33,14 +35,13 @@ public class MyNotificationService {
                        String relatedEntityType, LocalDateTime createdAt) {
     }
 
-    /** 확인 안 한 알림(최근 [days]일, 새것부터, 최대 30건) */
+    /** 확인 안 한 알림(최근 [days]일, 새것부터, 최대 100건) */
     @Transactional(readOnly = true)
     public List<View> unread(Integer days) {
         String me = requireMe();
         int window = days == null ? DEFAULT_DAYS : Math.max(1, Math.min(MAX_DAYS, days));
         LocalDateTime since = LocalDateTime.now().minusDays(window);
         return notifications.findByRecipientUserIdAndIsReadFalseOrderByCreatedAtDesc(me).stream()
-                .filter(n -> n.getType() != Notification.NotificationType.CHAT)
                 .filter(n -> n.getCreatedAt() != null && !n.getCreatedAt().isBefore(since))
                 .limit(LIMIT)
                 .map(MyNotificationService::toView)
@@ -56,7 +57,7 @@ public class MyNotificationService {
         }
         LocalDateTime now = LocalDateTime.now();
         int changed = 0;
-        for (Notification n : notifications.findAllById(ids.stream().limit(100).toList())) {
+        for (Notification n : notifications.findAllById(ids.stream().limit(LIMIT * 2).toList())) {
             if (me.equals(n.getRecipientUserId()) && !Boolean.TRUE.equals(n.getIsRead())) {
                 n.setIsRead(true);
                 n.setReadAt(now);

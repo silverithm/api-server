@@ -72,7 +72,8 @@ class ScheduleServiceUpdateCompletionManagerTypeTest {
         scheduleService = new ScheduleService(
                 scheduleRepository, scheduleCategorySettingRepository, scheduleLabelRepository,
                 scheduleParticipantRepository, scheduleTaskRepository, companyRepository,
-                transactionManager, memberRepository, userRepository, fcmService, resourceScopeGuard);
+                transactionManager, memberRepository, userRepository, fcmService, resourceScopeGuard,
+                org.mockito.Mockito.mock(NotificationService.class));
 
         company = mock(Company.class);
         // 예외를 던지는 케이스는 save/categorySettingsFor까지 가지 않으므로 lenient로 둔다.

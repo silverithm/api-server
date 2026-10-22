@@ -74,7 +74,8 @@ class ScheduleServiceApplyManagerTest {
         scheduleService = new ScheduleService(
                 scheduleRepository, scheduleCategorySettingRepository, scheduleLabelRepository,
                 scheduleParticipantRepository, scheduleTaskRepository, companyRepository,
-                transactionManager, memberRepository, userRepository, fcmService, resourceScopeGuard);
+                transactionManager, memberRepository, userRepository, fcmService, resourceScopeGuard,
+                org.mockito.Mockito.mock(NotificationService.class));
 
         applyManager = ScheduleService.class.getDeclaredMethod(
                 "applyManager", Schedule.class, Long.class, String.class);

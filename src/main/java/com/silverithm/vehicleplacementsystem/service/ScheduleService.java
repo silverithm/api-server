@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleCategorySettingDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleCategorySettingRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ScheduleDTO;
@@ -58,6 +59,8 @@ public class ScheduleService {
     private final UserRepository userRepository;
     private final FCMService fcmService;
     private final ResourceScopeGuard resourceScopeGuard;
+    /** 알림함 — 일정 알림도 웹에서 확인할 때까지 뜨게 남긴다(푸시만 보내던 것) */
+    private final NotificationService notificationService;
 
     // ==================== Schedule CRUD ====================
 
@@ -503,14 +506,13 @@ public class ScheduleService {
         }
         try {
             Member member = memberRepository.findById(task.getAssigneeMemberId()).orElse(null);
-            if (member == null || member.getFcmToken() == null || member.getFcmToken().isEmpty()) {
+            if (member == null) {
                 return;
             }
             String body = String.format("%s - %s", task.getSchedule().getTitle(), task.getContent());
             // 데이터가 없으면 알림은 떠도 눌렀을 때 앱이 갈 곳을 모른다 — 그 일정의 달력으로 보낸다
             // (미완료 업무 리마인더는 이미 같은 데이터를 싣고 있다)
-            fcmService.sendNotification(member.getFcmToken(), title, body,
-                    scheduleNotificationData(task.getSchedule()));
+            notifyMember(member, title, body, task.getSchedule());
         } catch (Exception e) {
             log.error("[Schedule Service] 할 일 알림 전송 실패: taskId={}", task.getId(), e);
         }
@@ -880,6 +882,25 @@ public class ScheduleService {
     }
 
     /**
+     * 직원 한 명에게 일정 알림 — 알림함에 늘 남기고(웹이 확인할 때까지 띄운다), 기기가 있으면 푸시도 간다.
+     * 예전에는 푸시만 보내 웹에는 일정 알림이 하나도 뜨지 않았다(2026-10-22 원장 "알림이 중구난방").
+     * 알림 종류 칸에 일정이 따로 없어 GENERAL로 두고, 무엇인지는 relatedEntityType "schedule"이 말한다.
+     */
+    private void notifyMember(Member member, String title, String body, Schedule schedule) {
+        notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
+                .recipientToken(member.getFcmToken() == null ? "" : member.getFcmToken())
+                .title(title)
+                .message(body)
+                .recipientUserId(String.valueOf(member.getId()))
+                .recipientUserName(member.getName())
+                .type("GENERAL")
+                .relatedEntityId(schedule.getId())
+                .relatedEntityType("schedule")
+                .data(scheduleNotificationData(schedule))
+                .build());
+    }
+
+    /**
      * 참석자들에게 FCM 알림 전송
      */
     private void sendNotificationsToParticipants(List<ScheduleParticipant> participants, Schedule schedule) {
@@ -893,16 +914,15 @@ public class ScheduleService {
         for (ScheduleParticipant participant : participants) {
             try {
                 Member member = membersById.get(participant.getMemberId());
-                if (member != null && member.getFcmToken() != null && !member.getFcmToken().isEmpty()) {
+                if (member != null) {
                     String title = "새로운 일정 알림";
                     String body = String.format("%s - %s", schedule.getTitle(),
                             schedule.getStartDate().toString());
 
-                    fcmService.sendNotification(member.getFcmToken(), title, body,
-                            scheduleNotificationData(schedule));
+                    notifyMember(member, title, body, schedule);
                     log.info("[Schedule Service] 알림 전송 완료: member={}", PrivacyMask.name(member.getName()));
                 } else {
-                    log.debug("[Schedule Service] FCM 토큰 없음: memberId={}", participant.getMemberId());
+                    log.debug("[Schedule Service] 참석자를 찾지 못함: memberId={}", participant.getMemberId());
                 }
             } catch (Exception e) {
                 log.error("[Schedule Service] 알림 전송 실패: memberId={}",

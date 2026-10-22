@@ -33,7 +33,7 @@ public class NotificationService {
         Notification notification = Notification.builder()
                 .title(requestDTO.getTitle())
                 .message(requestDTO.getMessage())
-                .recipientToken(requestDTO.getRecipientToken())
+                .recipientToken(requestDTO.getRecipientToken() == null ? "" : requestDTO.getRecipientToken())
                 .recipientUserId(requestDTO.getRecipientUserId())
                 .recipientUserName(requestDTO.getRecipientUserName())
                 .type(parseNotificationType(requestDTO.getType()))
@@ -44,7 +44,15 @@ public class NotificationService {
         
         // 데이터베이스에 저장
         Notification saved = notificationRepository.save(notification);
-        
+
+        // 기기가 없는 사람(앱을 안 쓰는 관리자·직원)도 웹 알림함에서는 봐야 한다 — 알림함에만 남기고 푸시는 건너뛴다.
+        // 예전에는 보내는 쪽마다 토큰이 없으면 이 메서드를 부르지도 않아, 같은 일인데 누구는 웹에 뜨고 누구는 안 떴다
+        // (2026-10-22 원장 "알림이 중구난방 — 언제는 뜨고 언제는 안 뜬다").
+        if (requestDTO.getRecipientToken() == null || requestDTO.getRecipientToken().isBlank()) {
+            log.debug("[Notification Service] 기기 없음 — 알림함에만 남김: ID={}", saved.getId());
+            return NotificationDTO.fromEntity(saved);
+        }
+
         // FCM 전송 시도
         try {
             String fcmMessageId = fcmService.sendNotification(
@@ -151,6 +159,10 @@ public class NotificationService {
         List<Notification> failedNotifications = notificationRepository.findBySentFalse();
         
         for (Notification notification : failedNotifications) {
+            // 기기가 없어 알림함에만 남긴 줄은 실패가 아니다 — 다시 보낼 곳이 없다
+            if (notification.getRecipientToken() == null || notification.getRecipientToken().isBlank()) {
+                continue;
+            }
             try {
                 String fcmMessageId = fcmService.sendNotification(
                         notification.getRecipientToken(),

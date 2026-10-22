@@ -565,33 +565,27 @@ public class VacationService {
         // 실제 환경에서는 사용자의 FCM 토큰을 조회해야 함
         String userFcmToken = getUserFcmToken(vacation.getUserId(), vacation.getUserName());
 
-        if (userFcmToken != null) {
-            notificationService.sendVacationApprovedNotification(
-                    userFcmToken,
-                    vacation.getUserId(),
-                    vacation.getUserName(),
-                    vacation.getDate().toString(),
-                    vacation.getId()
-            );
-        } else {
-            log.warn("[Vacation Service] 사용자 FCM 토큰을 찾을 수 없음: {}", vacation.getUserName());
-        }
+        // 기기가 없어도 알림함에는 남긴다 — 웹에서 확인할 때까지 뜬다(푸시는 토큰이 있을 때만)
+        notificationService.sendVacationApprovedNotification(
+                userFcmToken == null ? "" : userFcmToken,
+                vacation.getUserId(),
+                vacation.getUserName(),
+                vacation.getDate().toString(),
+                vacation.getId()
+        );
     }
 
     private void sendVacationRejectedNotificationToUser(VacationRequest vacation) {
         String userFcmToken = getUserFcmToken(vacation.getUserId(), vacation.getUserName());
 
-        if (userFcmToken != null) {
-            notificationService.sendVacationRejectedNotification(
-                    userFcmToken,
-                    vacation.getUserId(),
-                    vacation.getUserName(),
-                    vacation.getDate().toString(),
-                    vacation.getId()
-            );
-        } else {
-            log.warn("[Vacation Service] 사용자 FCM 토큰을 찾을 수 없음: {}", vacation.getUserName());
-        }
+        // 기기가 없어도 알림함에는 남긴다 — 웹에서 확인할 때까지 뜬다(푸시는 토큰이 있을 때만)
+        notificationService.sendVacationRejectedNotification(
+                userFcmToken == null ? "" : userFcmToken,
+                vacation.getUserId(),
+                vacation.getUserName(),
+                vacation.getDate().toString(),
+                vacation.getId()
+        );
     }
 
     private void sendVacationSubmittedNotificationToAdmins(VacationRequest vacation, Company company) {

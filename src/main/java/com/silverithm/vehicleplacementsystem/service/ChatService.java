@@ -1473,38 +1473,37 @@ public class ChatService {
                 }
 
                 try {
+                    // 기기가 없어도(웹만 쓰는 사람) 알림함에는 남긴다 — 웹이 확인할 때까지 띄운다.
+                    // 푸시는 토큰이 있을 때만 NotificationService가 보낸다.
                     String fcmToken = resolveParticipantFcmToken(participant.getUserId(), participant.getUserName());
+                    // @이름으로 호출된 사람은 일반 메시지와 구분해서 알린다 (많은 대화 속에서 놓치지 않게)
+                    boolean mentioned = isMentioned(message.getContent(), participant.getUserName());
 
-                    if (fcmToken != null) {
-                        // @이름으로 호출된 사람은 일반 메시지와 구분해서 알린다 (많은 대화 속에서 놓치지 않게)
-                        boolean mentioned = isMentioned(message.getContent(), participant.getUserName());
+                    // 메신저 관례대로 제목=보낸 사람, 본문=내용 (방 이름·이름 접두사 중복 제거).
+                    // 이름만 적으면 동명이인일 때 누구인지 알 수 없어 직책을 함께 보여준다.
+                    String sender = PersonDisplay.withPosition(
+                            message.getSenderName(), message.getSenderPosition());
 
-                        // 메신저 관례대로 제목=보낸 사람, 본문=내용 (방 이름·이름 접두사 중복 제거).
-                        // 이름만 적으면 동명이인일 때 누구인지 알 수 없어 직책을 함께 보여준다.
-                        String sender = PersonDisplay.withPosition(
-                                message.getSenderName(), message.getSenderPosition());
+                    FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
+                            .recipientToken(fcmToken == null ? "" : fcmToken)
+                            .title(mentioned
+                                    ? sender + " — 나를 호출했어요"
+                                    : sender)
+                            .message(PushPreview.of(batchBody(message, batchCount)))
+                            .recipientUserId(participant.getUserId())
+                            .recipientUserName(participant.getUserName())
+                            .type("CHAT")
+                            .relatedEntityId(room.getId())
+                            .relatedEntityType("chatRoom")
+                            .data(Map.of(
+                                    "type", "chat",
+                                    "roomId", String.valueOf(room.getId()),
+                                    "messageId", String.valueOf(message.getId()),
+                                    "mention", String.valueOf(mentioned)
+                            ))
+                            .build();
 
-                        FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
-                                .recipientToken(fcmToken)
-                                .title(mentioned
-                                        ? sender + " — 나를 호출했어요"
-                                        : sender)
-                                .message(PushPreview.of(batchBody(message, batchCount)))
-                                .recipientUserId(participant.getUserId())
-                                .recipientUserName(participant.getUserName())
-                                .type("CHAT")
-                                .relatedEntityId(room.getId())
-                                .relatedEntityType("chatRoom")
-                                .data(Map.of(
-                                        "type", "chat",
-                                        "roomId", String.valueOf(room.getId()),
-                                        "messageId", String.valueOf(message.getId()),
-                                        "mention", String.valueOf(mentioned)
-                                ))
-                                .build();
-
-                        notificationService.sendAndSaveNotification(request);
-                    }
+                    notificationService.sendAndSaveNotification(request);
                 } catch (Exception e) {
                     log.error("[Chat Service] FCM 전송 실패: userId={}, error={}",
                             participant.getUserId(), e.getMessage());

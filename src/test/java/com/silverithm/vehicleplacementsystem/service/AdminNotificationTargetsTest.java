@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.silverithm.vehicleplacementsystem.config.BillingKeyEncryptionConfig;
 import com.silverithm.vehicleplacementsystem.config.querydsl.QuerydslConfiguration;
@@ -127,10 +128,15 @@ class AdminNotificationTargetsTest {
     }
 
     @Test
-    @DisplayName("토큰이 없는 관리자는 대상에서 빠진다")
-    void 토큰없으면제외() {
-        가입계정관리자("알림끔", null);
+    @DisplayName("기기가 없는 관리자도 대상이다 — 알림함에는 남아야 웹에서 본다(푸시는 안 간다)")
+    void 토큰없어도대상() {
+        AppUser 웹만쓰는원장 = 가입계정관리자("원장", null);
+        Member 웹만쓰는국장 = 직원("사무국장", Member.Role.ADMIN, null);
 
-        assertThat(대상()).isEmpty();
+        assertThat(대상())
+                .extracting(AdminNotificationTargets.AdminRecipient::userId, AdminNotificationTargets.AdminRecipient::fcmToken)
+                .containsExactly(
+                        tuple("admin_" + 웹만쓰는원장.getId(), null),
+                        tuple(String.valueOf(웹만쓰는국장.getId()), null));
     }
 }

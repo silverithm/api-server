@@ -752,10 +752,11 @@ public class ApprovalRequestService {
     private void notifyRequesterOfResult(ApprovalRequest request, boolean approved, String reason) {
         try {
             Member requester = findRequester(request.getRequesterId());
-            if (requester == null || requester.getFcmToken() == null || requester.getFcmToken().isEmpty()) {
-                log.debug("[ApprovalRequest] 기안자 FCM 토큰 없음: requesterId={}", request.getRequesterId());
+            if (requester == null) {
+                log.debug("[ApprovalRequest] 기안자를 찾지 못함: requesterId={}", request.getRequesterId());
                 return;
             }
+            // 기기가 없어도 알림함에는 남긴다 — 웹에서 확인할 때까지 뜬다(푸시는 토큰이 있을 때만)
 
             String title = approved ? "전자결재 승인" : "전자결재 반려";
             StringBuilder message = new StringBuilder()
@@ -766,7 +767,7 @@ public class ApprovalRequestService {
             }
 
             notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
-                    .recipientToken(requester.getFcmToken())
+                    .recipientToken(requester.getFcmToken() == null ? "" : requester.getFcmToken())
                     .title(title)
                     .message(message.toString())
                     .recipientUserId(String.valueOf(requester.getId()))
@@ -828,7 +829,9 @@ public class ApprovalRequestService {
                 AppUser approver = userRepository.findById(step.getApproverRefId()).orElse(null);
                 if (approver != null) {
                     token = approver.getFcmToken();
-                    recipientUserId = String.valueOf(approver.getId());
+                    // 가입 계정 관리자는 채팅과 같은 admin_<id>로 남긴다 — 원시 id로 남기면 관리자 알림함에 안 보이고,
+                    // 같은 번호의 직원 알림함에 잘못 들어갈 수 있다
+                    recipientUserId = ChatService.toAdminChatUserId(approver.getId());
                 }
             } else {
                 Member approver = memberRepository.findById(step.getApproverRefId()).orElse(null);
@@ -838,14 +841,15 @@ public class ApprovalRequestService {
                 }
             }
 
-            if (token == null || token.isEmpty()) {
-                log.debug("[ApprovalRequest] 결재자 FCM 토큰 없음: step={}, approver={}",
+            if (recipientUserId == null) {
+                log.debug("[ApprovalRequest] 결재자를 찾지 못함: step={}, approver={}",
                         step.getStepOrder(), step.getApproverName());
                 return;
             }
 
+            // 기기가 없어도 알림함에는 남긴다 — 웹에서 확인할 때까지 뜬다(푸시는 토큰이 있을 때만)
             notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
-                    .recipientToken(token)
+                    .recipientToken(token == null ? "" : token)
                     .title("결재 요청 도착")
                     .message(requesterDisplayName(request) + "님의 '" + request.getTitle() + "' 결재가 결재를 기다리고 있습니다.")
                     .recipientUserId(recipientUserId)

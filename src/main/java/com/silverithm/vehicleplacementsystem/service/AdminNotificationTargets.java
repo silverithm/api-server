@@ -42,9 +42,13 @@ public class AdminNotificationTargets {
     public record AdminRecipient(String userId, String userName, String fcmToken) {}
 
     /**
-     * 알림을 받을 수 있는 기관 관리자들.
+     * 알림을 받을 기관 관리자들 — 기기(토큰)가 없는 관리자도 들어간다(토큰은 null).
      *
-     * <p>한 사람이 가입 계정과 직원 계정을 모두 가진 경우 같은 기기로 두 번 가므로 토큰으로 합친다.
+     * <p>예전에는 토큰이 있는 관리자만 돌려줘서, 앱을 안 쓰고 웹만 쓰는 관리자는 휴무 신청·결재 상신·가입 요청이
+     * 알림함에 아예 남지 않았다 — 웹 알림이 "언제는 뜨고 언제는 안 뜨는" 까닭이었다(2026-10-22 원장).
+     * 이제 알림함에는 모두 남고, 푸시는 토큰이 있는 사람에게만 간다({@link NotificationService}).
+     *
+     * <p>한 사람이 가입 계정과 직원 계정을 모두 가진 경우 같은 기기로 두 번 가므로, 토큰이 같으면 하나로 합친다.
      */
     @Transactional(readOnly = true)
     public List<AdminRecipient> recipientsOf(Company company) {
@@ -54,27 +58,32 @@ public class AdminNotificationTargets {
 
         Stream<AdminRecipient> appUsers = company.getUsers() == null ? Stream.of()
                 : company.getUsers().stream()
-                        .filter(user -> user.getFcmToken() != null && !user.getFcmToken().isEmpty())
+                        .filter(user -> user.getDeletedAt() == null)
                         .map(user -> new AdminRecipient(
                                 ChatService.toAdminChatUserId(user.getId()),
                                 user.getUsername(),
-                                user.getFcmToken()));
+                                blankToNull(user.getFcmToken())));
 
         Stream<AdminRecipient> adminMembers = memberRepository
-                .findNotifiableByCompanyAndRoles(company.getId(), List.of(Member.Role.ADMIN))
+                .findByCompanyAndRoleAndStatus(company, Member.Role.ADMIN, Member.MemberStatus.ACTIVE)
                 .stream()
                 .map(member -> new AdminRecipient(
                         String.valueOf(member.getId()),
                         member.getName(),
-                        member.getFcmToken()));
+                        blankToNull(member.getFcmToken())));
 
+        // 같은 기기는 한 번만 — 토큰이 없으면 사람(식별자)으로 구분한다
         List<AdminRecipient> recipients = Stream.concat(appUsers, adminMembers)
-                .filter(r -> r.fcmToken() != null && !r.fcmToken().isEmpty())
-                .collect(Collectors.toMap(AdminRecipient::fcmToken, r -> r, (first, second) -> first,
-                        LinkedHashMap::new))
+                .collect(Collectors.toMap(
+                        r -> r.fcmToken() != null ? "token:" + r.fcmToken() : "user:" + r.userId(),
+                        r -> r, (first, second) -> first, LinkedHashMap::new))
                 .values().stream().toList();
 
         log.debug("[Admin Targets] 기관 {} 관리자 알림 대상 {}건", company.getId(), recipients.size());
         return recipients;
+    }
+
+    private static String blankToNull(String token) {
+        return token == null || token.isBlank() ? null : token;
     }
 }

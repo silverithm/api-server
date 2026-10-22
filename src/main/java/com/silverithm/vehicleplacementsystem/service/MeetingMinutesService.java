@@ -570,7 +570,8 @@ public class MeetingMinutesService {
                     AppUser appUser = userRepository.findById(attendee.getRefId()).orElse(null);
                     if (appUser != null) {
                         token = appUser.getFcmToken();
-                        recipientUserId = String.valueOf(appUser.getId());
+                        // 가입 계정 관리자는 admin_<id> — 원시 id면 관리자 알림함에 안 보인다
+                        recipientUserId = ChatService.toAdminChatUserId(appUser.getId());
                     }
                 } else {
                     Member member = memberRepository.findById(attendee.getRefId()).orElse(null);
@@ -580,11 +581,12 @@ public class MeetingMinutesService {
                     }
                 }
 
-                if (token == null || token.isEmpty()) {
-                    log.debug("[MeetingMinutes] FCM 토큰 없음: attendee={}", attendee.getAttendeeName());
+                // 기기가 없어도 알림함에는 남긴다 — 웹에서 확인할 때까지 뜬다(푸시는 토큰이 있을 때만)
+                if (recipientUserId == null) {
+                    log.debug("[MeetingMinutes] 참석자를 찾지 못함: attendee={}", attendee.getAttendeeName());
                 } else {
                     notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
-                            .recipientToken(token)
+                            .recipientToken(token == null ? "" : token)
                             .title(remindOnly ? "회의록 서명 재요청" : "회의록 서명 요청")
                             .message("'" + minutes.getTitle() + "' 회의록이 등록되었습니다. 내용을 확인하고 서명해 주세요.")
                             .recipientUserId(recipientUserId)
