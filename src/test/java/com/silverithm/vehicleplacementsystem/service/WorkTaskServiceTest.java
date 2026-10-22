@@ -274,13 +274,15 @@ class WorkTaskServiceTest {
         저장한다();
 
         WorkTaskReminderScheduler scheduler =
-                new WorkTaskReminderScheduler(repository, notifier, mock(RedisUtils.class));
+                new WorkTaskReminderScheduler(repository, notifier, mock(RedisUtils.class), mock(NotificationService.class));
         List<WorkTaskNotifier.Message> messages = scheduler.buildMessages(LocalDate.of(2026, 10, 22));
 
         assertThat(messages).extracting(WorkTaskNotifier.Message::personName).containsExactlyInAnyOrder("박소향", "김보경");
         WorkTaskNotifier.Message 소향 = messages.stream().filter(m -> m.personName().equals("박소향")).findFirst().orElseThrow();
         assertThat(소향.title()).isEqualTo("진행 중인 업무 2건 · 기한 지남 1건");
         assertThat(소향.body()).isEqualTo("· 사업계획서 30% · 기한 지남\n· 블로그 0%");
+        // 매일 요약은 알림함에서 담당 지정 알림과 종류를 갈라둔다 — 다음 날 아침에 요약만 정리하려고
+        assertThat(messages).allSatisfy(m -> assertThat(m.relatedEntityType()).isEqualTo("work_task_daily"));
     }
 
     @Test

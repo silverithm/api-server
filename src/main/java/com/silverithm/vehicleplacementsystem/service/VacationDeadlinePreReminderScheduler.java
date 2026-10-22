@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.VacationDeadlineSetting;
@@ -11,6 +12,7 @@ import com.silverithm.vehicleplacementsystem.repository.VacationDeadlineSettingR
 import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
@@ -29,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * 마감이 지난 뒤의 초과 인원 조정은 {@link VacationAdjustmentReminderScheduler}가 맡는다 —
  * 이 스케줄러는 "입력 자체를 안 한" 직원을 마감 전에 챙기는 반대쪽 절반이다.
+ *
+ * 앱이 없는 직원도 웹 알림함에서 보도록 알림함에 남기고(2026-10-22 원장 요청), 지난 날 알림은 오늘 것을 보내기 전에 읽음 처리한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -40,11 +44,14 @@ public class VacationDeadlinePreReminderScheduler {
     private final VacationRequestRepository vacationRequestRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
-    private final FCMService fcmService;
+    private final NotificationService notificationService;
     private final RedisUtils redisUtils;
 
     /** 마감 며칠 전부터 알리기 시작하는지 (당일 포함) */
     private static final int REMIND_FROM_DAYS_BEFORE = 3;
+
+    static final String ENTITY_TYPE = "vacation_deadline_reminder";
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private static final DateTimeFormatter DATE_LABEL = DateTimeFormatter.ofPattern("M월 d일");
 
@@ -58,7 +65,12 @@ public class VacationDeadlinePreReminderScheduler {
             return;
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL);
+        try {
+            notificationService.retireStaleReminders(ENTITY_TYPE, today.atStartOfDay());
+        } catch (Exception e) {
+            log.error("[DeadlinePreReminder] 지난 알림 정리 실패 — 오늘 알림은 계속 보냅니다", e);
+        }
         List<VacationDeadlineSetting> settings = settingRepository.findByEnabledTrue();
         log.info("[DeadlinePreReminder] 마감 임박 리마인더 시작: 대상 회사 {}곳", settings.size());
 
@@ -126,14 +138,19 @@ public class VacationDeadlinePreReminderScheduler {
             if (requestedMemberIds.contains(member.getId()) || requestedUserNames.contains(member.getName())) {
                 continue; // 이미 입력함
             }
-            if (member.getFcmToken() == null || member.getFcmToken().isEmpty()) {
-                continue;
-            }
             try {
-                fcmService.sendNotification(member.getFcmToken(), title, body,
-                        Map.of("type", "vacation_deadline_reminder",
+                notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
+                        .recipientToken(member.getFcmToken() == null ? "" : member.getFcmToken())
+                        .title(title)
+                        .message(body)
+                        .recipientUserId(String.valueOf(member.getId()))
+                        .recipientUserName(member.getName())
+                        .type("VACATION_REMINDER")
+                        .relatedEntityType(ENTITY_TYPE)
+                        .data(Map.of("type", "vacation_deadline_reminder",
                                 "targetMonth", targetMonth.toString(),
-                                "deadline", deadline.toString()));
+                                "deadline", deadline.toString()))
+                        .build());
                 notified++;
             } catch (Exception e) {
                 log.warn("[DeadlinePreReminder] 발송 실패: memberId={}, {}", member.getId(), e.getMessage());
@@ -141,7 +158,7 @@ public class VacationDeadlinePreReminderScheduler {
         }
 
         if (notified > 0) {
-            log.info("[DeadlinePreReminder] companyId={} 마감 D-{} 미입력 직원 {}명에게 발송 (전체 {}명)",
+            log.info("[DeadlinePreReminder] companyId={} 마감 D-{} 미입력 직원 {}명에게 알림 (전체 {}명)",
                     companyId, daysLeft, notified, members.size());
         }
     }

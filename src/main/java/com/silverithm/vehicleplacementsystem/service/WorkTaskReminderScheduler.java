@@ -34,6 +34,7 @@ public class WorkTaskReminderScheduler {
     private final WorkTaskRepository tasks;
     private final WorkTaskNotifier notifier;
     private final RedisUtils redisUtils;
+    private final NotificationService notificationService;
 
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")
     public void remindDaily() {
@@ -44,6 +45,12 @@ public class WorkTaskReminderScheduler {
         if (!redisUtils.tryAcquireDailySchedulerLock("work-task-reminder", 120)) {
             log.info("[WorkTask Reminder] 다른 서버가 이미 보냈습니다");
             return;
+        }
+        // 요약은 그날에만 의미가 있다 — 지난 날 요약 카드는 오늘 것을 보내기 전에 읽음 처리한다(담당 지정 알림은 건드리지 않는다)
+        try {
+            notificationService.retireStaleReminders(WorkTaskNotifier.DAILY_ENTITY_TYPE, today.atStartOfDay());
+        } catch (Exception e) {
+            log.error("[WorkTask Reminder] 지난 알림 정리 실패 — 오늘 알림은 계속 보냅니다", e);
         }
         int sent = notifier.sendNow(buildMessages(today));
         log.info("[WorkTask Reminder] {} 알림 {}건", today, sent);
@@ -66,7 +73,7 @@ public class WorkTaskReminderScheduler {
             // 알림을 누르면 가장 급한 업무로 — 목록 맨 위와 같은 업무다
             Long topTaskId = list.stream().sorted(WorkTaskReminderText.URGENCY).findFirst().map(WorkTask::getId)
                     .orElse(null);
-            messages.add(new WorkTaskNotifier.Message(personId, names.get(personId), text.title(), text.body(),
+            messages.add(WorkTaskNotifier.Message.daily(personId, names.get(personId), text.title(), text.body(),
                     topTaskId));
         });
         return messages;

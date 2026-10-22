@@ -50,4 +50,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                                  @Param("relatedEntityId") Long relatedEntityId,
                                  @Param("relatedEntityType") String relatedEntityType,
                                  @Param("readAt") LocalDateTime readAt);
-} 
+
+    /**
+     * 매일 오는 리마인더의 지난 날 것을 한꺼번에 읽음 처리한다 — 리마인더는 그날에만 의미가 있어서
+     * 어제 것이 웹 카드로 남아 오늘 것과 쌓이면 안 된다(2026-10-22 원장 "새 알림은 알림 하나로").
+     * 사람마다 읽음 상태를 따로 건드리지 않고 종류(relatedEntityType)+시각만으로 대량 UPDATE 한 번에 끝낸다.
+     */
+    // 위 markReadByRelatedEntity와 같은 이유로 flush 후 컨텍스트를 비운다
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Notification n SET n.isRead = true, n.readAt = :readAt " +
+            "WHERE n.relatedEntityType = :relatedEntityType " +
+            "AND n.createdAt < :before " +
+            "AND n.isRead = false")
+    int markReadByRelatedEntityTypeCreatedBefore(@Param("relatedEntityType") String relatedEntityType,
+                                                 @Param("before") LocalDateTime before,
+                                                 @Param("readAt") LocalDateTime readAt);
+}

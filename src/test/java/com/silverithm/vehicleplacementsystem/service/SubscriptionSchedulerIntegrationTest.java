@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
@@ -55,6 +56,10 @@ class SubscriptionSchedulerIntegrationTest {
     @Mock
     private BillingKeyEncryptionService billingKeyEncryptionService;
 
+    // 스케줄러가 하루 한 인스턴스만 돌리려고 Redis 잠금을 쓰게 된 뒤 테스트에 빠져 있어 redisUtils가 null이었다
+    @Mock
+    private RedisUtils redisUtils;
+
     @InjectMocks
     private SubscriptionScheduler subscriptionScheduler;
 
@@ -94,6 +99,12 @@ class SubscriptionSchedulerIntegrationTest {
         
         testUser.setSubscription(testSubscription);
         
+        // 스케줄러가 결제 전에 빌링키를 GCM으로 재암호화(upgradeIfLegacy)하게 된 뒤 mock이 null을 돌려줘
+        // 결제가 시작되기 전에 NPE로 실패 처리됐다 — 이미 최신 암호문인 것처럼 그대로 돌려준다
+        lenient().when(billingKeyEncryptionService.upgradeIfLegacy(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        // 이 인스턴스가 오늘의 잠금을 잡은 것으로 본다
+        lenient().when(redisUtils.tryAcquireDailySchedulerLock(anyString(), anyInt())).thenReturn(true);
+
         // 기본 실패 카운트 stub 설정 (모든 테스트에서 공통으로 사용)
         lenient().when(paymentFailureLogRepository.countRecentScheduledFailuresByUserAndReason(
                 any(Long.class), any(PaymentFailureReason.class), any(LocalDateTime.class)))

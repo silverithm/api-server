@@ -6,6 +6,7 @@ import com.silverithm.vehicleplacementsystem.entity.Schedule;
 import com.silverithm.vehicleplacementsystem.entity.ScheduleCategory;
 import com.silverithm.vehicleplacementsystem.repository.CompanyRepository;
 import com.silverithm.vehicleplacementsystem.repository.MemberRepository;
+import com.silverithm.vehicleplacementsystem.repository.ScheduleCategorySettingRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleLabelRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleParticipantRepository;
 import com.silverithm.vehicleplacementsystem.repository.ScheduleRepository;
@@ -42,6 +43,10 @@ class ScheduleCompletionServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
+
+    // 일정 서비스에 카테고리 설정 저장소가 생긴 뒤 테스트에 빠져 있어 null이었다 — 기본 mock은 빈 설정을 돌려준다
+    @Mock
+    private ScheduleCategorySettingRepository scheduleCategorySettingRepository;
 
     @Mock
     private FCMService fcmService;
@@ -158,18 +163,30 @@ class ScheduleCompletionServiceTest {
     }
 
     @Test
-    @DisplayName("담당자가 지정된 일정은 작성자도 관리자도 대신 완료할 수 없다")
-    void authorAndAdminCannotCompleteWhenManagerAssigned() {
+    @DisplayName("담당자가 지정된 일정은 작성자라도 담당자가 아니면 완료할 수 없다")
+    void authorCannotCompleteWhenManagerAssigned() {
         schedule.setManagerMemberId(7L);
         when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
 
         assertThrows(IllegalStateException.class,
                 () -> scheduleService.updateCompletion(10L, true, "author@carev.kr", "김작성", 99L, false));
-        assertThrows(IllegalStateException.class,
-                () -> scheduleService.updateCompletion(10L, true, "admin@carev.kr", "이관리", null, true));
 
         assertFalse(schedule.getIsCompleted());
         verify(scheduleRepository, never()).save(any(Schedule.class));
+    }
+
+    @Test
+    @DisplayName("담당자가 지정된 일정도 관리자는 대신 완료할 수 있다 — 담당자 대행")
+    void adminCanCompleteOnBehalfWhenManagerAssigned() {
+        // 860ab6f가 관리자 우회를 뺐지만 a9621b3("일정·할 일 수행완료에 관리자 대행 허용")이 관리 목적으로 되살렸다.
+        schedule.setManagerMemberId(7L);
+        when(scheduleRepository.findById(10L)).thenReturn(Optional.of(schedule));
+        when(scheduleRepository.save(any(Schedule.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ScheduleDTO result = scheduleService.updateCompletion(10L, true, "admin@carev.kr", "이관리", null, true);
+
+        assertTrue(result.getIsCompleted());
+        assertEquals("이관리", result.getCompletedByName());
     }
 
     @Test

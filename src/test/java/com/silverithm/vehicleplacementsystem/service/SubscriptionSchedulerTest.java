@@ -1,5 +1,6 @@
 package com.silverithm.vehicleplacementsystem.service;
 
+import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
 import com.silverithm.vehicleplacementsystem.dto.PaymentResponse;
 import com.silverithm.vehicleplacementsystem.dto.SubscriptionRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.AppUser;
@@ -53,6 +54,10 @@ class SubscriptionSchedulerTest {
     @Mock
     private BillingKeyEncryptionService billingKeyEncryptionService;
 
+    // 스케줄러가 하루 한 인스턴스만 돌리려고 Redis 잠금을 쓰게 된 뒤 테스트에 빠져 있어 redisUtils가 null이었다
+    @Mock
+    private RedisUtils redisUtils;
+
     @InjectMocks
     private SubscriptionScheduler subscriptionScheduler;
 
@@ -68,6 +73,12 @@ class SubscriptionSchedulerTest {
         testUser.updateBillingKey("encrypted_billing_key_123");
         
         // BillingKeyEncryptionService mock 설정 (lenient로 설정하여 UnnecessaryStubbingException 방지)
+        // 스케줄러가 결제 전에 빌링키를 GCM으로 재암호화(upgradeIfLegacy)하게 된 뒤 mock이 null을 돌려줘
+        // 결제가 시작되기 전에 NPE로 실패 처리됐다 — 이미 최신 암호문인 것처럼 그대로 돌려준다
+        lenient().when(billingKeyEncryptionService.upgradeIfLegacy(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        // 이 인스턴스가 오늘의 잠금을 잡은 것으로 본다
+        lenient().when(redisUtils.tryAcquireDailySchedulerLock(anyString(), anyInt())).thenReturn(true);
+
         lenient().when(billingKeyEncryptionService.decryptBillingKey("encrypted_billing_key_123"))
                 .thenReturn("billing_test_123");
 
@@ -553,10 +564,12 @@ class SubscriptionSchedulerTest {
         
         Subscription validSubscription2 = Subscription.builder()
                 .planName(SubscriptionType.BASIC)
-                .billingType(SubscriptionBillingType.YEARLY)
-                .amount(100000)
+                // 서버 가격표(SubscriptionPricing)에 BASIC/MONTHLY만 있다 — 판매하지 않는 YEARLY 조합은
+                // 결제가 거부되므로, "결제 대상이 되는 유효 사용자"를 만들려면 판매 중인 조합이어야 한다
+                .billingType(SubscriptionBillingType.MONTHLY)
+                .amount(9900)
                 .status(SubscriptionStatus.ACTIVE)
-                .startDate(currentDate.minusMonths(12))
+                .startDate(currentDate.minusMonths(1))
                 .endDate(currentDate.minusDays(5)) // 만료됨
                 .user(validUser2)
                 .build();
@@ -597,5 +610,20 @@ class SubscriptionSchedulerTest {
         // 총 2번의 결제 처리가 이루어져야 함
         verify(billingService, times(2)).requestPayment(any(SubscriptionRequestDTO.class), anyString());
         verify(subscriptionService, times(2)).processSubscription(any(AppUser.class), any(SubscriptionRequestDTO.class));
+    }
+
+    @Test
+    @DisplayName("다른 인스턴스가 이미 잠금을 잡았으면 결제 대상 조회도 결제도 하지 않는다")
+    void processScheduledPayments_LockNotAcquired_DoesNothing() {
+        // Given: 블루그린 배포로 떠 있는 두 번째 인스턴스
+        when(redisUtils.tryAcquireDailySchedulerLock("subscription-billing", 120)).thenReturn(false);
+
+        // When
+        subscriptionScheduler.processScheduledPayments();
+
+        // Then: 이중 청구가 나지 않게 아무것도 건드리지 않는다
+        verify(userRepository, never()).findUsersRequiringSubscriptionBilling(any(LocalDateTime.class));
+        verify(billingService, never()).requestPayment(any(), any());
+        verify(subscriptionService, never()).processSubscription(any(), any());
     }
 }

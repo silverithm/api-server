@@ -143,17 +143,20 @@ class ScheduleTaskServiceTest {
     }
 
     @Test
-    @DisplayName("담당자가 지정된 할 일은 관리자도 대신 완료 처리할 수 없다")
-    void adminCannotCompleteAssignedTask() {
-        // 860ab6f "담당자 지정 할 일 완료에서 관리자 우회 제거"로 규칙이 바뀌었다.
+    @DisplayName("담당자가 지정된 할 일도 관리자는 대신 완료 처리할 수 있다 — 담당자 대행")
+    void adminCanCompleteAssignedTaskOnBehalf() {
+        // 860ab6f가 관리자 우회를 뺐지만 a9621b3("일정·할 일 수행완료에 관리자 대행 허용")이 관리 목적으로 되살렸다.
         ScheduleTask t = task(100L, ASSIGNEE_ID, false);
         when(scheduleTaskRepository.findById(100L)).thenReturn(Optional.of(t));
+        when(scheduleTaskRepository.save(any(ScheduleTask.class))).thenAnswer(i -> i.getArgument(0));
+        when(scheduleTaskRepository.countByScheduleId(10L)).thenReturn(1L);
+        when(scheduleTaskRepository.countByScheduleIdAndIsCompletedTrue(10L)).thenReturn(1L);
 
-        assertThrows(IllegalStateException.class, () -> scheduleService.updateTaskCompletion(
-                100L, true, "admin@carev.kr", "이관리", null, true));
+        ScheduleTaskDTO result = scheduleService.updateTaskCompletion(
+                100L, true, "admin@carev.kr", "이관리", null, true);
 
-        assertFalse(t.getIsCompleted());
-        verify(scheduleTaskRepository, never()).save(any());
+        assertTrue(result.getIsCompleted());
+        assertEquals("이관리", result.getCompletedByName());
     }
 
     @Test

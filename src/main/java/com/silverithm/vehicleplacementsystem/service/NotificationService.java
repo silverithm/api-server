@@ -318,6 +318,23 @@ public class NotificationService {
         return sendAndSaveNotification(request);
     }
     
+    /**
+     * 매일 도는 리마인더가 오늘 것을 보내기 전에 지난 날 것(같은 종류, [before] 이전에 만든 안읽은 것)을 읽음 처리한다.
+     *
+     * 리마인더는 그날에만 의미가 있다 — 어제 아침 카드가 안 닫힌 채 오늘 것과 함께 쌓이면 원장이 "어느 게 지금 것이냐"를 가려야 한다.
+     * REQUIRES_NEW: 호출하는 스케줄러가 @Transactional(readOnly = true)라서 그 트랜잭션에 합류하면
+     * 벌크 UPDATE가 읽기 전용에 막히거나 반영되지 않을 수 있다. 독립 트랜잭션으로 확실히 커밋한다.
+     *
+     * @return 읽음으로 바꾼 건수
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int retireStaleReminders(String relatedEntityType, LocalDateTime before) {
+        int retired = notificationRepository.markReadByRelatedEntityTypeCreatedBefore(
+                relatedEntityType, before, LocalDateTime.now());
+        log.info("[Notification Service] 지난 리마인더 정리: type={}, {}건", relatedEntityType, retired);
+        return retired;
+    }
+
     private Notification.NotificationType parseNotificationType(String type) {
         if (type == null) {
             return Notification.NotificationType.GENERAL;

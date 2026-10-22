@@ -24,6 +24,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class WorkTaskNotifier {
 
     static final String TYPE = "work_task";
+    /**
+     * 매일 아침 요약의 알림함 종류 — 담당 지정·완료 알림("work_task")과 갈라둔다.
+     * 요약은 그날에만 의미가 있어 다음 날 아침에 지난 것을 읽음 처리하는데, 종류가 같으면
+     * 아직 안 본 담당 지정 알림까지 같이 사라진다.
+     */
+    static final String DAILY_ENTITY_TYPE = "work_task_daily";
 
     private final NotificationService notificationService;
     private final WorkTaskPeople people;
@@ -37,8 +43,19 @@ public class WorkTaskNotifier {
         this.ownTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
 
-    /** 받는 사람 한 명분 알림 */
-    public record Message(String personId, String personName, String title, String body, Long taskId) {
+    /** 받는 사람 한 명분 알림. relatedEntityType은 알림함에 남는 종류 — 담당 지정·완료는 "work_task", 매일 요약은 "work_task_daily" */
+    public record Message(String personId, String personName, String title, String body, Long taskId,
+                          String relatedEntityType) {
+
+        /** 담당 지정·완료 같은 일반 알림 */
+        public Message(String personId, String personName, String title, String body, Long taskId) {
+            this(personId, personName, title, body, taskId, TYPE);
+        }
+
+        /** 매일 아침 요약 */
+        public static Message daily(String personId, String personName, String title, String body, Long taskId) {
+            return new Message(personId, personName, title, body, taskId, DAILY_ENTITY_TYPE);
+        }
     }
 
     /** 지금 트랜잭션이 커밋되면 보낸다. 트랜잭션 밖이면 바로 보낸다. */
@@ -77,7 +94,8 @@ public class WorkTaskNotifier {
         if (token == null) {
             // 푸시는 못 보내도 웹 알림함에는 남긴다
             notificationService.saveNotification(message.title(), message.body(), "", message.personId(),
-                    message.personName(), Notification.NotificationType.WORK_TASK, message.taskId(), TYPE);
+                    message.personName(), Notification.NotificationType.WORK_TASK, message.taskId(),
+                    message.relatedEntityType());
             return;
         }
         notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
@@ -88,7 +106,7 @@ public class WorkTaskNotifier {
                 .recipientUserName(message.personName())
                 .type(TYPE)
                 .relatedEntityId(message.taskId())
-                .relatedEntityType(TYPE)
+                .relatedEntityType(message.relatedEntityType())
                 .data(Map.of("type", TYPE, "taskId", String.valueOf(message.taskId())))
                 .build());
     }

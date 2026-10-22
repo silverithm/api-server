@@ -1,6 +1,7 @@
 package com.silverithm.vehicleplacementsystem.service;
 
 import com.silverithm.vehicleplacementsystem.config.redis.RedisUtils;
+import com.silverithm.vehicleplacementsystem.dto.FCMNotificationRequestDTO;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.entity.Member;
 import com.silverithm.vehicleplacementsystem.entity.VacationDeadlineSetting;
@@ -13,6 +14,7 @@ import com.silverithm.vehicleplacementsystem.repository.VacationLimitRepository;
 import com.silverithm.vehicleplacementsystem.repository.VacationRequestRepository;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * 검사 대상 기간: 내일부터 다음 달 말일까지 (이미 지난 날짜는 조정 불가).
  * 마감 판정: 이번 달 deadline_day(말일 초과 시 말일)를 지난 날부터 발송.
+ *
+ * 앱이 없는 직원도 웹 알림함에서 보도록 알림함에 남긴다(토큰이 없으면 알림함에만, 있으면 푸시도) — 2026-10-22 원장 요청.
+ * 지난 날 조정 알림은 오늘 것을 보내기 전에 읽음 처리해 매일 카드가 쌓이지 않게 한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -45,8 +50,11 @@ public class VacationAdjustmentReminderScheduler {
     private final VacationRequestRepository vacationRequestRepository;
     private final CompanyRepository companyRepository;
     private final MemberRepository memberRepository;
-    private final FCMService fcmService;
+    private final NotificationService notificationService;
     private final RedisUtils redisUtils;
+
+    static final String ENTITY_TYPE = "vacation_adjustment";
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private static final DateTimeFormatter DATE_LABEL = DateTimeFormatter.ofPattern("M월 d일");
 
@@ -59,7 +67,12 @@ public class VacationAdjustmentReminderScheduler {
             return;
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(SEOUL);
+        try {
+            notificationService.retireStaleReminders(ENTITY_TYPE, today.atStartOfDay());
+        } catch (Exception e) {
+            log.error("[VacationReminder] 지난 알림 정리 실패 — 오늘 알림은 계속 보냅니다", e);
+        }
         List<VacationDeadlineSetting> settings = settingRepository.findByEnabledTrue();
         log.info("[VacationReminder] 휴무 조정 리마인더 시작: 대상 회사 {}곳", settings.size());
 
@@ -134,15 +147,23 @@ public class VacationAdjustmentReminderScheduler {
 
             for (VacationRequest request : dayRequests) {
                 Member member = findMember(request);
-                if (member == null || member.getFcmToken() == null || member.getFcmToken().isEmpty()) {
+                if (member == null) {
                     continue;
                 }
                 if (!sentKeys.add(member.getId() + "|" + limit.getDate())) {
-                    continue; // 이미 이 날짜로 알림을 보낸 사람
+                    continue; // 이미 이 날짜로 알림을 보낸 사람 (토큰 유무와 상관없이 하루 한 번)
                 }
                 try {
-                    fcmService.sendNotification(member.getFcmToken(), title, body,
-                            Map.of("type", "vacation_adjustment", "date", limit.getDate().toString()));
+                    notificationService.sendAndSaveNotification(FCMNotificationRequestDTO.builder()
+                            .recipientToken(member.getFcmToken() == null ? "" : member.getFcmToken())
+                            .title(title)
+                            .message(body)
+                            .recipientUserId(String.valueOf(member.getId()))
+                            .recipientUserName(member.getName())
+                            .type("VACATION_REMINDER")
+                            .relatedEntityType(ENTITY_TYPE)
+                            .data(Map.of("type", "vacation_adjustment", "date", limit.getDate().toString()))
+                            .build());
                     notified++;
                 } catch (Exception e) {
                     log.warn("[VacationReminder] 발송 실패: memberId={}, {}", member.getId(), e.getMessage());
@@ -151,7 +172,7 @@ public class VacationAdjustmentReminderScheduler {
         }
 
         if (notified > 0) {
-            log.info("[VacationReminder] companyId={} 조정 요청 푸시 {}건 발송", companyId, notified);
+            log.info("[VacationReminder] companyId={} 조정 요청 알림 {}건 발송", companyId, notified);
         }
     }
 
