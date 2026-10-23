@@ -65,7 +65,7 @@ public class UserController {
     public SigninResponseDTO login(@RequestBody UserSigninDTO userSigninDTO, HttpServletRequest request) {
         String clientIp = ClientIp.from(request);
         if (redisUtils.isLoginTemporarilyBlocked(clientIp)) {
-            throw new CustomException("로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.",
+            throw new CustomException("로그인 시도가 너무 많습니다. " + redisUtils.loginBlockRemainingMinutes(clientIp) + "분 후 다시 시도해주세요.",
                     org.springframework.http.HttpStatus.TOO_MANY_REQUESTS);
         }
         try {

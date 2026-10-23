@@ -88,6 +88,8 @@ public class UserService {
     @Autowired
     private RedisUtils redisUtils;
     @Autowired
+    private PasswordResetService passwordResetService;
+    @Autowired
     private SlackService slackService;
     @Autowired
     private CompanyRepository companyRepository;
@@ -236,49 +238,7 @@ public class UserService {
     }
 
     public FindPasswordResponse findPassword(String email) {
-        AppUser findUser = userRepository.findActiveByEmail(email)
-                .orElseThrow(() -> new CustomException("사용자를 찾을 수 없습니다", HttpStatus.UNPROCESSABLE_ENTITY));
-
-        String temporaryPassword = createTemporaryPassword(findUser);
-
-        try {
-            sendTemporaryPasswordEmail(email, temporaryPassword);
-            return new FindPasswordResponse("임시 비밀번호가 이메일로 전송되었습니다.");
-        } catch (Exception e) {
-            throw new CustomException("이메일 전송에 실패했습니다. : " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    private String createTemporaryPassword(AppUser user) {
-        String temporaryPassword = generateRandomPassword(10);
-
-        String encodedPassword = passwordEncoder.encode(temporaryPassword);
-
-        user.updatePassword(encodedPassword);
-        userRepository.save(user);
-
-        return temporaryPassword;
-    }
-
-    private String generateRandomPassword(int length) {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        SecureRandom secureRandom = new SecureRandom();
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < length; i++) {
-            int randomIndex = secureRandom.nextInt(chars.length());
-            sb.append(chars.charAt(randomIndex));
-        }
-
-        return sb.toString();
-    }
-
-    // 이메일 전송
-    private void sendTemporaryPasswordEmail(String email, String temporaryPassword) {
-        String subject = "케어브이 임시 비밀번호 발급";
-        String content = temporaryPassword;
-
-        emailService.sendEmailAsync(email, subject, content);
+        return passwordResetService.requestForAdmin(email);
     }
 
     public void changePassword(String authenticatedEmail, PasswordChangeRequest passwordChangeRequest) {

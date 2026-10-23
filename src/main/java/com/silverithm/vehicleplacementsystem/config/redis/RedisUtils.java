@@ -149,6 +149,15 @@ public class RedisUtils {
         }
     }
 
+    /** 차단이 풀릴 때까지 남은 분(올림, 최소 1). 차단 중이 아니면 0 */
+    public int loginBlockRemainingMinutes(String clientIp) {
+        Long seconds = integerRedisTemplate.getExpire("login:fail:" + clientIp, TimeUnit.SECONDS);
+        if (seconds == null || seconds < 0) {
+            return LOGIN_FAILURE_WINDOW_MINUTES;
+        }
+        return (int) Math.max(1, (seconds + 59) / 60);
+    }
+
     public void clearLoginFailures(String clientIp) {
         integerRedisTemplate.delete("login:fail:" + clientIp);
     }
@@ -163,6 +172,11 @@ public class RedisUtils {
         Boolean acquired = redisTemplate.opsForValue()
                 .setIfAbsent(key, "locked", ttlMinutes, TimeUnit.MINUTES);
         return Boolean.TRUE.equals(acquired);
+    }
+
+    /** 키가 없을 때만 만든다(SET NX + TTL). 이미 있으면 false — 같은 이메일에 재설정 메일이 연달아 가지 않게 막는 데 쓴다 */
+    public boolean tryAcquireOnce(String key, int ttlMinutes) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", ttlMinutes, TimeUnit.MINUTES));
     }
 
     public int getDailyDispatchLimit(String username) {

@@ -40,7 +40,7 @@ public class MemberController {
         String clientIp = ClientIp.from(request);
         if (redisUtils.isLoginTemporarilyBlocked(clientIp)) {
             return ResponseEntity.status(429)
-                    .body(Map.of("error", "로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요."));
+                    .body(Map.of("error", "로그인 시도가 너무 많습니다. " + redisUtils.loginBlockRemainingMinutes(clientIp) + "분 후 다시 시도해주세요."));
         }
         try {
             Object response = memberService.signin(signinDTO);

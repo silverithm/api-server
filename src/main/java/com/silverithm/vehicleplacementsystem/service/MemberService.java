@@ -64,6 +64,7 @@ public class MemberService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final ChatService chatService;
+    private final PasswordResetService passwordResetService;
 
     /**
      * JWT 인증된 사용자로부터 adminId를 결정한다.
@@ -897,50 +898,8 @@ public class MemberService {
     }
 
 
-    @Transactional
     public FindPasswordResponse findPassword(String email) {
-        Member member = memberRepository.findActiveMember(email)
-                .orElseThrow(() -> new CustomException("해당 이메일로 가입된 사용자가 없습니다.", HttpStatus.NOT_FOUND));
-
-        String temporaryPassword = createTemporaryPassword(member);
-
-        try {
-            sendTemporaryPasswordEmail(email, temporaryPassword);
-            return new FindPasswordResponse("임시 비밀번호가 이메일로 전송되었습니다.");
-        } catch (Exception e) {
-            throw new CustomException("이메일 전송에 실패했습니다 이메일을 다시 확인해 주세요", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-
-    private String createTemporaryPassword(Member member) {
-        String temporaryPassword = generateRandomPassword(10);
-
-        String encodedPassword = passwordEncoder.encode(temporaryPassword);
-
-        member.updatePassword(encodedPassword);
-
-        return temporaryPassword;
-    }
-
-    private String generateRandomPassword(int length) {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        SecureRandom secureRandom = new SecureRandom();
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < length; i++) {
-            int randomIndex = secureRandom.nextInt(chars.length());
-            sb.append(chars.charAt(randomIndex));
-        }
-
-        return sb.toString();
-    }
-
-    private void sendTemporaryPasswordEmail(String email, String temporaryPassword) {
-        String subject = "케어브이 임시 비밀번호 발급";
-        String content = temporaryPassword;
-
-        emailService.sendEmailAsync(email, subject, content);
+        return passwordResetService.requestForMember(email);
     }
 
     private static final Set<String> VALID_PERMISSIONS = Set.of(

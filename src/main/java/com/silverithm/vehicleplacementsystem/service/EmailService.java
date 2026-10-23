@@ -56,6 +56,28 @@ public class EmailService {
                 """, body);
     }
 
+    /** 비밀번호 재설정 링크 메일 — 링크를 누르기 전에는 아무것도 바뀌지 않는다 */
+    public void sendPasswordResetEmail(String toEmail, String link, int validMinutes) {
+        try {
+            MimeMessage message = emailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(senderEmail);
+            helper.setTo(toEmail);
+            helper.setSubject("케어브이 비밀번호 재설정 안내");
+            helper.setText(String.format("""
+                    <div style="margin:40px auto;max-width:480px;font-family:sans-serif;">
+                        <h2>비밀번호 재설정</h2>
+                        <p>아래 버튼을 눌러 새 비밀번호를 정해 주세요. 링크는 %d분 동안만 쓸 수 있고, 한 번 쓰면 사라집니다.</p>
+                        <p style="margin:24px 0"><a href="%s" style="background:#0f766e;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none">새 비밀번호 정하기</a></p>
+                        <p style="color:#666;font-size:13px">직접 요청하지 않으셨다면 이 메일은 무시하셔도 됩니다. 링크를 누르기 전에는 비밀번호가 바뀌지 않습니다.</p>
+                    </div>
+                    """, validMinutes, link), true);
+            emailSender.send(message);
+        } catch (jakarta.mail.MessagingException e) {
+            throw new CustomException("이메일 전송에 실패했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // 비동기 이메일 전송
     @Async
     public void sendEmailAsync(String toEmail, String subject, String body) {

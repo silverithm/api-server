@@ -109,6 +109,7 @@ public class WebSecurityConfigure {
                                 .requestMatchers("/error").permitAll()
                                 .requestMatchers("/api/v1/signin").permitAll()
                                 .requestMatchers("/api/v1/find/password").permitAll()
+                                .requestMatchers("/api/v1/password-reset/**").permitAll()
                                 .requestMatchers("/api/v1/signup").permitAll()
                                 // 체험하기 — 비로그인 방문자가 데모 테넌트를 발급받는 엔드포인트
                                 .requestMatchers("/api/v1/demo/start").permitAll()
