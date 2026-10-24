@@ -207,10 +207,11 @@ public class ApprovalRequestService {
                 .revision(revisedFrom != null ? revisedFrom.getRevision() + 1 : 1)
                 .build();
 
-        boolean hasLine = dto.getApprovalLine() != null && !dto.getApprovalLine().isEmpty();
-        if (hasLine) {
+        if (dto.getApprovalLine() != null && !dto.getApprovalLine().isEmpty()) {
             buildApprovalLine(request, company, dto.getApprovalLine());
         }
+        // 기안자 본인을 뺀 뒤에 남은 단계가 있는지로 정한다 — 전원이 빠지면 결재선 없는 문서가 된다
+        boolean hasLine = !request.getSteps().isEmpty();
 
         applyViewers(request, template, dto.getViewers());
 
@@ -352,18 +353,22 @@ public class ApprovalRequestService {
         }
     }
 
-    /** 결재선 검증 및 단계 생성. 리스트 순서=결재 순서, 마지막=최종 결재자. */
+    /**
+     * 결재선 검증 및 단계 생성. 리스트 순서=결재 순서, 마지막=최종 결재자.
+     *
+     * 기안자 본인은 결재선에서 뺀다. 양식의 기본 결재선에 국장이 들어 있는데 그 국장이 직접 기안하면,
+     * 자기가 올린 문서를 자기가 다시 결재해야 했다(2026-10-24 현장 제보). 빼고 나면 단계 번호와
+     * 최종 결재자를 다시 매기고, 남는 결재자가 없으면 결재선 없는 문서로 둔다(관리자 단일 승인).
+     */
     private void buildApprovalLine(ApprovalRequest request, Company company, List<ApprovalLineEntryDTO> entries) {
         if (entries.size() > MAX_APPROVAL_STEPS) {
             throw new IllegalArgumentException("결재선은 최대 " + MAX_APPROVAL_STEPS + "단계까지 설정할 수 있습니다");
         }
 
         Set<String> seenApprovers = new HashSet<>();
-        List<ApprovalStep> steps = new ArrayList<>();
+        List<ApprovalAccessService.ResolvedApprover> approvers = new ArrayList<>();
 
-        for (int index = 0; index < entries.size(); index++) {
-            ApprovalLineEntryDTO entry = entries.get(index);
-
+        for (ApprovalLineEntryDTO entry : entries) {
             ApprovalStep.ApproverType approverType;
             try {
                 approverType = ApprovalStep.ApproverType.valueOf(entry.getApproverType().trim().toUpperCase());
@@ -378,7 +383,22 @@ public class ApprovalRequestService {
                 throw new IllegalArgumentException("같은 결재자를 결재선에 중복 지정할 수 없습니다: " + approver.name());
             }
 
-            boolean isLast = index == entries.size() - 1;
+            if (isDrafter(request, approver)) {
+                log.info("[ApprovalRequest] 기안자 본인을 결재선에서 제외: requester={}, approver={}",
+                        request.getRequesterName(), approver.name());
+                continue;
+            }
+            approvers.add(approver);
+        }
+
+        if (approvers.isEmpty()) {
+            return;
+        }
+
+        List<ApprovalStep> steps = new ArrayList<>();
+        for (int index = 0; index < approvers.size(); index++) {
+            ApprovalAccessService.ResolvedApprover approver = approvers.get(index);
+            boolean isLast = index == approvers.size() - 1;
             steps.add(ApprovalStep.builder()
                     .approvalRequest(request)
                     .stepOrder(index + 1)
@@ -394,6 +414,11 @@ public class ApprovalRequestService {
         request.getSteps().addAll(steps);
         request.setHasApprovalLine(true);
         request.setCurrentStepOrder(1);
+    }
+
+    /** 결재자의 식별자는 기안자 식별자와 같은 형식이다(관리자 "admin_<id>", 직원 "<id>") */
+    static boolean isDrafter(ApprovalRequest request, ApprovalAccessService.ResolvedApprover approver) {
+        return request.getRequesterId() != null && request.getRequesterId().equals(approver.legacyId());
     }
 
     // 진행중 결재의 첨부파일 교체 (기안자 본인만)
