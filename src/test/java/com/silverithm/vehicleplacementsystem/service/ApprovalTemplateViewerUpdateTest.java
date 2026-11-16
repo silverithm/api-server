@@ -70,6 +70,8 @@ class ApprovalTemplateViewerUpdateTest {
     @Autowired
     private CompanyRepository companyRepository;
     @Autowired
+    private com.silverithm.vehicleplacementsystem.repository.ApprovalTemplateVersionRepository versionRepository;
+    @Autowired
     private EntityManager em;
 
     private ApprovalTemplateService service;
@@ -92,8 +94,10 @@ class ApprovalTemplateViewerUpdateTest {
         resolver = mock(ApprovalViewerResolver.class);
         when(resolver.resolveName(any(), anyLong(), any())).thenAnswer(inv -> "대상" + inv.getArgument(1));
 
+        ApprovalTemplateVersionService versionService = new ApprovalTemplateVersionService(
+                versionRepository, mock(WorkTaskAccess.class), new com.fasterxml.jackson.databind.ObjectMapper());
         service = new ApprovalTemplateService(
-                templateRepository, approvalRequestRepository, companyRepository, guard, resolver);
+                templateRepository, approvalRequestRepository, companyRepository, guard, resolver, versionService);
     }
 
     private static ApprovalViewerEntryDTO 직책(long refId) {

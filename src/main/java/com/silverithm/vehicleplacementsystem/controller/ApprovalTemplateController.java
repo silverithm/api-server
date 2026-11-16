@@ -1,6 +1,8 @@
 package com.silverithm.vehicleplacementsystem.controller;
 
 import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateVersionDTO;
+import com.silverithm.vehicleplacementsystem.exception.CustomException;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalTemplateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ReorderApprovalTemplatesRequestDTO;
 import com.silverithm.vehicleplacementsystem.service.ApprovalTemplateService;
@@ -183,6 +185,55 @@ public class ApprovalTemplateController {
             return ResponseEntity.internalServerError()
                     .headers(getCorsHeaders())
                     .body(Map.of("error", "양식 순서 변경 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 양식 버전 기록 — 저장할 때마다 남은 그때 모습, 최근 것부터(2026-11-16)
+     */
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<Map<String, Object>> getVersions(@PathVariable Long id) {
+        try {
+            List<ApprovalTemplateVersionDTO> versions = templateService.getVersions(id);
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("versions", versions));
+        } catch (CustomException e) {
+            return ResponseEntity.status(e.getHttpStatus())
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[ApprovalTemplate API] 버전 기록 조회 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "양식 버전 기록을 불러오지 못했습니다: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 예전 버전으로 되돌리기 (관리자) — 되돌린 모습도 새 버전으로 남는다
+     */
+    @PostMapping("/{id}/versions/{versionId}/restore")
+    public ResponseEntity<Map<String, Object>> restoreVersion(@PathVariable Long id, @PathVariable Long versionId) {
+        try {
+            log.info("[ApprovalTemplate API] 양식 되돌리기: id={}, versionId={}", id, versionId);
+            ApprovalTemplateDTO template = templateService.restoreVersion(id, versionId);
+            return ResponseEntity.ok()
+                    .headers(getCorsHeaders())
+                    .body(Map.of(
+                            "success", true,
+                            "template", template,
+                            "message", "양식을 이전 버전으로 되돌렸습니다."
+                    ));
+        } catch (CustomException e) {
+            return ResponseEntity.status(e.getHttpStatus())
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("[ApprovalTemplate API] 되돌리기 오류:", e);
+            return ResponseEntity.internalServerError()
+                    .headers(getCorsHeaders())
+                    .body(Map.of("error", "양식을 되돌리지 못했습니다: " + e.getMessage()));
         }
     }
 

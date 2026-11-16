@@ -3,7 +3,9 @@ package com.silverithm.vehicleplacementsystem.service;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateDTO;
 import com.silverithm.vehicleplacementsystem.dto.CreateApprovalTemplateRequestDTO;
 import com.silverithm.vehicleplacementsystem.dto.ApprovalViewerEntryDTO;
+import com.silverithm.vehicleplacementsystem.dto.ApprovalTemplateVersionDTO;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplate;
+import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplateVersion;
 import com.silverithm.vehicleplacementsystem.entity.ApprovalTemplateViewer;
 import com.silverithm.vehicleplacementsystem.entity.Company;
 import com.silverithm.vehicleplacementsystem.repository.ApprovalRequestRepository;
@@ -34,6 +36,7 @@ public class ApprovalTemplateService {
     private final CompanyRepository companyRepository;
     private final ResourceScopeGuard resourceScopeGuard;
     private final ApprovalViewerResolver viewerResolver;
+    private final ApprovalTemplateVersionService versionService;
 
     // 전체 양식 조회 (관리자용) — 관리자가 정한 순서(sortOrder) 우선, 그다음 최신 등록순
     @Transactional(readOnly = true)
@@ -90,6 +93,7 @@ public class ApprovalTemplateService {
         applyDefaultViewers(template, request.getDefaultViewers());
 
         ApprovalTemplate saved = templateRepository.save(template);
+        versionService.recordSaved(saved, ApprovalTemplateVersion.Kind.CREATED, null);
         log.info("[ApprovalTemplate] 양식 생성: id={}, name={}, 열람대상={}건",
                 saved.getId(), saved.getName(), saved.getDefaultViewers().size());
 
@@ -101,6 +105,8 @@ public class ApprovalTemplateService {
         ApprovalTemplate template = templateRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
         resourceScopeGuard.requireSameCompany(template.getCompany());
+        // 고치기 전 모습이 기록에 없으면 먼저 남긴다 — 이번 수정이 잘못돼도 되돌아갈 곳
+        versionService.ensureBaseline(template);
 
         template.setName(request.getName());
         template.setDescription(request.getDescription());
@@ -116,9 +122,47 @@ public class ApprovalTemplateService {
         applyDefaultViewers(template, request.getDefaultViewers());
 
         ApprovalTemplate saved = templateRepository.save(template);
+        versionService.recordSaved(saved, ApprovalTemplateVersion.Kind.EDITED, null);
         log.info("[ApprovalTemplate] 양식 수정: id={}, name={}, 열람대상={}건",
                 saved.getId(), saved.getName(), saved.getDefaultViewers().size());
 
+        return ApprovalTemplateDTO.from(saved);
+    }
+
+    // 양식 버전 기록 — 최근 것부터
+    @Transactional(readOnly = true)
+    public List<ApprovalTemplateVersionDTO> getVersions(Long id) {
+        ApprovalTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
+        return versionService.list(id);
+    }
+
+    /**
+     * 예전 버전으로 되돌린다 — 그 버전의 이름·설명·분류·종류·항목 구성·기본 결재선·파일을 지금 양식에 덮고,
+     * 그것을 새 버전(RESTORED)으로 남긴다. 되돌리기 전 모습도 기록에 그대로 있어 언제든 다시 돌아올 수 있다.
+     * 열람 대상·사용 여부·순서는 건드리지 않는다.
+     */
+    public ApprovalTemplateDTO restoreVersion(Long id, Long versionId) {
+        ApprovalTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("양식을 찾을 수 없습니다: " + id));
+        resourceScopeGuard.requireSameCompany(template.getCompany());
+        ApprovalTemplateVersion version = versionService.require(id, versionId);
+        versionService.ensureBaseline(template);
+
+        template.setName(version.getName());
+        template.setDescription(version.getDescription());
+        template.setCategory(version.getCategory());
+        template.setTemplateType(version.getTemplateType());
+        template.setFormSchema(version.getFormSchema());
+        template.setDefaultApprovalLine(version.getDefaultApprovalLine());
+        template.setFileUrl(version.getFileUrl());
+        template.setFileName(version.getFileName());
+        template.setFileSize(version.getFileSize());
+
+        ApprovalTemplate saved = templateRepository.save(template);
+        versionService.recordSaved(saved, ApprovalTemplateVersion.Kind.RESTORED, version.getVersionNo());
+        log.info("[ApprovalTemplate] 양식 되돌림: id={}, v{}로", saved.getId(), version.getVersionNo());
         return ApprovalTemplateDTO.from(saved);
     }
 
