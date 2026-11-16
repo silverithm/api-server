@@ -52,8 +52,10 @@ public class ApprovalTemplateVersion {
     @Column(name = "version_no", nullable = false)
     private Integer versionNo;
 
+    // 운영 표는 VARCHAR(20) — columnDefinition 없이 두면 Hibernate가 MySQL ENUM을 기대해
+    // 시작 때 스키마 검사에서 멈춘다(2026-11-16 첫 배포 실패). 다른 enum 칸(열람 대상 종류 등)과 같은 방식.
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "varchar(20)")
     private Kind kind;
 
     @Column(name = "restored_from_no")
