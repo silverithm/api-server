@@ -34,24 +34,28 @@ public class SignatureService {
         return toAbsoluteUrl(path);
     }
 
-    /** 내 서명 등록 (base64 PNG). 기존 서명 파일은 best-effort 삭제. */
+    /**
+     * 내 서명 등록 (base64 PNG).
+     *
+     * <p>기존 서명 파일은 지우지 않는다. 결재 단계·회의록 서명은 서명할 때의 파일 경로를 그대로 가리키므로,
+     * 지우면 지난 문서의 서명이 깨진다. 2026-11-16 숲속에서 원장이 서명을 두 번 바꾸며 지난 결재 372건·회의록 5건의
+     * 서명 그림이 S3에서 사라졌다(버킷 버전 보관이 꺼져 있어 되살리지 못함). 서명 파일은 수십 KB라 남겨 둔다.
+     */
     public String registerMySignature(UserDetails userDetails, String imageBase64) throws IOException {
         Owner owner = resolveOwner(userDetails);
 
         byte[] bytes = decodePngBase64(imageBase64);
         String newPath = fileStorageService.storeBytes(bytes, ".png", "signatures");
 
-        deleteOldFile(owner.signatureUrl());
         owner.updateSignature(newPath);
 
         log.info("[Signature] 서명 등록: owner={}, path={}", owner.describe(), newPath);
         return toAbsoluteUrl(newPath);
     }
 
-    /** 내 서명 삭제 */
+    /** 내 서명 삭제 — 등록만 지운다. 파일은 지난 문서가 가리키고 있을 수 있어 남긴다(위 registerMySignature 참고) */
     public void deleteMySignature(UserDetails userDetails) {
         Owner owner = resolveOwner(userDetails);
-        deleteOldFile(owner.signatureUrl());
         owner.updateSignature(null);
         log.info("[Signature] 서명 삭제: owner={}", owner.describe());
     }
@@ -75,17 +79,6 @@ public class SignatureService {
         }
 
         return bytes;
-    }
-
-    private void deleteOldFile(String path) {
-        if (path == null || path.isEmpty()) {
-            return;
-        }
-        try {
-            fileStorageService.deleteFile(path);
-        } catch (Exception e) {
-            log.warn("[Signature] 기존 서명 파일 삭제 실패(무시): {}", e.getMessage());
-        }
     }
 
     private String toAbsoluteUrl(String path) {
