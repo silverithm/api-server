@@ -139,4 +139,19 @@ class NotificationServiceInboxTest {
         verify(fcm).sendNotification(eq("device-token"), anyString(), anyString(),
                 eq(Map.of("type", "approval", "actorId", "admin_3")));
     }
+
+    @Test
+    @DisplayName("휴가 신청 알림의 보낸 사람은 신청한 직원이다 — 시설장이 대신 넣어도 시설장 얼굴이 붙지 않는다")
+    void 휴가신청_보낸사람은_신청자() {
+        when(callers.currentChatUserId()).thenReturn("admin_3"); // 대신 넣은 시설장
+
+        service.sendVacationSubmittedNotification("", "admin_3", "김도형", "한희정(조리원)", "2026-12-26", 5659L,
+                VacationService.applicantChatId(" 41 "));
+        service.sendVacationSubmittedNotification("", "admin_3", "김도형", "임시", "2026-12-26", 5660L,
+                VacationService.applicantChatId("user_1700000000000"));
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(repository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        assertThat(captor.getAllValues()).extracting(Notification::getActorId).containsExactly("41", null);
+    }
 }

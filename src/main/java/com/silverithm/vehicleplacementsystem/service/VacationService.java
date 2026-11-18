@@ -602,12 +602,22 @@ public class VacationService {
                         admin.userName(),
                         submitter,
                         vacation.getDate().toString(),
-                        vacation.getId()
+                        vacation.getId(),
+                        applicantChatId(vacation.getUserId())
                 );
             } catch (Exception e) {
                 log.error("[Vacation Service] 관리자 알림 전송 실패: {}", e.getMessage());
             }
         }
+    }
+
+    /** 신청자 직원 번호("12") — 직원 번호가 아니면(자동으로 만든 "user_…") "" */
+    static String applicantChatId(String userId) {
+        if (userId == null) {
+            return "";
+        }
+        String trimmed = userId.trim();
+        return trimmed.matches("\\d+") ? trimmed : "";
     }
 
     /** 신청자의 직책. 못 찾으면 null이라 이름만 나간다 (알림 때문에 신청이 막히면 안 된다) */

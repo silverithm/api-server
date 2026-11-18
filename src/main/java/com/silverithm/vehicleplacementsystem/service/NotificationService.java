@@ -322,14 +322,19 @@ public class NotificationService {
         return sendAndSaveNotification(request);
     }
     
+    /**
+     * @param applicantChatId 신청한 직원의 채팅 식별자("12"). 시설장이 직원 대신 넣은 신청도 카드에는 신청자 사진이
+     *                        붙어야 해서 로그인 사용자를 쓰지 않는다. 직원 번호가 아니면 "" — 남의 얼굴보다 아이콘이 낫다.
+     */
     public NotificationDTO sendVacationSubmittedNotification(
-            String recipientToken, 
-            String recipientUserId, 
-            String recipientUserName, 
+            String recipientToken,
+            String recipientUserId,
+            String recipientUserName,
             String submitterName,
             String vacationDate,
-            Long vacationId) {
-        
+            Long vacationId,
+            String applicantChatId) {
+
         FCMNotificationRequestDTO request = FCMNotificationRequestDTO.builder()
                 .recipientToken(recipientToken)
                 .title("새 휴가 신청")
@@ -339,6 +344,7 @@ public class NotificationService {
                 .type("vacation_submitted")
                 .relatedEntityId(vacationId)
                 .relatedEntityType("vacation_request")
+                .actorId(applicantChatId == null ? "" : applicantChatId)
                 .data(Map.of(
                         "type", "vacation_submitted",
                         "vacationId", String.valueOf(vacationId),
