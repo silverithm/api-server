@@ -46,7 +46,14 @@ public class Notification {
     
     @Column
     private String relatedEntityType;
-    
+
+    /**
+     * 알림을 일으킨 사람의 채팅 식별자(직원 "12", 시설장 "admin_3") — 웹 알림 카드가 그 사람 사진을 붙인다.
+     * 비어 있으면 시스템 알림(리마인더)이거나 V1.111.0 전에 쌓인 알림이다.
+     */
+    @Column(length = 64)
+    private String actorId;
+
     @Column(nullable = false)
     private Boolean sent;
 

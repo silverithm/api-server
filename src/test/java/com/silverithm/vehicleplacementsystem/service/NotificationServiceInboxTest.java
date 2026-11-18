@@ -29,11 +29,12 @@ class NotificationServiceInboxTest {
 
     private final NotificationRepository repository = mock(NotificationRepository.class);
     private final FCMService fcm = mock(FCMService.class);
+    private final ChatCallerResolver callers = mock(ChatCallerResolver.class);
     private NotificationService service;
 
     @BeforeEach
     void setUp() {
-        service = new NotificationService(repository, fcm);
+        service = new NotificationService(repository, fcm, callers);
         when(repository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
@@ -79,5 +80,63 @@ class NotificationServiceInboxTest {
         verify(fcm).sendNotification(eq("device-token"), eq("결재 요청 도착"), anyString(), anyMap());
         assertThat(saved.getSent()).isTrue();
         assertThat(saved.getFcmMessageId()).isEqualTo("fcm-1");
+    }
+
+    // ─── 알림을 일으킨 사람(2026-11-18) — 웹 알림 카드가 그 사람 사진을 붙인다 ───
+
+    private Notification savedOne() {
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(repository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        return captor.getAllValues().get(0);
+    }
+
+    @Test
+    @DisplayName("보내는 쪽이 정하지 않으면 요청을 보낸 로그인 사용자가 보낸 사람이다")
+    void 보낸사람_로그인사용자() {
+        when(callers.currentChatUserId()).thenReturn("12");
+
+        service.sendAndSaveNotification(결재알림(""));
+
+        assertThat(savedOne().getActorId()).isEqualTo("12");
+    }
+
+    @Test
+    @DisplayName("보내는 쪽이 정한 값이 먼저다 — 빈 문자열이면 일부러 비운다")
+    void 보낸사람_직접지정() {
+        when(callers.currentChatUserId()).thenReturn("12");
+        FCMNotificationRequestDTO named = 결재알림("");
+        named.setActorId("admin_3");
+        FCMNotificationRequestDTO none = 결재알림("");
+        none.setActorId("");
+
+        service.sendAndSaveNotification(named);
+        service.sendAndSaveNotification(none);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(repository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+        assertThat(captor.getAllValues()).extracting(Notification::getActorId).containsExactly("admin_3", null);
+    }
+
+    @Test
+    @DisplayName("리마인더처럼 로그인 사용자가 없거나 찾다 실패해도 알림은 남는다 — 보낸 사람만 비어 있다")
+    void 보낸사람_없음() {
+        when(callers.currentChatUserId()).thenThrow(new IllegalStateException("db down"));
+
+        NotificationDTO saved = service.sendAndSaveNotification(결재알림(""));
+
+        assertThat(saved.getRecipientUserId()).isEqualTo("admin_3");
+        assertThat(savedOne().getActorId()).isNull();
+    }
+
+    @Test
+    @DisplayName("푸시 data에도 보낸 사람을 싣는다 — 원래 Map(불변)은 그대로 두고 새 Map으로")
+    void 푸시에도_보낸사람() {
+        when(callers.currentChatUserId()).thenReturn("admin_3");
+        when(fcm.sendNotification(eq("device-token"), anyString(), anyString(), anyMap())).thenReturn("fcm-1");
+
+        service.sendAndSaveNotification(결재알림("device-token"));
+
+        verify(fcm).sendNotification(eq("device-token"), anyString(), anyString(),
+                eq(Map.of("type", "approval", "actorId", "admin_3")));
     }
 }

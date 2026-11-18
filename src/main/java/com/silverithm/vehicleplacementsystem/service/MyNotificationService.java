@@ -31,8 +31,9 @@ public class MyNotificationService {
     private final NotificationRepository notifications;
     private final ChatCallerResolver chatCallerResolver;
 
+    /** actorId — 알림을 일으킨 사람(채팅 식별자 "12" / "admin_3"). 웹 카드가 그 사람 사진을 붙인다. 없으면 null */
     public record View(Long id, String title, String message, String type, Long relatedEntityId,
-                       String relatedEntityType, LocalDateTime createdAt) {
+                       String relatedEntityType, LocalDateTime createdAt, String actorId) {
     }
 
     /** 확인 안 한 알림(최근 [days]일, 새것부터, 최대 100건) */
@@ -77,6 +78,6 @@ public class MyNotificationService {
 
     private static View toView(Notification n) {
         return new View(n.getId(), n.getTitle(), n.getMessage(), n.getType() == null ? null : n.getType().name(),
-                n.getRelatedEntityId(), n.getRelatedEntityType(), n.getCreatedAt());
+                n.getRelatedEntityId(), n.getRelatedEntityType(), n.getCreatedAt(), n.getActorId());
     }
 }

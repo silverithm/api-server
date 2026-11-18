@@ -839,6 +839,30 @@ public class ApprovalRequestService {
         return name;
     }
 
+    /**
+     * 기안자의 채팅 식별자("12" / "admin_3") — 알림 카드에 기안자 사진을 붙인다.
+     * requesterId는 직원 번호일 수도 시설장 번호일 수도 있어 이름이 같은 쪽만 쓴다. 못 정하면 빈 문자열(사진 없음).
+     */
+    private String requesterChatUserId(ApprovalRequest request) {
+        String name = request.getRequesterName();
+        try {
+            Member member = findRequester(request.getRequesterId());
+            if (member != null && (name == null || name.equals(member.getName()))) {
+                return String.valueOf(member.getId());
+            }
+            String requesterId = request.getRequesterId();
+            if (requesterId != null && !requesterId.isBlank()) {
+                AppUser admin = userRepository.findById(Long.valueOf(requesterId.trim())).orElse(null);
+                if (admin != null && (name == null || name.equals(admin.getUsername()))) {
+                    return ChatService.toAdminChatUserId(admin.getId());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("[ApprovalRequest] 기안자 식별 실패: requestId={}, {}", request.getId(), e.getMessage());
+        }
+        return "";
+    }
+
     /** 다음 차례 결재 단계의 결재자에게 FCM 알림 전송. 실패해도 본 트랜잭션에 영향 없음. */
     private void notifyStepApprover(ApprovalRequest request, ApprovalStep step) {
         if (step == null) {
@@ -882,6 +906,8 @@ public class ApprovalRequestService {
                     .type("approval")
                     .relatedEntityId(request.getId())
                     .relatedEntityType("approval_request")
+                    // 문구가 기안자를 말한다 — 앞 결재자가 승인해 차례가 넘어온 때도 기안자 사진을 붙인다
+                    .actorId(requesterChatUserId(request))
                     .data(Map.of(
                             "type", "approval",
                             "requestId", String.valueOf(request.getId())

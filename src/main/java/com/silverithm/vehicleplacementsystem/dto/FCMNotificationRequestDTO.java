@@ -28,5 +28,10 @@ public class FCMNotificationRequestDTO {
     private String type;
     private Long relatedEntityId;
     private String relatedEntityType;
+    /**
+     * 알림을 일으킨 사람(채팅 식별자 "12" / "admin_3"). null이면 이 요청을 보낸 로그인 사용자로 채운다
+     * (리마인더처럼 로그인 사용자가 없으면 비운다). 빈 문자열이면 일부러 비운다.
+     */
+    private String actorId;
     private Map<String, String> data;
 } 

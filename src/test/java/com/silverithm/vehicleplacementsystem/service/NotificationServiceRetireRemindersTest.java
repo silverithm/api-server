@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 class NotificationServiceRetireRemindersTest {
 
     private final NotificationRepository repository = mock(NotificationRepository.class);
-    private final NotificationService service = new NotificationService(repository, mock(FCMService.class));
+    private final NotificationService service = new NotificationService(repository, mock(FCMService.class), mock(ChatCallerResolver.class));
 
     @Test
     @DisplayName("종류와 기준 시각을 저장소에 넘기고, 읽음 시각은 지금으로 찍고, 건수를 돌려준다")

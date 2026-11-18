@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,6 +23,35 @@ public class NotificationService {
     
     private final NotificationRepository notificationRepository;
     private final FCMService fcmService;
+    private final ChatCallerResolver chatCallerResolver;
+
+    /**
+     * 알림을 일으킨 사람 — 보내는 쪽이 정했으면 그 값(빈 문자열이면 없음), 안 정했으면 이 요청을 보낸 로그인 사용자.
+     * 결재 상신·승인, 휴무 신청·승인, 공지·회의록·일정 등록, 업무 배정은 모두 그 일을 한 사람이 요청을 보낸다.
+     * 리마인더(스케줄러)는 로그인 사용자가 없어 비어 있다. 웹 알림 카드는 이 사람의 사진을 붙인다(2026-11-18).
+     */
+    private String actorOf(String requested) {
+        if (requested != null) {
+            return requested.isBlank() ? null : requested.trim();
+        }
+        try {
+            return chatCallerResolver.currentChatUserId();
+        } catch (Exception e) {
+            // 사진을 못 붙일 뿐이다 — 알림은 그대로 남긴다
+            log.debug("[Notification Service] 알림 보낸 사람을 정하지 못함: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 푸시 data에도 보낸 사람을 싣는다 — 앱 알림 카드가 사진을 붙일 수 있게. 받은 Map은 고치지 않는다 */
+    static Map<String, String> withActor(Map<String, String> data, String actorId) {
+        if (actorId == null) {
+            return data;
+        }
+        Map<String, String> copy = data == null ? new HashMap<>() : new HashMap<>(data);
+        copy.putIfAbsent("actorId", actorId);
+        return copy;
+    }
     
     // REQUIRES_NEW: 알림 저장/전송 실패가 호출한 쪽의 본 트랜잭션(결재 생성 등)을
     // rollback-only로 오염시키지 않도록 독립 트랜잭션에서 실행한다
@@ -39,6 +69,7 @@ public class NotificationService {
                 .type(parseNotificationType(requestDTO.getType()))
                 .relatedEntityId(requestDTO.getRelatedEntityId())
                 .relatedEntityType(requestDTO.getRelatedEntityType())
+                .actorId(actorOf(requestDTO.getActorId()))
                 .sent(false)
                 .build();
         
@@ -59,7 +90,7 @@ public class NotificationService {
                     requestDTO.getRecipientToken(),
                     requestDTO.getTitle(),
                     requestDTO.getMessage(),
-                    requestDTO.getData()
+                    withActor(requestDTO.getData(), saved.getActorId())
             );
             
             // 전송 성공 시 업데이트
@@ -102,6 +133,7 @@ public class NotificationService {
                 .type(type)
                 .relatedEntityId(relatedEntityId)
                 .relatedEntityType(relatedEntityType)
+                .actorId(actorOf(null))
                 .sent(false)
                 .build();
         

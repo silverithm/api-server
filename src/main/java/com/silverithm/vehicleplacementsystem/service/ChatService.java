@@ -1495,6 +1495,8 @@ public class ChatService {
                             .type("CHAT")
                             .relatedEntityId(room.getId())
                             .relatedEntityType("chatRoom")
+                            // 보낸 사람 — 웹소켓 스레드에는 로그인 정보가 없어 직접 적는다
+                            .actorId(message.getSenderId() == null ? "" : message.getSenderId())
                             .data(Map.of(
                                     "type", "chat",
                                     "roomId", String.valueOf(room.getId()),
