@@ -5,6 +5,7 @@ import com.silverithm.vehicleplacementsystem.service.ChatCallerResolver;
 import com.silverithm.vehicleplacementsystem.service.ChatService;
 import com.silverithm.vehicleplacementsystem.service.ChatThumbnailBackfillService;
 import com.silverithm.vehicleplacementsystem.service.FileStorageService;
+import com.silverithm.vehicleplacementsystem.service.SharedMediaBrowser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -835,14 +836,32 @@ public class ChatController {
 
     /**
      * 공유된 파일 조회 (/files 엔드포인트 - 프론트엔드 호환)
+     *
+     * <p>{@code size}·{@code kind}·{@code q}·{@code beforeId}·{@code month} 중 하나라도 오면 한 쪽씩
+     * 돌려준다({@code files}, {@code hasMore}, {@code counts}, {@code months}). 하나도 없으면 예전처럼
+     * 통째로 돌려준다 — 이미 깔린 옛 앱·웹이 이 모양을 기대한다.
      */
     @GetMapping("/rooms/{roomId}/files")
     public ResponseEntity<Map<String, Object>> getSharedFiles(
             @PathVariable Long roomId,
-            @RequestParam(required = false) String type) {
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String kind,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long beforeId,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) Integer size) {
 
         try {
-            log.info("[Chat API] 공유된 파일 조회: roomId={}, type={}", roomId, type);
+            log.info("[Chat API] 공유된 파일 조회: roomId={}, type={}, kind={}, beforeId={}, month={}, size={}",
+                    roomId, type, kind, beforeId, month, size);
+
+            boolean paged = size != null || kind != null || q != null || beforeId != null || month != null;
+            if (paged) {
+                int pageSize = size == null ? SharedMediaBrowser.DEFAULT_SIZE : size;
+                return ResponseEntity.ok()
+                        .headers(getCorsHeaders())
+                        .body(chatService.browseSharedMedia(roomId, kind, q, beforeId, month, pageSize));
+            }
 
             List<ChatMessageDTO> files = chatService.getSharedMedia(roomId, type);
 

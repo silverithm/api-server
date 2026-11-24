@@ -1104,6 +1104,39 @@ public class ChatService {
     }
 
     /**
+     * '주고받은 파일'을 종류·검색어·달로 거르고 한 쪽씩 돌려준다(새 앱·웹용).
+     *
+     * <p>예전 {@link #getSharedMedia}는 방의 첨부를 통째로 DTO로 바꿔 보냈다 — 큰 방은 5천 건이 넘는다.
+     * 여기서는 같은 행을 읽되 DTO로 바꾸는 건 이번 쪽만이고, 탭 숫자(counts)와 달 목록(months)을 함께 준다.
+     * 거르는 규칙은 {@link SharedMediaBrowser}에 있다.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> browseSharedMedia(Long roomId, String kind, String query, Long beforeId,
+                                                 String month, int size) {
+        log.info("[Chat Service] 주고받은 파일 쪽 조회: roomId={}, kind={}, beforeId={}, month={}, size={}",
+                roomId, kind, beforeId, month, size);
+
+        SharedMediaBrowser.Page page = SharedMediaBrowser.browse(
+                chatMessageRepository.findSharedMedia(roomId), kind, query, beforeId, month, size);
+
+        List<Map<String, Object>> months = page.months().stream()
+                .map(mc -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("month", mc.month());
+                    row.put("count", mc.count());
+                    return row;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("files", page.items().stream().map(ChatMessageDTO::fromEntity).collect(Collectors.toList()));
+        body.put("hasMore", page.hasMore());
+        body.put("counts", page.counts());
+        body.put("months", months);
+        return body;
+    }
+
+    /**
      * 방 안 메시지 검색 — 지워진 메시지는 제외하고 최신순으로 돌려준다.
      */
     @Transactional(readOnly = true)
